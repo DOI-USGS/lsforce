@@ -78,8 +78,10 @@ def getEventInfo(event_id, database='/Users/kallstadt/LSseis/landslideDatabase/l
             names = [t[0] for t in temp]
             eventDict = dict(zip(names, dat))
             # Convert to the right units
-            eventDict['StartTime'] = UTCDateTime(eventDict['StartTime'])
-            eventDict['EndTime'] = UTCDateTime(eventDict['EndTime'])
+            temp = eventDict['StartTime'].split(' ')
+            eventDict['StartTime'] = UTCDateTime(temp[0]+'T'+temp[1])
+            temp = eventDict['EndTime'].split(' ')
+            eventDict['EndTime'] = UTCDateTime(temp[0]+'T'+temp[1])
         except Exception as e:
             print(e)
             return
@@ -107,9 +109,9 @@ def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=N
      '*' for all channels
     :param database: Full file path to SQLite3 landslide database file
     :type database: string
-    :returns eventDict: Dictionary containing all entries of all fields from event table
+    :returns staDict: Dictionary containing all entries of all fields from event table
      of database
-    :type eventDict: Dictionary
+    :type staDict: Dictionary
 
     Dictionary entries
     'Sid' - Station id
@@ -211,19 +213,26 @@ def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=N
             removekeys.append(key)
             continue
         try:
-            staDict[key]['starttimeHF'] = UTCDateTime(staDict[key]['starttimeHF'])
-            staDict[key]['endtimeHF'] = UTCDateTime(staDict[key]['endtimeHF'])
+            temp = staDict[key]['starttimeHF'].split(' ')
+            staDict[key]['starttimeHF'] = UTCDateTime(temp[0]+'T'+temp[1])
+            temp = staDict[key]['endtimeHF'].split(' ')
+            staDict[key]['endtimeHF'] = UTCDateTime(temp[0]+'T'+temp[1])
         except Exception as e:
-            print(e)
+            pass
+            #print(e)
         try:
-            staDict[key]['starttimeLP'] = UTCDateTime(staDict[key]['starttimeLP'])
-            staDict[key]['endtimeLP'] = UTCDateTime(staDict[key]['endtimeLP'])
+            temp = staDict[key]['starttimeLP'].split(' ')
+            staDict[key]['starttimeLP'] = UTCDateTime(temp[0]+'T'+temp[1])
+            temp = staDict[key]['endtimeLP'].split(' ')
+            staDict[key]['endtimeLP'] = UTCDateTime(temp[0]+'T'+temp[1])
         except Exception as e:
-            print(e)
+            pass
+            #print(e)
 
     for k in removekeys:
         staDict.pop(k, None)
     return staDict
+
 
 def attach_distaz(st, event_lat, event_lon, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
