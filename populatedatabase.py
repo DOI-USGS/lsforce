@@ -15,7 +15,7 @@ import urllib2
 import os
 
 
-def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=False):
+def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=False, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
     :param event_ids: either single integer or list or numpy array of integers, eg np.arange(62,65)
     :param maxradius: Maximum radius to go out to in searching for nearby stations in stasource_radius_km
@@ -31,23 +31,25 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
                 lines, source = reviewData.get_stations_iris(evdict['Latitude'], evdict['Longitude'],
                                                              evdict['StartTime'], minradiuskm=minradius,
                                                              maxradiuskm=maxradius)
-                findsta.populate_station_tables(lines, source)
-                findsta.populate_station_event_table(event_id, lines, update=True)
+                populate_station_tables(lines, source, database=database)
+                populate_station_event_table(event_id, lines, update=True, database=database)
                 lines = None
                 source = None
-            except Exception as e:
-                print(e)
+            except:
+                #print(e)
+                print('No IRIS stations found or failed to connect')
         if NCEDC is True:
             try:
                 lines, source = reviewData.get_stations_ncedc(evdict['Latitude'], evdict['Longitude'],
                                                               evdict['StartTime'], minradiuskm=minradius,
                                                               maxradiuskm=maxradius)
-                findsta.populate_station_tables(lines, source)
-                findsta.populate_station_event_table(event_id, lines, update=True)
+                populate_station_tables(lines, source, database=database)
+                populate_station_event_table(event_id, lines, update=True, database=database)
                 lines = None
                 source = None
-            except Exception as e:
-                print(e)
+            except:
+                #print(e)
+                print('No NCEDC stations found or failed to connect')
 
 
 def populate_station_tables(lines, source, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
