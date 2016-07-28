@@ -25,9 +25,9 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
     if type(event_ids) is int:
         event_ids = [event_ids]
     for event_id in event_ids:
+        evdict = findsta.getEventInfo(event_id, database=database)
         if IRIS is True:
             try:
-                evdict = findsta.getEventInfo(event_id)
                 lines, source = reviewData.get_stations_iris(evdict['Latitude'], evdict['Longitude'],
                                                              evdict['StartTime'], minradiuskm=minradius,
                                                              maxradiuskm=maxradius)
@@ -170,7 +170,7 @@ def recalculate_distances(event_ids, database='/Users/kallstadt/LSseis/landslide
     with connection:
         for event_id in event_ids:
         # Get all the SRids and corresponding station_id's for event_id
-            evdict = findsta.getEventInfo(event_id)
+            evdict = findsta.getEventInfo(event_id, database=database)
             cursor = connection.cursor()
             cursor_output = (cursor.execute('SELECT SRid, station_id FROM sta_nearby WHERE event_id=?', (event_id,)))
             retrieved_data = cursor_output.fetchall()
