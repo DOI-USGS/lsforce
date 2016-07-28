@@ -9,7 +9,7 @@ from reviewData import reviewData
 import numpy as np
 import sqlite3 as lite
 from obspy import Stream, UTCDateTime
-from obspy.client.fdsn import Client as FDSN_Client
+from obspy.clients.fdsn import Client as FDSN_Client
 import glob
 import urllib2
 import os
