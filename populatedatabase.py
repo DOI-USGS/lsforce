@@ -212,10 +212,10 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
     :param path: Path to location of sac files (upstream from relative file paths listed in database)
 
     """
-    evDict = findsta.getEventInfo(event_id)
+    evDict = findsta.getEventInfo(event_id, database=database)
     print(('Now analysing Eid %s - %s') % (event_id, evDict['Name']))
     # Populate database with stations, if it isn't already populated, out to maxradius
-    staDict = findsta.getStaInfo(event_id)
+    staDict = findsta.getStaInfo(event_id, database=database)
     dists = [staDict[k]['stasource_radius_km'] for k in staDict]
     if np.max(dists) < maxradius:
         print ('database not fully populated to maxradius, populating now')
@@ -223,9 +223,9 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
 
     # Load data from station list to maxradius
     if maxreachedHF is True and maxreachedLP is False:  # If only looking at LP, don't bother downloading other stuff
-        staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius, chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2')
+        staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius, chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2', database=database)
     else:
-        staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius)
+        staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius, database=database)
     datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
 
     if len(staDict) > 0:
@@ -292,7 +292,7 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
                     st += stsac
 
         # Add distances
-        st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'])
+        st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
         st = st.sort(keys=['rdist', 'channel'])
         st = Stream([trace for trace in st if trace.stats.rdist < maxradius and trace.stats.rdist > minradius])  # Get rid of sac files etc. that are outside current range
         st.detrend('linear')
@@ -500,7 +500,7 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
         maxradius = maxradius + intincrkm
 
         # Populate database with stations, if it isn't already populated, out to maxradius
-        staDict = findsta.getStaInfo(event_id)
+        staDict = findsta.getStaInfo(event_id, database=database)
         dists = [staDict[k]['stasource_radius_km'] for k in staDict]
         if np.max(dists) < maxradius:
             print ('database not fully populated to maxradius, populating now')
@@ -508,9 +508,9 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
 
         # Load data from station list to maxradius
         if maxreachedHF is True and maxreachedLP is False:  # If only looking at LP, don't bother downloading other stuff
-            staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin, chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2')
+            staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin, chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2', database=database)
         else:
-            staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin)
+            staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin, database=database)
         datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
 
         if len(staDict) == 0:
@@ -530,7 +530,7 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
             st += stsac  # already loaded in above
 
         # Add distances
-        st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'])
+        st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
         st = st.sort(keys=['rdist', 'channel'])
         st = Stream([trace for trace in st if trace.stats.rdist < maxradius and trace.stats.rdist > newmin])  # Get rid of sac files etc. that are outside current range
         st.detrend('linear')
