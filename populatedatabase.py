@@ -226,17 +226,17 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
         staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius, chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2', database=database)
     else:
         staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius, database=database)
-    datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
+    #datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
 
     if len(staDict) > 0:
         # Download data from their respective sources
         st = Stream()
-        if 'IRIS' in datlocs:
+        if 'IRIS' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
             # remove BDF's (infrasound)
             stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
             st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False)
-        if 'NCEDC' in datlocs:
+        if 'NCEDC' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
             st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
         if evDict['DatLocation'] is None:
@@ -515,7 +515,7 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
             staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin, chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2', database=database)
         else:
             staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin, database=database)
-        datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
+        #datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
 
         if len(staDict) == 0:
             print ('no stations in given radius')
@@ -524,12 +524,12 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
         # Load and preprocess data - TO DO: ONLY LOAD STATIONS THAT HAVENT BEEN REVIEWED YET?
         st = Stream()
 
-        if 'IRIS' in datlocs:
+        if 'IRIS' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
             # Remove any BDF's
             stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
             st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False)
-        if 'NCEDC' in datlocs:
+        if 'NCEDC' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
             st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
         if evDict['DatLocation'] is None:
