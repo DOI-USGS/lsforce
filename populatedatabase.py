@@ -234,7 +234,7 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
         if 'IRIS' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
             # remove BDF's (infrasound)
-            stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
+            #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
             st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False)
         if 'NCEDC' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
@@ -527,7 +527,7 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
         if 'IRIS' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
             # Remove any BDF's
-            stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
+            #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
             st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False)
         if 'NCEDC' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
