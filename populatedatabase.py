@@ -30,7 +30,7 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
             try:
                 lines, source = reviewData.get_stations_iris(evdict['Latitude'], evdict['Longitude'],
                                                              evdict['StartTime'], minradiuskm=minradius,
-                                                             maxradiuskm=maxradius)
+                                                             maxradiuskm=maxradius, chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?'))
                 populate_station_tables(lines, source, database=database)
                 populate_station_event_table(event_id, lines, update=True, database=database)
                 lines = None
@@ -42,7 +42,7 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
             try:
                 lines, source = reviewData.get_stations_ncedc(evdict['Latitude'], evdict['Longitude'],
                                                               evdict['StartTime'], minradiuskm=minradius,
-                                                              maxradiuskm=maxradius)
+                                                              maxradiuskm=maxradius, chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?'))
                 populate_station_tables(lines, source, database=database)
                 populate_station_event_table(event_id, lines, update=True, database=database)
                 lines = None
