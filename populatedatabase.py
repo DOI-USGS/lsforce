@@ -16,7 +16,7 @@ import os
 from sigproc import sigproc
 
 
-def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=False, 
+def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=False,
                      database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
     :param event_ids: either single integer or list or numpy array of integers, eg np.arange(62,65)
@@ -193,7 +193,7 @@ def recalculate_distances(event_ids, database='/Users/kallstadt/LSseis/landslide
                                ('%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth, SRid[i]))
 
 
-def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intincrkm=100.,
+def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intincrkm=100.,
                  maxreachedHF=False, maxreachedLP=False, HFlims=(1., 5.), LPlims=(20., 60.),
                  LPoutput='DISP', maxtraces=15,
                  database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
@@ -793,7 +793,7 @@ def review_event(event_id, buffer_sec=None, minradius=0., maxradius=200., intinc
                                    (0, float(maxdist), event_id))
 
 
-def make_measurementsHF(event_id, buffer_sec=None, HFlims=(1., 5.), HFoutput='VEL',
+def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VEL',
                         minradius=0., maxradius=None, maxtraces=15, path='/Users/kallstadt/LSseis/landslideDatabase',
                         database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
@@ -905,7 +905,7 @@ def make_measurementsHF(event_id, buffer_sec=None, HFlims=(1., 5.), HFoutput='VE
         st += sttemp.select(id=ids)
 
     # Attach distaz
-    st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'])
+    st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
     st = st.sort(keys=['rdist', 'channel'])
 
     # Preprocess
@@ -1010,7 +1010,7 @@ def make_measurementsHF(event_id, buffer_sec=None, HFlims=(1., 5.), HFoutput='VE
                 print e
 
 
-def make_measurementsLP(event_id, buffer_sec=None, LPlims=(20., 60.), LPoutput='DISP',
+def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='DISP',
                         minradius=0., maxradius=None, maxtraces=15, path='/Users/kallstadt/LSseis/landslideDatabase',
                         database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
@@ -1122,7 +1122,7 @@ def make_measurementsLP(event_id, buffer_sec=None, LPlims=(20., 60.), LPoutput='
         st += sttemp.select(id=ids)
 
     # Attach distaz
-    st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'])
+    st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
     st = st.sort(keys=['rdist', 'channel'])
 
     # Preprocess
