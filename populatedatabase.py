@@ -284,12 +284,12 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                                      chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2', database=database)
     else:
         staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius, database=database)
-    #datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
+    datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
 
     if len(staDict) > 0:
         # Download data from their respective sources
         st = Stream()
-        if 'IRIS' in evDict['DatLocation']:
+        if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
                                              staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
             # remove BDF's (infrasound)
@@ -298,7 +298,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False)
             except Exception as e:
                 print(e)
-        if 'NCEDC' in evDict['DatLocation']:
+        if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
                                              staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
             try:
@@ -609,7 +609,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                                          chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2', database=database)
         else:
             staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin, database=database)
-        #datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
+        datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
 
         if len(staDict) == 0:
             print ('no stations in given radius')
@@ -618,14 +618,14 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         # Load and preprocess data - TO DO: ONLY LOAD STATIONS THAT HAVENT BEEN REVIEWED YET?
         st = Stream()
 
-        if 'IRIS' in evDict['DatLocation']:
+        if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
             # Remove any BDF's
             #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
             st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
                                      '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
                                      evDict['EndTime']+buffer_sec, savedat=False)
-        if 'NCEDC' in evDict['DatLocation']:
+        if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
             st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
                                      '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
@@ -882,13 +882,13 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
 
     # Find stations where detect_HF=1 for this event
     staDict = findsta.getStaInfo(event_id, database=database, detectHF=True, minradius=minradius, maxradius=maxradius)
-
+    datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
-    if 'IRIS' in evDict['DatLocation']:
+    if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
         sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                            attach_response=True, clientname='IRIS')
-    if 'NCEDC' in evDict['DatLocation']:
+    if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
         sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                            attach_response=True, clientname='NCEDC')
@@ -1107,13 +1107,13 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
 
     # Find stations where detect_HF=1 for this event
     staDict = findsta.getStaInfo(event_id, database=database, detectLP=True, minradius=minradius, maxradius=maxradius)
-
+    datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
-    if 'IRIS' in evDict['DatLocation']:
+    if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
         sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                            attach_response=True, clientname='IRIS')
-    if 'NCEDC' in evDict['DatLocation']:
+    if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
         sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                            attach_response=True, clientname='NCEDC')
