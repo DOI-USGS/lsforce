@@ -14,6 +14,8 @@ import glob
 import urllib2
 import os
 from sigproc import sigproc
+import shutil
+import datetime
 
 
 def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=False,
@@ -29,9 +31,13 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
     for event_id in event_ids:
         evdict = findsta.getEventInfo(event_id, database=database)
         if IRIS is True:
+            if 'Iliamna' in evdict['DatLocation']:  # Need to trick the system because IRIS doesn't have the actual install dates for these stations
+                stb4 = UTCDateTime(2009, 9, 1, 0, 0, 0)
+            else:
+                stb4 = None
             try:
                 lines, source = reviewData.get_stations_iris(evdict['Latitude'], evdict['Longitude'],
-                                                             evdict['StartTime'], minradiuskm=minradius,
+                                                             evdict['StartTime'], startbefore=stb4, minradiuskm=minradius,
                                                              maxradiuskm=maxradius,
                                                              chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?'))
                 populate_station_tables(lines, source, database=database)
@@ -157,11 +163,49 @@ def populate_station_event_table(event_id, lines, database='/Users/kallstadt/LSs
     print(('added %s entries to sta_nearby table, updated %s entries, %s left as is, %s not added because of error' % (val, val1, val2, valbad)))
 
 
-def remove_event():
+def remove_events(event_ids, savecopy=None, gisfiles=False, photos=False, information=False, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
-    Remove an event and all its associated entries from the table
+    Removes event_ids from event table and also removes any entries in sta_nearby table for this event. It also can remove entries in gisfiles, photos, or information tables if desired.
+    savecopy = full file name for a copy to save of database in case something goes wrong with .db extension
     """
-    pass
+    if type(event_ids) is int:
+        event_ids = [event_ids]
+    if savecopy is not None:
+        dir1 = savecopy.split('/')
+        try:
+            os.makedirs(os.path.join(*dir1[:-1]))
+        except:
+            pass
+        try:
+            time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+            filename = savecopy.split('.')[0] + '_' + time1 + '.' + savecopy.split('.')[-1]
+            # add datetime to end
+            shutil.copy(database, filename)
+        except Exception as e:
+            print e
+            print('Unable to save a copy of the database, exiting')
+            return
+
+    connection = None
+    connection = lite.connect(database)
+    for eid in event_ids:
+        cursor = connection.cursor()
+        try:
+            # delete the event table entry
+            cursor.execute('DELETE FROM events WHERE Eid=?', (eid,))
+            # delete sta_nearby entries
+            cursor.execute('DELETE FROM sta_nearby WHERE event_id=?', (eid,))
+            if gisfiles:
+                cursor.execute('DELETE FROM gisfiles WHERE event_id=?', (eid,))
+            if photos:
+                cursor.execute('DELETE FROM photos WHERE event_id=?', (eid,))
+            if information:
+                cursor.execute('DELETE FROM information WHERE event_id=?', (eid,))
+            connection.commit()
+        except Exception as e:
+            print(e)
+            # roll back the changes if anything failed
+            connection.rollback()
 
 
 def recalculate_distances(event_ids, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
@@ -250,15 +294,19 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                                              staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
             # remove BDF's (infrasound)
             #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
-            st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
-                                     '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
-                                     evDict['EndTime']+buffer_sec, savedat=False)
+            try:
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False)
+            except Exception as e:
+                print(e)
         if 'NCEDC' in evDict['DatLocation']:
             stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
                                              staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
-            st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
-                                     '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
-                                     evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
+            try:
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
+                                         '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
+                                         evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
+            except Exception as e:
+                print(e)
         if evDict['DatLocation'] is None:
             print('You need to populate the DatLocation field for this event, no sac files loaded')
         elif 'sac' in evDict['DatLocation']:
@@ -269,8 +317,15 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 filenames = glob.glob(fullpath)
                 if len(filenames) > 0:
                     if 'Iliamna' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
-                        stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                       endtime=evDict['EndTime']+buffer_sec)
+                        # Only keep filenames of stations we want to read in
+                        newfilenames = []
+                        namelist = [staDict[k]['Name'] for k in staDict]
+                        for filen in filenames:
+                            nam = filen.split('/')[-1].split('.')[0]
+                            if nam in namelist:
+                                newfilenames.append(filen)
+                        import pdb; pdb.set_trace()
+                        stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec, endtime=evDict['EndTime']+buffer_sec)
                         stsac = Stream([trace for trace in stsac if trace.max() != 0.0])  # Get rid of any empty ones
                         originalstt = []
                         for temp in stsac:
