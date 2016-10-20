@@ -620,21 +620,29 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         st = Stream()
 
         if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
-            stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
-            # Remove any BDF's
-            #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
-            st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
-                                     '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
-                                     evDict['EndTime']+buffer_sec, savedat=False)
+            try:
+                stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
+                # Remove any BDF's
+                #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
+                                         '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
+                                         evDict['EndTime']+buffer_sec, savedat=False)
+            except:
+                print('No data from IRIS found in current distance interval')
         if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
-            stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
-            st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
-                                     '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
-                                     evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
+            try:
+                stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
+                                         '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
+                                         evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
+            except:
+                print('No data from NCEDC found in current distance interval')
         if evDict['DatLocation'] is None:
             print('You need to populate the DatLocation field for this event, no sac files loaded')
         elif 'sac' in evDict['DatLocation']:
             st += stsac  # already loaded in above
+        if len(st) == 0:
+            continue
 
         # Add distances
         st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
@@ -681,7 +689,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                     with connection:
                         cursor = connection.cursor()
                         try:
-                            cursor.execute('UPDATE events SET maxdistHF_km = ? WHERE event_id = ?', (maxdist, event_id))
+                            cursor.execute('UPDATE events SET maxdistHF_km = ? WHERE Eid = ?', (maxdist, event_id))
                         except Exception as e:
                             print e
                 if feedback.lower() == 'n':
@@ -705,7 +713,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 with connection:
                     cursor = connection.cursor()
                     try:
-                        cursor.execute('UPDATE events SET maxdistHF_km = ? WHERE event_id = ?', (maxdist, event_id))
+                        cursor.execute('UPDATE events SET maxdistHF_km = ? WHERE Eid = ?', (maxdist, event_id))
                     except Exception as e:
                         print e
             # Fill info into database
@@ -787,7 +795,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                     with connection:
                         cursor = connection.cursor()
                         try:
-                            cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE event_id = ?', (maxdist, event_id))
+                            cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
                         except Exception as e:
                             print e
                 if feedback.lower() == 'n':
@@ -811,7 +819,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 with connection:
                     cursor = connection.cursor()
                     try:
-                        cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE event_id = ?', (maxdist, event_id))
+                        cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
                     except Exception as e:
                         print e
             # Fill info into database
@@ -891,7 +899,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                                attach_response=True, clientname='IRIS')
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
-        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
+        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
         sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                            attach_response=True, clientname='NCEDC')
     if evDict['DatLocation'] is None:
@@ -1121,7 +1129,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                                attach_response=True, clientname='IRIS')
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
-        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
+        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
         sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                            attach_response=True, clientname='NCEDC')
     if evDict['DatLocation'] is None:
