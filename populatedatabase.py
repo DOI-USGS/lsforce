@@ -347,13 +347,16 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                                 stdict[line[1]] = (line[0], np.min([stdict[line[1]], UTCDateTime(line[6])]))
                             else:
                                 stdict[line[1]] = (line[0], UTCDateTime(line[6]))
-
                         for temp in stsac:
                             originalstt.append(temp.stats.starttime)
                             if temp.stats.channel[0] == 'S':
                                 temp.stats.channel = 'E'+temp.stats.channel[1:]
-                            # Make sure network code is consistent with IRIS
-                            temp.stats.network = stdict[temp.stats.station][0]
+                            # Make sure network code is consistent with IRIS and delete events with nothing returned from IRIS
+                            if temp.stats.station in stdict:
+                                temp.stats.network = stdict[temp.stats.station][0]
+                            else:
+                                print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                                continue
                             if 'response' not in temp.stats.keys():
                                 # Change starttime of temp to earliest start time at IRIS for this station
                                 try:
@@ -885,9 +888,10 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
     datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
     if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
-        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
-        sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                           attach_response=True, clientname='IRIS')
+        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source'] and ('AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network'] and 'Iliamna' not in evDict['DatLocation'])]
+        if len(stalist) != 0:
+            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
+                                               attach_response=True, clientname='IRIS')
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
         sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
@@ -938,7 +942,11 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                         if temp.stats.channel[0] == 'S':
                             temp.stats.channel = 'E'+temp.stats.channel[1:]
                         # Make sure network code is consistent with IRIS
-                        temp.stats.network = stdict[temp.stats.station][0]
+                        if temp.stats.station in stdict:
+                            temp.stats.network = stdict[temp.stats.station][0]
+                        else:
+                            print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                            continue
                         if 'response' not in temp.stats.keys():
                             # Change starttime of temp to earliest start time at IRIS for this station
                             try:
@@ -1110,9 +1118,10 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
     datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
     if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
-        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
-        sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                           attach_response=True, clientname='IRIS')
+        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source'] and ('AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network'] and 'Iliamna' not in evDict['DatLocation'])]
+        if len(stalist) != 0:
+            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
+                                               attach_response=True, clientname='IRIS')
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source']]
         sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
@@ -1163,7 +1172,11 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                         if temp.stats.channel[0] == 'S':
                             temp.stats.channel = 'E'+temp.stats.channel[1:]
                         # Make sure network code is consistent with IRIS
-                        temp.stats.network = stdict[temp.stats.station][0]
+                        if temp.stats.station in stdict:
+                            temp.stats.network = stdict[temp.stats.station][0]
+                        else:
+                            print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                            continue
                         if 'response' not in temp.stats.keys():
                             # Change starttime of temp to earliest start time at IRIS for this station
                             try:
