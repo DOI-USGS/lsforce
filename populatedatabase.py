@@ -290,18 +290,16 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         # Download data from their respective sources
         st = Stream()
         if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
-            stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
-                                             staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
-            # remove BDF's (infrasound)
-            #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
             try:
+                stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
+                                                 staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False)
             except Exception as e:
                 print(e)
         if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
-            stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
-                                             staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
             try:
+                stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
+                                                 staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
                                          '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
                                          evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
