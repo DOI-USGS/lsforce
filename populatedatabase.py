@@ -900,8 +900,9 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                                                attach_response=True, clientname='IRIS')
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
-        sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                           attach_response=True, clientname='NCEDC')
+        if len(stalist) != 0:
+            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
+                                               attach_response=True, clientname='NCEDC')
     if evDict['DatLocation'] is None:
         print('You need to populate the DatLocation field for this event, no sac files loaded')
     if 'sac' in evDict['DatLocation']:
@@ -1130,8 +1131,9 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                                                attach_response=True, clientname='IRIS')
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
-        sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                           attach_response=True, clientname='NCEDC')
+        if len(stalist) != 0:
+            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
+                                               attach_response=True, clientname='NCEDC')
     if evDict['DatLocation'] is None:
         print('You need to populate the DatLocation field for this event, no sac files loaded')
     if 'sac' in evDict['DatLocation']:
