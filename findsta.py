@@ -669,29 +669,33 @@ def download_data(event_id, maxradius=None, minradius=0., chanuse='*', buffer_se
     :param buffer_sec: Number of seconds to add on either end of start and end time (makes viewing easier)
     :param chanuse: Single string of channel names, return only stations that match channels defined, '*' for all channels
     :param database: Full file path of database file location
-    :param path: Path to location of sac files (upstream from relative file paths listed in database):param event_id: Numerical id in database
+    :param path: Path to location of sac files (upstream from relative file paths listed in database). AND is the path to the download data folder 
      """
 
-     #Make the code only get the channels listed. Figure out how to save the data
-
      # Get event info
-    evDict = findsta.getEventInfo(event_id, database=database)
-    # Find stations where detect_HF=1 for this event
-    staDict = findsta.getStaInfo(event_id, database=database, detectHF=True, minradius=minradius, maxradius=maxradius)
+    evDict = getEventInfo(event_id, database=database)
+
+    # Need to have staDict include HF and LP detections, without duplicates. 
+    staDictHF = getStaInfo(event_id, database=database, detectHF=True, minradius=minradius, maxradius=maxradius, chanuse=chanuse)
+    staDictLP = getStaInfo(event_id, database=database, detectLP=True, minradius=minradius, maxradius=maxradius, chanuse=chanuse) 
+    staDict = {k: v for d in [staDictHF, staDictLP] for k, v in d.items()}
+
+
     datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
     if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source'] and ('AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network'] and 'Iliamna' not in evDict['DatLocation'])]
         if len(stalist) != 0:
-            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                               attach_response=True, clientname='IRIS')
+            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec, attach_response=True, savedat=True, folderdat=path+'/IRIS_downloads', filenamepref = evDict['Name'] + '_' + chanuse +'_', clientname='IRIS') 
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
         if len(stalist) != 0:
-            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                               attach_response=True, clientname='NCEDC')
+            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec, attach_response=True, savedat=True, folderdat=path+'/NCEDC_downloads', filenamepref = evDict['Name'] + '_' + chanuse +'_' , clientname='NCEDC')
     if evDict['DatLocation'] is None:
         print('You need to populate the DatLocation field for this event, no sac files loaded')
+    ##############
+    #Is this section necessary? Since the sac files are already downloaded?data is added to it?
+    '''
     if 'sac' in evDict['DatLocation']:
         datloc1 = evDict['DatLocation'].split(',')
         datloc1 = [x.strip() for x in datloc1 if 'sac' in x]
@@ -755,20 +759,12 @@ def download_data(event_id, maxradius=None, minradius=0., chanuse='*', buffer_se
                     for i, trace in enumerate(stsac):
                         trace.stats.starttime = originalstt[i]
                 else:
-                    stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                   endtime=evDict['EndTime']+buffer_sec)
+                    stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec, endtime=evDict['EndTime']+buffer_sec)
                 sttemp += stsac
                 for trace in sttemp:
                     if '--' in trace.stats.location:
                         trace.stats.location = ''
-    # Delete any that are not in list
-    idlist = [''.join('.'.join((staDict[k]['Network'], staDict[k]['Name'], staDict[k]['LocationCode'], staDict[k]['Channel'])).split()) for k in staDict]
-    st = Stream()
-    for ids in idlist:
-        st += sttemp.select(id=ids)
-    # Attach distaz
-    st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
-    st = st.sort(keys=['rdist', 'channel'])
+                '''
 
 
 
