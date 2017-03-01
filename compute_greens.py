@@ -5,6 +5,7 @@ import glob
 import shutil
 import numpy as np
 import subprocess
+from reviewData import reviewData
 
 
 def unique_list(seq):  # make a list only contain unique values and keep their order
@@ -103,6 +104,111 @@ def setup(event_id, modelfile, stacodes, samplerate, duration, T0, stfilename=No
                 print(e)
 
     stations, dist = zip(*sorted(zip(stations, dist)))
+
+    #write stadistlist.txt
+    f = open(moddir+'/stadistlist.txt', 'w')
+    for sta, dis in zip(stations, dist):
+        f.write(('%s\t%5.1f\n') % (sta, dis))
+    f.close()
+
+    #write dist file in free format
+    #figure out how many samples
+    samples = nextpow2(duration*samplerate)
+    f = open(moddir+'/dist', 'w')
+    for dis in dist:
+        f.write(('%0.1f %0.2f %i %i 0\n') % (dis, 1./samplerate, samples, T0))
+    f.close()
+
+    #move copy of modelfile to current directory
+    shutil.copy2(modelfile, moddir+'/'+modelfile.split('/')[-1])
+
+    #write shell script to run Green's functions
+    f = open(moddir+'/CPScommands.sh', 'w')
+    f.write(("""#!/bin/bash
+rm %s/*.sac
+rm %s/*.sac
+hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF
+hspec96 > hspec96.out
+hpulse96 -d %s -V -OD -p > Green
+f96tosac Green
+cp *.sac %s/.
+mv *.sac %s/.
+""") % (sacodir, sacdir, modelfile, moddir+'/dist', moddir+'/dist', sacdir, sacodir))
+    os.chmod(moddir+'/CPScommands.sh', stat.S_IRWXU)
+
+    return moddir
+
+
+def setup_orphan(event_id, modelfile, stacodes, dists, samplerate, duration, T0, stfilename=None, mainfolder='/Users/kallstadt/LSseis/LSPy/INVERSION_FILES'):
+    """
+    This function sets up the folder structure and creates some files
+    needed for computing Green's functions using CPS for events without event_id's (not in database)
+
+    INPUTS
+    event_id = short name of event
+    modelfile = full path to model file (CPS format) to use
+    stacodes = list of station ids (from tr.id - NET.STA.LOC.CHAN)
+    samplerate = samplerate to use in Green's functions in samples per second
+    duration = desired duration in seconds
+    (will be converted to number of samples, nearest power of 2)
+    T0 = start time of records (negative number recommended) in seconds before impulse time
+    mainfolder = full path to main folder (INVERSION_FILES suggested)
+    stfilename = name given to a particular run to save these greens functions separately from other greens functions
+
+    OUTPUTS
+    T0.txt - tiny text file that says what T0 was (in seconds)
+    stadistlist.txt - list of stations and corresponding number in dist file
+    (for renaming Green's functions)
+    Folder structure
+    dist.txt - dist file needed for
+    modelfile - moves it to the folder
+    CPScommands.sh - bash shell script to run
+    sacodir - full path of sac directory to put orignal waveforms into
+    """
+
+    def nextpow2(val):
+        import math
+        temp = math.floor(math.log(val, 2))
+        return int(math.pow(2, temp+1))
+        pass
+
+    #make folders
+    if stfilename is not None:
+        stfilename = stfilename+'_'
+    else:
+        stfilename = ''
+    evdir = ('%s/EV%s') % (mainfolder, event_id)
+    moddir = ('%s/%s') % (evdir, stfilename+modelfile.split('/')[-1].split('.')[0],)
+    sacodir = ('%s/%s') % (moddir, 'sacorig')
+    sacdir = ('%s/%s') % (moddir, 'sacdata')
+    try:
+        os.mkdir(evdir)
+    except Exception as e:
+        print e
+    try:
+        os.mkdir(moddir)
+    except Exception as e:
+        print e
+    try:
+        os.mkdir(sacdir)  # folder for renamed sac files to go into
+    except Exception as e:
+        print e
+    try:
+        os.mkdir(sacodir)  # folder to keep original sac files
+    except Exception as e:
+        print e
+
+    #write T0 file
+    f = open(moddir+'/T0.txt', 'w')
+    f.write(('%3.2f') % T0)
+    f.close()
+
+    #make sure there is only one occurrence of each station in list (ignore channels)
+    stacods = [lis[0]+'.'+lis[1] for lis in [stacod.split('.') for stacod in stacodes]]
+    stacods = unique_list(stacods)
+    stas = [stacod.split('.')[1] for stacod in stacods]
+
+    stations, dist = zip(*sorted(zip(stas, dists)))
 
     #write stadistlist.txt
     f = open(moddir+'/stadistlist.txt', 'w')
