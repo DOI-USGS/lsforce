@@ -1140,7 +1140,6 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                 else:
                     if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
                         stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
-        import pdb; pdb.set_trace()
         if len(stalist) != 0:
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                                attach_response=True, clientname='IRIS')
