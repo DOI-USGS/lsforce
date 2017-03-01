@@ -44,8 +44,8 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
                 populate_station_event_table(event_id, lines, update=True, database=database)
                 lines = None
                 source = None
-            except:
-                #print(e)
+            except Exception as e:
+                print(e)
                 print('No IRIS stations found or failed to connect')
         if NCEDC is True:
             try:
@@ -894,7 +894,14 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
     datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
     if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
-        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source'] and ('AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network'] and 'Iliamna' not in evDict['DatLocation'])]
+        stalist = []
+        for k in staDict:
+            if 'IRIS' in staDict[k]['source']:
+                if 'Iliamna ' not in evDict['DatLocation']:
+                    stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
+                else:
+                    if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
+                        stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
         if len(stalist) != 0:
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                                attach_response=True, clientname='IRIS')
@@ -1125,7 +1132,15 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
     datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
     if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
-        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'IRIS' in staDict[k]['source'] and ('AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network'] and 'Iliamna' not in evDict['DatLocation'])]
+        stalist = []
+        for k in staDict:
+            if 'IRIS' in staDict[k]['source']:
+                if 'Iliamna ' not in evDict['DatLocation']:
+                    stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
+                else:
+                    if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
+                        stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
+        import pdb; pdb.set_trace()
         if len(stalist) != 0:
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                                attach_response=True, clientname='IRIS')
