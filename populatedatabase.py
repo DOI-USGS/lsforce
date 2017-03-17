@@ -83,9 +83,12 @@ def populate_station_tables(lines, source, database='/Users/kallstadt/LSseis/lan
             retrieved_data = cursor_output.fetchall()
             if len(retrieved_data) == 0:  # if the station isn't already there, put it there
                 try:
+                    loccode = line[2]
+                    if line[2] == '--':
+                        loccode = ''
                     cursor.execute(
                         'INSERT INTO stations(Network,Name,LocationCode,Channel,Latitude,Longitude,Elevation_masl,source) VALUES(?,?,?,?,?,?,?,?)',
-                        (line[0], line[1], line[2], line[3], line[4], line[5], line[6], source))
+                        (line[0], line[1], loccode, line[3], line[4], line[5], line[6], source))
                     val += 1
                 except Exception as f:
                     print(f)
@@ -980,16 +983,15 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                                                    endtime=evDict['EndTime']+buffer_sec)
                 sttemp += stsac
 
-                for trace in sttemp:
-                    if '--' in trace.stats.location:
-                        trace.stats.location = ''
+    for trace in sttemp:
+        if '--' in trace.stats.location:
+            trace.stats.location = ''
 
     # Delete any that are not in list
-    idlist = [''.join('.'.join((staDict[k]['Network'], staDict[k]['Name'], staDict[k]['LocationCode'], staDict[k]['Channel'])).split()) for k in staDict]
+    nets, stas, chans = zip(*[[staDict[k]['Network'], staDict[k]['Name'], staDict[k]['Channel']] for k in staDict])  # Exclude location code because inconsistencies here can cause data to not be found
     st = Stream()
-    for ids in idlist:
-        st += sttemp.select(id=ids)
-
+    for n1, s1, c1 in zip(nets, stas, chans):
+        st += sttemp.select(station=s1, network=n1, channel=c1)
     # Attach distaz
     st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
     st = st.sort(keys=['rdist', 'channel'])
@@ -1218,9 +1220,9 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                                                    endtime=evDict['EndTime']+buffer_sec)
                 sttemp += stsac
 
-                for trace in sttemp:
-                    if '--' in trace.stats.location:
-                        trace.stats.location = ''
+    for trace in sttemp:
+        if '--' in trace.stats.location:
+            trace.stats.location = ''
 
     # Delete any that are not in list
     idlist = [''.join('.'.join((staDict[k]['Network'], staDict[k]['Name'], staDict[k]['LocationCode'], staDict[k]['Channel'])).split()) for k in staDict]
