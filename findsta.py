@@ -310,6 +310,150 @@ def attach_coords(st, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis
     return st
 
 
+def plot_event(event_id, showpicks=False, bufferb4=100., bufferaf=100., minradius=0., maxradius=None, maxtraceload=15, maxtraceplot=15,
+               detectHF=None, detectLP=None, ampdetectHF=None, ampdetectLP=None, durationHF=None, durationLP=None,
+               chanuse='*', prefilt=None, output='VEL', path='/Users/kallstadt/LSseis/landslideDatabase',
+               database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
+    """
+    Interactively plot data for a given event with given parameters
+    NEED TO UPDATE THESE
+    :param event_id: Integer specifying which event to review
+    :param buffer_sec: Number of seconds to add on either end of start and end time (makes viewing easier)
+    :param HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
+    :param HFoutput: Output type for HF station correction (VEL standard)
+    :param minradius: minimum distance in km to search for HFdetections (from source)
+    :param maxradius: maximum distance in km to search for HFdetections (from source)
+    :param maxtraces: Number of traces to view at a time
+    :param database: Full file path of database file location
+    :param path: Path to location of sac files (upstream from relative file paths listed in database)
+
+    """
+    # Get event info
+    evDict = findsta.getEventInfo(event_id, database=database)
+    print(('Now analysing Eid %s - %s') % (event_id, evDict['Name']))
+
+    # Find stations that meet criteria for this event
+    getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=None,
+               ampdetectHF=None, ampdetectLP=None, durationHF=None, durationLP=None,
+               chanuse='*', database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db')
+    staDict = findsta.getStaInfo(event_id, database=database, minradius=minradius, maxradius=maxradius, detectHF=detectHF,
+                                 detectLP=detectLP, ampdetectHF=ampdetectHF, ampdetectLP=ampdetectLP, durationHF=durationHF,
+                                 durationLP=durationLP, chanuse=chanuse)
+    datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
+    sttemp = Stream()
+    if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
+        stalist = []
+        for k in staDict:
+            if 'IRIS' in staDict[k]['source']:
+                if 'Iliamna ' not in evDict['DatLocation']:
+                    stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
+                else:
+                    if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
+                        stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
+        if len(stalist) != 0:
+            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
+                                               attach_response=True, clientname='IRIS')
+    if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
+        stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
+        if len(stalist) != 0:
+            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
+                                               attach_response=True, clientname='NCEDC')
+    if evDict['DatLocation'] is None:
+        print('You need to populate the DatLocation field for this event, no sac files loaded')
+    if 'sac' in evDict['DatLocation']:
+        datloc1 = evDict['DatLocation'].split(',')
+        datloc1 = [x.strip() for x in datloc1 if 'sac' in x]
+        for datl in datloc1:
+            fullpath = os.path.join(path, datl.split(':')[1])
+            filenames = glob.glob(fullpath)
+            if len(filenames) > 0:
+                if 'Iliamna' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
+                    # Only keep filenames of stations we want to read in
+                    newfilenames = []
+                    namelist = [staDict[k]['Name'] for k in staDict]
+                    for filen in filenames:
+                        nam = filen.split('/')[-1].split('.')[0]
+                        if nam in namelist:
+                            newfilenames.append(filen)
+                    stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec, endtime=evDict['EndTime']+buffer_sec)
+                    stsac = Stream([trace for trace in stsac if trace.max() != 0.0])  # Get rid of any empty ones
+                    originalstt = []
+                    # Get earliest start time from IRIS for AK and AV
+                    url1 = ('http://service.iris.edu/fdsnws/station/1/query?network=AV&level=station&format=text&nodata=404')
+                    url2 = ('http://service.iris.edu/fdsnws/station/1/query?network=AK&level=station&format=text&nodata=404')
+                    f = urllib2.urlopen(url1)
+                    file1 = f.read()
+                    lines1 = [line.split('|') for line in file1.split('\n')[1:]]
+                    stdict = {}
+                    f.close()
+                    f = urllib2.urlopen(url2)
+                    file2 = f.read()
+                    lines2 = [line.split('|') for line in file2.split('\n')[1:]]
+                    f.close()
+                    for line in lines1[:-1]:
+                        stdict[line[1]] = (line[0], UTCDateTime(line[6]))
+                    for line in lines2[:-1]:
+                        if line[1] in stdict.keys():
+                            # Take the minimum if shows up for both network codes
+                            stdict[line[1]] = (line[0], np.min([stdict[line[1]], UTCDateTime(line[6])]))
+                        else:
+                            stdict[line[1]] = (line[0], UTCDateTime(line[6]))
+
+                    for temp in stsac:
+                        originalstt.append(temp.stats.starttime)
+                        if temp.stats.channel[0] == 'S':
+                            temp.stats.channel = 'E'+temp.stats.channel[1:]
+                        # Make sure network code is consistent with IRIS
+                        if temp.stats.station in stdict:
+                            temp.stats.network = stdict[temp.stats.station][0]
+                        else:
+                            print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                            continue
+                        if 'response' not in temp.stats.keys():
+                            # Change starttime of temp to earliest start time at IRIS for this station
+                            try:
+                                temp.stats.starttime = stdict[temp.stats.station][1] + 86400.
+                            except:
+                                print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                    # Get responses from IRIS
+                    client = FDSN_Client('IRIS')
+                    akstas = ','.join([tr.stats.station for tr in stsac])
+                    inv1 = client.get_stations(network='AK,AV', station=akstas, level="response")
+                    stsac.attach_response(inv1)
+                    # Change back start times
+                    for i, trace in enumerate(stsac):
+                        trace.stats.starttime = originalstt[i]
+                else:
+                    stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
+                                                   endtime=evDict['EndTime']+buffer_sec)
+                sttemp += stsac
+
+                for trace in sttemp:
+                    if '--' in trace.stats.location:
+                        trace.stats.location = ''
+
+    # Delete any that are not in list
+    nets, stas, chans = zip(*[[staDict[k]['Network'], staDict[k]['Name'], staDict[k]['Channel']] for k in staDict])  # Exclude location code because inconsistencies here can cause data to not be found
+    st = Stream()
+    for n1, s1, c1 in zip(nets, stas, chans):
+        st += sttemp.select(station=s1, network=n1, channel=c1)
+    # Attach distaz
+    st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
+    st = st.sort(keys=['rdist', 'channel'])
+
+    # Preprocess
+    st.detrend('demean')
+    #st.taper(max_percentage=0.03, type='cosine')
+
+    # Interactive plotting to pick start and end time and make amplitude picks
+    textline = ['Delete any that are clipped after making amplitude picks on them to get start and end times',
+                'Then press c for station corrected VEL data', 'Make amplitude picks by hitting A at start and end of signal',
+                'these times will be used for other calculations', 'Zoom out all the way before exiting']
+    zp = reviewData.InteractivePlot(st, cosfilt=prefilt, output=output, maxtraces=maxtraces)
+
+    # ADD STUFF HERE
+
+
 # BELOW HERE, ALL FUNCTIONS ARE DEPRECATED, REPLACED WITH TWO FUNCTIONS ABOVE
 def get_event_datainfo(event_id, maxradius=50, minradius=0, chanuse='*', database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
