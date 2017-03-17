@@ -900,7 +900,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
         stalist = []
         for k in staDict:
             if 'IRIS' in staDict[k]['source']:
-                if 'Iliamna ' not in evDict['DatLocation']:
+                if 'Iliamna' not in evDict['DatLocation']:
                     stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
                 else:
                     if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
@@ -1137,7 +1137,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
         stalist = []
         for k in staDict:
             if 'IRIS' in staDict[k]['source']:
-                if 'Iliamna ' not in evDict['DatLocation']:
+                if 'Iliamna' not in evDict['DatLocation']:
                     stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
                 else:
                     if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
