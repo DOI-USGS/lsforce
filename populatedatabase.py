@@ -1225,10 +1225,13 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
             trace.stats.location = ''
 
     # Delete any that are not in list
-    idlist = [''.join('.'.join((staDict[k]['Network'], staDict[k]['Name'], staDict[k]['LocationCode'], staDict[k]['Channel'])).split()) for k in staDict]
+    nets, stas, chans = zip(*[[staDict[k]['Network'], staDict[k]['Name'], staDict[k]['Channel']] for k in staDict])  # Exclude location code because inconsistencies here can cause data to not be found
     st = Stream()
-    for ids in idlist:
-        st += sttemp.select(id=ids)
+    for n1, s1, c1 in zip(nets, stas, chans):
+        st += sttemp.select(station=s1, network=n1, channel=c1)
+    # Attach distaz
+    st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
+    st = st.sort(keys=['rdist', 'channel'])
 
     # Attach distaz
     st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
