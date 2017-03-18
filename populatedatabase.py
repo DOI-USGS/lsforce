@@ -906,8 +906,11 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                     if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
                         stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
         if len(stalist) != 0:
-            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                               attach_response=True, clientname='IRIS')
+            try:
+                sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
+                                                   attach_response=True, clientname='IRIS')
+            except Exception as e:
+                print(e)
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
         if len(stalist) != 0:
@@ -983,9 +986,9 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                                                    endtime=evDict['EndTime']+buffer_sec)
                 sttemp += stsac
 
-    for trace in sttemp:
-        if '--' in trace.stats.location:
-            trace.stats.location = ''
+                for trace in sttemp:
+                    if '--' in trace.stats.location:
+                        trace.stats.location = ''
 
     # Delete any that are not in list
     nets, stas, chans = zip(*[[staDict[k]['Network'], staDict[k]['Name'], staDict[k]['Channel']] for k in staDict])  # Exclude location code because inconsistencies here can cause data to not be found
@@ -1062,10 +1065,17 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
         for i in np.arange(len(astas)):
             # get SRid
             thisSRid = [sid for j, sid in enumerate(SRid) if astas[i] in stations[j] and achans[i] in channels[j] and alocs[i] in locations[j] and anets[i] in networks[j]]
+            if len(thisSRid) == 0:
+                thisSRid = [sid for j, sid in enumerate(SRid) if astas[i] in stations[j] and achans[i] in channels[j] and anets[i] in networks[j]]
             try:
-                cursor.execute('UPDATE sta_nearby SET starttimeHF = ?, endtimeHF = ?, peakfreqraw = ?, meansqfreqraw = ?, meansqfreqSNRraw = ?, duration_secHF = ?, absmaxampHF = ?, p2pmaxampHF = ? WHERE SRid = ?', (starttimes[i].strftime('%Y-%m-%d %H:%M:%S'), endtimes[i].strftime('%Y-%m-%d %H:%M:%S'), peakfreq[i], meansqfreq[i], meansqfreqSN[i], durations[i], aamps[i], p2pamp[i], thisSRid[0]))
+                if len(thisSRid) > 1:
+                    station5 = '%s.%s.%s.%s' % (astas[i], achans[i], alocs[i], anets[i])
+                    print('Found multiple matches when excluding location code for %s, entering data into all of them' % station5)
+                for thisid in thisSRid:
+                    cursor.execute('UPDATE sta_nearby SET starttimeHF = ?, endtimeHF = ?, peakfreqraw = ?, meansqfreqraw = ?, meansqfreqSNRraw = ?, duration_secHF = ?, absmaxampHF = ?, p2pmaxampHF = ? WHERE SRid = ?', (starttimes[i].strftime('%Y-%m-%d %H:%M:%S'), endtimes[i].strftime('%Y-%m-%d %H:%M:%S'), peakfreq[i], meansqfreq[i], meansqfreqSN[i], durations[i], aamps[i], p2pamp[i], thisid))
             except Exception as e:
-                print e
+                print(e)
+                print('Could not put %s in database' % station5)
 
     # Put duration measurements in the database too
     dstarttimes = []
@@ -1143,8 +1153,11 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                     if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
                         stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
         if len(stalist) != 0:
-            sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                               attach_response=True, clientname='IRIS')
+            try:
+                sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
+                                                   attach_response=True, clientname='IRIS')
+            except Exception as e:
+                print(e)
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
         if len(stalist) != 0:
@@ -1302,7 +1315,14 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
         for i in np.arange(len(astas)):
             # get SRid
             thisSRid = [sid for j, sid in enumerate(SRid) if astas[i] in stations[j] and achans[i] in channels[j] and alocs[i] in locations[j] and anets[i] in networks[j]]
+            if len(thisSRid) == 0:
+                thisSRid = [sid for j, sid in enumerate(SRid) if astas[i] in stations[j] and achans[i] in channels[j] and anets[i] in networks[j]]
             try:
-                cursor.execute('UPDATE sta_nearby SET starttimeLP = ?, endtimeLP = ?, duration_secLP = ?, absmaxampLP = ?, p2pmaxampLP = ? WHERE SRid = ?', (starttimes[i].strftime('%Y-%m-%d %H:%M:%S'), endtimes[i].strftime('%Y-%m-%d %H:%M:%S'), durations[i], aamps[i], p2pamp[i], thisSRid[0]))
+                if len(thisSRid) > 1:
+                    station5 = '%s.%s.%s.%s' % (astas[i], achans[i], alocs[i], anets[i])
+                    print('Found multiple matches when excluding location code for %s, entering data into all of them' % station5)
+                for thisid in thisSRid:
+                    cursor.execute('UPDATE sta_nearby SET starttimeLP = ?, endtimeLP = ?, duration_secLP = ?, absmaxampLP = ?, p2pmaxampLP = ? WHERE SRid = ?', (starttimes[i].strftime('%Y-%m-%d %H:%M:%S'), endtimes[i].strftime('%Y-%m-%d %H:%M:%S'), durations[i], aamps[i], p2pamp[i], thisid))
             except Exception as e:
-                print e
+                print(e)
+                print('Could not put %s in database' % station5)
