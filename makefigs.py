@@ -259,7 +259,7 @@ def make_figures(event_id, bufferperc=0.1, raw=True, HF=True, LP=True, timeserie
         specg = None
     if spectra:
         mt = reviewData.make_multitaper(st, number_of_tapers=None, time_bandwidth=4., sine=False, recsec=True, colors1=colors1,
-                                        logx=True, logy=True, xunits='Hz', xlim=None, yunits='$m^2/s$')
+                                        logx=True, logy=True, xunits='Hz', xlim=None, yunits='$m^2/s$', ylim=(10.**-3, 10.**9))
     else:
         mt = None
 
