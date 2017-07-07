@@ -896,7 +896,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
     staDict = findsta.getStaInfo(event_id, database=database, detectHF=True, minradius=minradius, maxradius=maxradius)
     datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
-    if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
+    if 'IRIS' in evDict['DatLocation']:
         stalist = []
         for k in staDict:
             if 'IRIS' in staDict[k]['source']:
@@ -911,7 +911,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                                                    attach_response=True, clientname='IRIS')
             except Exception as e:
                 print(e)
-    if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
+    if 'NCEDC' in evDict['DatLocation']:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
         if len(stalist) != 0:
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
@@ -995,6 +995,10 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
     st = Stream()
     for n1, s1, c1 in zip(nets, stas, chans):
         st += sttemp.select(station=s1, network=n1, channel=c1)
+    if len(st) == 0 and event_id == 106:
+        for s1, c1 in zip(stas, chans):
+            st += sttemp.select(station=s1, channel=c1)
+        st.merge()
     # Attach distaz
     st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
     st = st.sort(keys=['rdist', 'channel'])

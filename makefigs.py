@@ -24,7 +24,7 @@ import os
 # database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'
 
 
-def make_figures(event_id, bufferperc=0.1, raw=True, HF=True, LP=True, timeseries=True, spectra=True,
+def make_figures(event_id, bufferperc=0.1, raw=True, HF=True, LP=True, timeseries=True, spectrograms=True, spectra=True,
                  HFlims=(1., 5.), HFoutput='VEL', LPlims=(20., 60.), LPoutput='DISP', mintraces=5, maxtraces=15,
                  path='/Users/kallstadt/LSseis/landslideDatabase',
                  database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
@@ -32,6 +32,7 @@ def make_figures(event_id, bufferperc=0.1, raw=True, HF=True, LP=True, timeserie
     Make static figures for each event
     Pulls data from IRIS and other sources and links station correction info
     UPDATE THESE:
+    spectra = multitaper, equiv to PSD
     :param event_id: Integer specifying which event to review
     :param buffer_sec: Number of seconds to add on either end of start and end time (makes viewing easier)
     :param HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
@@ -218,26 +219,48 @@ def make_figures(event_id, bufferperc=0.1, raw=True, HF=True, LP=True, timeserie
 
     # Figure out the colors, make sure same station has same color
     cycle = ['r', 'b', 'g', 'm', 'k']
-    colors = []
+    colors1 = []
     stas = reviewData.unique_list([trace.stats.station for trace in st])
     for trace in st:
         ind = stas.index(trace.stats.station)
-        colors += cycle[ind]
+        colors1 += cycle[ind]
 
     # Now make figures
-    figraw = reviewData.recsec(st, norm=True, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors,
+    figraw = reviewData.recsec(st, norm=True, maxtraces=15, quickdraw=True, figsize=(13, 14), colors1=colors1,
                                labelsize=14, addscale=False, unitlabel=None, convert=1., labelquickdraw=False)
     if HF:
-        figHF = reviewData.recsec(stHF, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors,
+        figHF = reviewData.recsec(stHF, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors1=colors1,
                                   labelsize=14, addscale=True, unitlabel='m/s', convert=1., labelquickdraw=False)
     else:
         figHF = None
     if LP:
-        figLP = reviewData.recsec(stLP, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors,
+        figLP = reviewData.recsec(stLP, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors1=colors1,
                                   labelsize=14, addscale=True, unitlabel='m', convert=1., labelquickdraw=False)
     else:
         figLP = None
 
-    # Make spectra
+    # Make spectrograms and spectra
+    if spectrograms or spectra:
+        stspec = st.copy()
+        try:
+            stspec.remove_sensitivity()
+        except:
+            temp = Stream()
+            for i, trace in enumerate(stspec):
+                try:
+                    trace.remove_sensitivity()
+                    temp = temp + trace
+                except:
+                    print 'Failed to remove sensitivity for %s, deleting this station' % (trace.stats.station + trace.stats.channel,)
 
-    return figraw, figHF, figLP
+    if spectrograms:
+        specg = reviewData.make_spectrogram(stspec, log1=True, maxtraces=15, maxPower=None, minPower=None, freqmax=None, labelsize=14)
+    else:
+        specg = None
+    if spectra:
+        mt = reviewData.make_multitaper(st, number_of_tapers=None, time_bandwidth=4., sine=False, recsec=True, colors1=colors1,
+                                        logx=True, logy=True, xunits='Hz', xlim=None, yunits='$m^2/s$', ylim=(10.**-3, 10.**9))
+    else:
+        mt = None
+
+    return figraw, figHF, figLP, specg, mt
