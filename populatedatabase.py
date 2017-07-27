@@ -31,7 +31,7 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
     for event_id in event_ids:
         evdict = findsta.getEventInfo(event_id, database=database)
         if IRIS is True:
-            if 'Iliamna' in evdict['DatLocation']:  # Need to trick the system because IRIS doesn't have the actual install dates for these stations
+            if 'AlaskaData' in evdict['DatLocation']:  # Need to trick the system because IRIS doesn't have the actual install dates for these stations
                 stb4 = UTCDateTime(2009, 9, 1, 0, 0, 0)
             else:
                 stb4 = None
@@ -317,7 +317,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 fullpath = os.path.join(path, datl.split(':')[1])
                 filenames = glob.glob(fullpath)
                 if len(filenames) > 0:
-                    if 'Iliamna' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
+                    if 'AlaskaData' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
                         # Only keep filenames of stations we want to read in
                         newfilenames = []
                         namelist = [staDict[k]['Name'] for k in staDict]
@@ -900,7 +900,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
         stalist = []
         for k in staDict:
             if 'IRIS' in staDict[k]['source']:
-                if 'Iliamna' not in evDict['DatLocation']:
+                if 'AlaskaData' not in evDict['DatLocation']:
                     stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
                 else:
                     if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
@@ -925,7 +925,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
             fullpath = os.path.join(path, datl.split(':')[1])
             filenames = glob.glob(fullpath)
             if len(filenames) > 0:
-                if 'Iliamna' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
+                if 'AlaskaData' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
                     # Only keep filenames of stations we want to read in
                     newfilenames = []
                     namelist = [staDict[k]['Name'] for k in staDict]
@@ -1151,7 +1151,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
         stalist = []
         for k in staDict:
             if 'IRIS' in staDict[k]['source']:
-                if 'Iliamna' not in evDict['DatLocation']:
+                if 'AlaskaData' not in evDict['DatLocation']:
                     stalist.append((staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*'))
                 else:
                     if 'AV' not in staDict[k]['Network'] and 'AK' not in staDict[k]['Network']:
@@ -1176,7 +1176,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
             fullpath = os.path.join(path, datl.split(':')[1])
             filenames = glob.glob(fullpath)
             if len(filenames) > 0:
-                if 'Iliamna' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
+                if 'AlaskaData' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
                     # Only keep filenames of stations we want to read in
                     newfilenames = []
                     namelist = [staDict[k]['Name'] for k in staDict]
