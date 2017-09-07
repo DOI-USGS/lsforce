@@ -73,12 +73,12 @@ def get_exif(imgfilename):
                 date = None
 
         else:
-            print('No exif data returned')
+            #print('No exif data returned')
             latitude = None
             longitude = None
             date = None
     except Exception as e:
-        print('No exif data returned: %s' % e)
+        #print('No exif data returned: %s' % e)
         latitude = None
         longitude = None
         date = None
@@ -118,7 +118,7 @@ def prepare_new(newdbname=None, newifname=None, database='/Users/kallstadt/LSsei
         print(e1)
 
     # Make top level reference folder
-    refdir = os.path.join(newifname, 'references')
+    refdir = os.path.join(os.path.dirname(newdbname), 'references')
     try:
         os.mkdir(refdir)
     except Exception as e:
@@ -154,6 +154,7 @@ def get_eids(newdbname):
         cursor_output = cursor.execute("""SELECT Eid FROM events""")
     eid1 = cursor_output.fetchall()
     eids = [e2[0] for e2 in eid1]
+    eids.reverse()
     connection.close()
     return eids
 
@@ -195,12 +196,20 @@ def clean_photos(eids, relpath, newdbname, newifname, refdir, shortfilen):
                 os.mkdir(photodir)
             except Exception as e:
                 print(e)
-            with open(os.path.join(fulldir, 'photos_figures.csv'), 'wb') as csvfile:
+
+            csvfilename = os.path.join(fulldir, 'photos_figures.csv')
+            if os.path.isfile(csvfilename):
+                perm = 'a'
+            else:
+                perm = 'wb'
+            with open(csvfilename, perm) as csvfile:
                 num = 1
                 # Put something in for the first line
                 writer = csv.writer(csvfile)
-                writer.writerow(['Photos of %s %s %s (Event id %d)' % (evinf['StartTime'].strftime('%d%b%YT%H:%M'), evname, evinf['Type'], evinf['Eid'])])
-                writer.writerow(['photo_id', 'photographer', 'description', 'date', 'latitude', 'longitude', 'file_extension'])
+                if perm == 'wb':
+                    writer.writerow(['Photos of %s %s %s (Event id %d)' % (evinf['StartTime'].strftime('%d%b%YT%H:%M'), evname, evinf['Type'], evinf['Eid'])])
+                    writer.writerow(['Note: Some of these files may be located in the folders for other events that share background information'])
+                    writer.writerow(['photo_id', 'photographer', 'description', 'date', 'latitude', 'longitude', 'file_extension'])
                 for temp in photodata:
                     # go through each entry, extract names, rename, copy over, write it down in csv
                     photo_id, photographer, description, file_extension, apply_also = temp
@@ -262,7 +271,29 @@ def clean_photos(eids, relpath, newdbname, newifname, refdir, shortfilen):
                                 connection.execute('UPDATE photos SET latitude=?, longitude=?, date = ?,  file_extension=? WHERE photo_id = ?', (latitude, longitude, date, newfilenrel, photo_id))
                         except Exception as e:
                             print e
-                    #TODO GO THROUGH APPLY_ALSO FIELDS AND CROSS REFERENCE PHOTOS IN CSV FILE
+
+                    if apply_also is not None:
+                        aids = apply_also.replace(' ', '').split(',')
+                        aids = [int(a1) for a1 in aids]
+                        for a1 in aids:
+                            # Try to make file, if not already there
+                            aevinf = findsta.getEventInfo(a1, database=newdbname)
+                            aevname = aevinf['Name'].strip().replace(' ', '').replace(',', '')
+                            aevdat = aevinf['StartTime'].strftime('%d%b%Y')
+                            afulldir = os.path.join(newifname, '%s_%s%s' % (a1, aevname, aevdat))
+                            acsvfilename = os.path.join(afulldir, 'photos_figures.csv')
+                            if os.path.isfile(acsvfilename):
+                                perm = 'a'
+                            else:
+                                perm = 'wb'
+                            with open(acsvfilename, perm) as acsvfile:
+                                awriter = csv.writer(acsvfile)
+                                if perm == 'wb':
+                                    # if new Put something in for the first line
+                                    awriter.writerow(['Photos of %s %s %s (Event id %d)' % (aevinf['StartTime'].strftime('%d%b%YT%H:%M'), aevname, aevinf['Type'], aevinf['Eid'])])
+                                    awriter.writerow(['Note: Some of these files may be located in the folders for other events that share background information'])
+                                    awriter.writerow(['photo_id', 'photographer', 'description', 'date', 'latitude', 'longitude', 'file_extension'])
+                                awriter.writerow([currentpid, photographer, description, date, latitude, longitude, newfilenrel])
 
     connection.close()
     time.sleep(2.0)
@@ -303,13 +334,20 @@ def clean_gis(eids, relpath, newdbname, newifname, refdir, shortfilen):
                 os.mkdir(gisdir)
             except Exception as e:
                 print(e)
-            with open(os.path.join(fulldir, 'maps_gis.csv'), 'wb') as csvfile:
+            csvfilename = os.path.join(fulldir, 'maps_gis.csv')
+            if os.path.isfile(csvfilename):
+                perm = 'a'
+            else:
+                perm = 'wb'
+            with open(csvfilename, perm) as csvfile:
                 num = 1
                 # Put something in for the first line
                 evdat = evinf['StartTime'].strftime('%d%b%Y')
                 writer = csv.writer(csvfile)
-                writer.writerow(['GIS files and maps of %s %s %s (Event id %d)' % (evinf['StartTime'].strftime('%d%b%YT%H:%M'), evname, evinf['Type'], evinf['Eid'])])
-                writer.writerow(['gis_id', 'file type', 'source', 'description', 'file extension', 'apply also'])
+                if perm == 'wb':
+                    writer.writerow(['GIS files and maps of %s %s %s (Event id %d)' % (evinf['StartTime'].strftime('%d%b%YT%H:%M'), evname, evinf['Type'], evinf['Eid'])])
+                    writer.writerow(['Note: Some of these files may be located in the folders for other events that share background information'])
+                    writer.writerow(['gis_id', 'file type', 'source', 'description', 'file extension', 'apply also'])
                 for temp in cursor_output:
                     # go through each entry, extract names, rename, copy over, write it down in csv
                     gis_id, type1, source, description, file_extension, apply_also = temp
@@ -349,7 +387,7 @@ def clean_gis(eids, relpath, newdbname, newifname, refdir, shortfilen):
                                 try:
                                     with connection:
                                         connection.execute('UPDATE gisfiles SET file_extension=? WHERE gis_id = ?', (newfilenrel, gis_id))
-                                    writer.writerow([gis_id, type1, source, description, newfilenrel, apply_also])
+                                    writer.writerow([gis_id, type1, source, description, newfilenrel])
                                     cnt += 1
                                 except Exception as e:
                                     print e
@@ -359,12 +397,32 @@ def clean_gis(eids, relpath, newdbname, newifname, refdir, shortfilen):
                                     with connection:
                                         connection.execute('INSERT INTO gisfiles(gis_id, event_id, type, source, description, file_extension, apply_also) VALUES (?,?,?,?,?,?,?)',
                                                            (currentgid, e1, type1, source, description, newfilenrel, apply_also))
-                                    writer.writerow([gis_id, type1, source, description, newfilenrel, apply_also])
+                                    writer.writerow([gis_id, type1, source, description, newfilenrel])
                                 except Exception as e:
                                     print e
                                 currentgid += 1
-
-            #TODO GO THROUGH APPLY_ALSO FIELDS AND CROSS REFERENCE PHOTOS IN CSV FILE
+                            if apply_also is not None:
+                                aids = apply_also.replace(' ', '').split(',')
+                                aids = [int(a1) for a1 in aids]
+                                for a1 in aids:
+                                    # Try to make file, if not already there
+                                    aevinf = findsta.getEventInfo(a1, database=newdbname)
+                                    aevname = aevinf['Name'].strip().replace(' ', '').replace(',', '')
+                                    aevdat = aevinf['StartTime'].strftime('%d%b%Y')
+                                    afulldir = os.path.join(newifname, '%s_%s%s' % (a1, aevname, aevdat))
+                                    acsvfilename = os.path.join(afulldir, 'maps_gis.csv')
+                                    if os.path.isfile(acsvfilename):
+                                        perm = 'a'
+                                    else:
+                                        perm = 'wb'
+                                    with open(acsvfilename, perm) as acsvfile:
+                                        awriter = csv.writer(acsvfile)
+                                        if perm == 'wb':
+                                            # if new Put something in for the first line
+                                            awriter.writerow(['GIS files and maps of %s %s %s (Event id %d)' % (aevinf['StartTime'].strftime('%d%b%YT%H:%M'), aevname, aevinf['Type'], aevinf['Eid'])])
+                                            awriter.writerow(['gis_id', 'file type', 'source', 'description', 'file extension'])
+                                            awriter.writerow(['Note: Some of these files may be located in the folders for other events that share background information'])
+                                        awriter.writerow([gis_id, type1, source, description, newfilenrel])
 
     connection.close()
     time.sleep(2.0)
@@ -372,9 +430,6 @@ def clean_gis(eids, relpath, newdbname, newifname, refdir, shortfilen):
 
 def clean_information(eids, relpath, newdbname, newifname, refdir, shortfilen):
     """
-    Make a clean copy of the database, output list of orphaned files, move files to new folders named by event_id
-    newdbname - if None, will append "clean_YYYYDDMMTHHMM" to the database name in the same folder
-    newifname - new InfoFiles name, if None will append
     """
 
     # Connect to database
@@ -403,20 +458,33 @@ def clean_information(eids, relpath, newdbname, newifname, refdir, shortfilen):
             cursor_output = cursor.execute("""SELECT iid, ref_id, note, pho_id, GIS_id, apply_also FROM information
                                            WHERE event_id=?""", (e1,))
             data = cursor_output.fetchall()
-            with open(os.path.join(fulldir, 'information.csv'), 'wb') as csvfile:
+            csvfilename = os.path.join(fulldir, 'information.csv')
+            if os.path.isfile(csvfilename):
+                perm = 'a'
+            else:
+                perm = 'wb'
+
+            refcsvfilename = os.path.join(fulldir, 'references.csv')
+            if os.path.isfile(refcsvfilename):
+                perm2 = 'a'
+            else:
+                perm2 = 'wb'
+
+            with open(csvfilename, perm) as csvfile:
                 filelist = ''
                 # Put something in for the first line
-                evdat = evinf['StartTime'].strftime('%d%b%Y')
                 writer = csv.writer(csvfile)
-                writer.writerow(['Notes for %s %s %s (Event id %d)' % (evinf['StartTime'].strftime('%d%b%YT%H:%M'),
-                                evname, evinf['Type'], evinf['Eid'])])
-                writer.writerow(['iid', 'note', 'source', 'file location', 'apply_also'])
+                if perm == 'wb':
+                    writer.writerow(['Notes for %s %s %s (Event id %d)' % (evinf['StartTime'].strftime('%d%b%YT%H:%M'),
+                                    evname, evinf['Type'], evinf['Eid'])])
+                    writer.writerow(['iid', 'note', 'source', 'file location'])
 
-                with open(os.path.join(fulldir, 'references.csv'), 'wb') as refcsvfile:
+                with open(refcsvfilename, perm2) as refcsvfile:
                     writer2 = csv.writer(refcsvfile)
-                    writer2.writerow(['References for %s %s %s (Event id %d)' % (evinf['StartTime'].strftime('%d%b%YT%H:%M'),
-                                     evname, evinf['Type'], evinf['Eid'])])
-                    writer2.writerow(['Refid', 'short reference', 'full reference', 'file location', 'url'])
+                    if perm2 == 'wb':
+                        writer2.writerow(['References for %s %s %s (Event id %d)' % (evinf['StartTime'].strftime('%d%b%YT%H:%M'),
+                                         evname, evinf['Type'], evinf['Eid'])])
+                        writer2.writerow(['Refid', 'short reference', 'full reference', 'file location', 'url'])
                     for temp in data:
                         # go through each entry, write it down in csv
                         iid, ref_id, note, pho_id, GIS_id, apply_also = temp
@@ -442,8 +510,8 @@ def clean_information(eids, relpath, newdbname, newifname, refdir, shortfilen):
                                 for filen in filenames:
                                     fn, ext = os.path.splitext(filen)
                                     temp = '%s%s' % (shortsref, ext)
-                                    newfilen = os.path.join(newifname, 'references', temp)
-                                    newfilenrel = os.path.join(shortfilen, 'references', temp)
+                                    newfilen = os.path.join(os.path.dirname(newdbname), 'references', temp)
+                                    newfilenrel = os.path.join('references', temp)
                                     if filen != newfilen:
                                         copy(filen, newfilen)
                                         if cnt == 0:
@@ -485,7 +553,42 @@ def clean_information(eids, relpath, newdbname, newifname, refdir, shortfilen):
                         if len(filelist) > 0:
                             if filelist[0] == ';':
                                 filelist = filelist[1:]
-                        writer.writerow([iid, note.encode('utf-8'), short_ref1, filelist, apply_also])
+                        writer.writerow([iid, note.encode('utf-8'), short_ref1, filelist])
+                if apply_also is not None:
+                    aids = apply_also.replace(' ', '').split(',')
+                    aids = [int(a1) for a1 in aids]
+                    for a1 in aids:
+                        # Try to make file, if not already there
+                        aevinf = findsta.getEventInfo(a1, database=newdbname)
+                        aevname = aevinf['Name'].strip().replace(' ', '').replace(',', '')
+                        aevdat = aevinf['StartTime'].strftime('%d%b%Y')
+                        afulldir = os.path.join(newifname, '%s_%s%s' % (a1, aevname, aevdat))
+                        acsvfilename = os.path.join(afulldir, 'information.csv')
+                        arefcsvfilename = os.path.join(afulldir, 'references.csv')
+
+                        if os.path.isfile(acsvfilename):
+                            perm = 'a'
+                        else:
+                            perm = 'wb'
+                        if os.path.isfile(arefcsvfilename):
+                            perm2 = 'a'
+                        else:
+                            perm2 = 'wb'
+                        with open(acsvfilename, perm) as acsvfile:
+                            awriter = csv.writer(acsvfile)
+                            if perm == 'wb':
+                                # if new Put something in for the first line
+                                awriter.writerow(['Notes for %s %s %s (Event id %d)' % (aevinf['StartTime'].strftime('%d%b%YT%H:%M'), aevname, aevinf['Type'], aevinf['Eid'])])
+                                awriter.writerow(['iid', 'note', 'source', 'file location'])
+                            awriter.writerow([iid, note.encode('utf-8'), short_ref1, filelist])
+                            with open(arefcsvfilename, perm2) as racsvfile:
+                                rwriter = csv.writer(racsvfile)
+                                if perm2 == 'wb':
+                                    rwriter.writerow(['References for %s %s %s (Event id %d)' % (aevinf['StartTime'].strftime('%d%b%YT%H:%M'),
+                                                     aevname, aevinf['Type'], aevinf['Eid'])])
+                                    rwriter.writerow(['Refid', 'short reference', 'full reference', 'file location', 'url'])
+                                rwriter.writerow([rid, short_ref1, long_ref1.encode('utf-8'), '', url1])
+
     connection.close()
 
 
@@ -569,7 +672,7 @@ def make_eventsummary(eids, newdbname, newifname):
 
     with open(os.path.join(os.path.dirname(newdbname), 'Events.csv'), 'wb') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['Event id', 'Name', 'Type', 'Approx start time (UTC)', 'Approx end time (UTC)', 'Latitude', 'Longitude', 'Location uncertainty (km)', 'Crown latitude', 'Crown longitude', 'Tip latitude', 'Toe latitude', 'Total area (m2)', 'Source area (m2)', 'Source area lower bound (m2)', 'Source area upper bound (m2)', 'Volume (m3)', 'Volume lower bound (m3)', 'Volume upper bound (m3)', 'Mass (kg)', 'Mass lower bound (kg)', 'Mass upper bound (kg)', 'H (m)', 'H lower bound (m)', 'H upper bound (m)', 'L (m)', 'L lower bound (m)', 'L upper bound (m)', 'Available data quality', 'Long period detections?', 'High frequency (1-5 Hz) maximum observed distance (km)', 'High frequency limit reached?', 'Number of high frequency detections', 'Long period (20-60 sec) maximum observed distance (km)', 'Long period limit reached?', 'Number of long period detections', 'Maximum distance examined (km)', 'Seismic data location(s)', 'Folder name'])
+        writer.writerow(['Approx start time (UTC)', 'Approx end time (UTC)', 'Event id', 'Name', 'State/Province', 'Country', 'Type', 'Latitude', 'Longitude', 'Location uncertainty (km)', 'Crown latitude', 'Crown longitude', 'Tip latitude', 'Toe latitude', 'Total area (m2)', 'Source area (m2)', 'Source area lower bound (m2)', 'Source area upper bound (m2)', 'Volume (m3)', 'Volume lower bound (m3)', 'Volume upper bound (m3)', 'Mass (kg)', 'Mass lower bound (kg)', 'Mass upper bound (kg)', 'H (m)', 'H lower bound (m)', 'H upper bound (m)', 'L (m)', 'L lower bound (m)', 'L upper bound (m)', 'Available data quality', 'Long period detections?', 'High frequency (1-5 Hz) maximum observed distance (km)', 'High frequency limit reached?', 'Number of high frequency detections', 'Long period (20-60 sec) maximum observed distance (km)', 'Long period limit reached?', 'Number of long period detections', 'Maximum distance examined (km)', 'Seismic data location(s)', 'Folder name'])
         cursor_output = cursor.execute("""SELECT Eid, Name, Type, Starttime, Endtime, Latitude, Longitude, 'LocUncert_km', Crown_lat, Crown_lon, Tip_lat, Tip_lon, Area_total, Area_source, Area_source_low, Area_source_high, Volume, Volume_low, Volume_high, Mass, Mass_low, Mass_high, H, H_low, H_high, L, L_low, L_high, OtherDataQuality, LPpotential, maxdistHF_km, maxdistHF_reached, maxdistLP_km, maxdistLP_reached, DatLocation FROM events ORDER BY Starttime""")
         data = cursor_output.fetchall()
         for dat in data:
@@ -584,23 +687,24 @@ def make_eventsummary(eids, newdbname, newifname):
             stad = findsta.getStaInfo(Eid, database=newdbname)
             # get max distance examined -
             searchdists = np.array([st['stasource_radius_km'] for junk, st in stad.items() if st['detect_HF'] is not None or st['detect_LP'] is not None])
-            breakpt()
             results = rg.search((Latitude, Longitude))
+            State = results[0]['admin1']
+            Country = results[0]['cc']
             if len(searchdists) > 1:
                 searchdists = searchdists.max()
             else:
                 searchdists = 0.
             numHF = len([st for junk, st in stad.items() if st['detect_HF'] == 1])
             numLP = len([st for junk, st in stad.items() if st['detect_LP'] == 1])
-            writer.writerow([Eid, State, Country, Name, Type, Starttime, Endtime, Latitude, Longitude, LocUncert_km, Crown_lat, Crown_lon, Tip_lat, Tip_lon, Area_total, Area_source, Area_source_low, Area_source_high, Volume, Volume_low, Volume_high, Mass, Mass_low, Mass_high, H, H_low, H_high, L, L_low, L_high, OtherDataQuality, LPpotential, maxdistHF_reached, maxdistHF_km, numHF, maxdistLP_km, maxdistLP_reached, numLP, searchdists, DatLocation, fulldir])
+            writer.writerow([Starttime, Endtime, Eid, Name, State, Country, Type, Latitude, Longitude, LocUncert_km, Crown_lat, Crown_lon, Tip_lat, Tip_lon, Area_total, Area_source, Area_source_low, Area_source_high, Volume, Volume_low, Volume_high, Mass, Mass_low, Mass_high, H, H_low, H_high, L, L_low, L_high, OtherDataQuality, LPpotential, maxdistHF_reached, maxdistHF_km, numHF, maxdistLP_km, maxdistLP_reached, numLP, searchdists, DatLocation, fulldir])
     connection.close()
 
 
 def main(newdbname=None, newifname=None, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
          infofiles='/Users/kallstadt/LSseis/landslideDatabase/InfoFiles', shortfilen=None):
     eids, relpath, newdbname, newifname, refdir, shortfilen = prepare_new(newdbname=newdbname, newifname=newifname, database=database, infofiles=infofiles, shortfilen=None)
-    #clean_photos(eids, relpath, newdbname, newifname, refdir, shortfilen)
-    #clean_gis(eids, relpath, newdbname, newifname, refdir, shortfilen)
-    #clean_information(eids, relpath, newdbname, newifname, refdir, shortfilen)
-    #clean_seismic(eids, newdbname, newifname)
+    clean_photos(eids, relpath, newdbname, newifname, refdir, shortfilen)
+    clean_gis(eids, relpath, newdbname, newifname, refdir, shortfilen)
+    clean_information(eids, relpath, newdbname, newifname, refdir, shortfilen)
+    clean_seismic(eids, newdbname, newifname)
     make_eventsummary(eids, newdbname, newifname)
