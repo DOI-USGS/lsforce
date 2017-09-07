@@ -100,6 +100,16 @@ def prepare_new(newdbname=None, newifname=None, database='/Users/kallstadt/LSsei
     except Exception as e:
         print(e)
 
+    try:
+        rmtree(os.path.join(os.path.dirname(newdbname), 'references'))
+    except Exception as e:
+        print(e)
+
+    try:
+        os.remove(os.path.join(os.path.dirname(newdbname), 'Events.csv'))
+    except Exception as e:
+        print(e)
+
     if newifname is None:
         time1 = datetime.datetime.utcnow().strftime('%d%b%YT%H%M')
         fn, ext = os.path.splitext(database)
@@ -676,7 +686,6 @@ def make_eventsummary(eids, newdbname, newifname):
         cursor_output = cursor.execute("""SELECT Eid, Name, Type, Starttime, Endtime, Latitude, Longitude, 'LocUncert_km', Crown_lat, Crown_lon, Tip_lat, Tip_lon, Area_total, Area_source, Area_source_low, Area_source_high, Volume, Volume_low, Volume_high, Mass, Mass_low, Mass_high, H, H_low, H_high, L, L_low, L_high, OtherDataQuality, LPpotential, maxdistHF_km, maxdistHF_reached, maxdistLP_km, maxdistLP_reached, DatLocation FROM events ORDER BY Starttime""")
         data = cursor_output.fetchall()
         for dat in data:
-
             Eid, Name, Type, Starttime, Endtime, Latitude, Longitude, LocUncert_km, Crown_lat, Crown_lon, Tip_lat, Tip_lon, Area_total, Area_source, Area_source_low, Area_source_high, Volume, Volume_low, Volume_high, Mass, Mass_low, Mass_high, H, H_low, H_high, L, L_low, L_high, OtherDataQuality, LPpotential, maxdistHF_km, maxdistHF_reached, maxdistLP_km, maxdistLP_reached, DatLocation = dat
 
             # Get basic event information
@@ -697,6 +706,7 @@ def make_eventsummary(eids, newdbname, newifname):
             numHF = len([st for junk, st in stad.items() if st['detect_HF'] == 1])
             numLP = len([st for junk, st in stad.items() if st['detect_LP'] == 1])
             writer.writerow([Starttime, Endtime, Eid, Name, State, Country, Type, Latitude, Longitude, LocUncert_km, Crown_lat, Crown_lon, Tip_lat, Tip_lon, Area_total, Area_source, Area_source_low, Area_source_high, Volume, Volume_low, Volume_high, Mass, Mass_low, Mass_high, H, H_low, H_high, L, L_low, L_high, OtherDataQuality, LPpotential, maxdistHF_reached, maxdistHF_km, numHF, maxdistLP_km, maxdistLP_reached, numLP, searchdists, DatLocation, fulldir])
+
     connection.close()
 
 
