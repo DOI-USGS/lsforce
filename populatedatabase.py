@@ -296,7 +296,9 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
             try:
                 stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
                                                  staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
-                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)), '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec, evDict['EndTime']+buffer_sec, savedat=False)
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
+                                         '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
+                                         evDict['EndTime']+buffer_sec, savedat=False)
             except Exception as e:
                 print(e)
         if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
