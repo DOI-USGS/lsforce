@@ -312,7 +312,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 print(e)
         if evDict['DatLocation'] is None:
             print('You need to populate the DatLocation field for this event, no sac files loaded')
-        elif 'sac' in evDict['DatLocation']:
+        if 'sac' in evDict['DatLocation']:
             datloc1 = evDict['DatLocation'].split(',')
             datloc1 = [x.strip() for x in datloc1 if 'sac' in x]
             for datl in datloc1:

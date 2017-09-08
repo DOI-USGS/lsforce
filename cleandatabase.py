@@ -228,7 +228,7 @@ def clean_photos(eids, relpath, newdbname, newifname, shortfilen):
             except Exception as e:
                 print(e)
 
-            csvfilename = os.path.join(fulldir, 'photos_figures.csv')
+            csvfilename = os.path.join(fulldir, '%s_%s%s_photos_figures.csv' % (e1, evname, evdat))
             if os.path.isfile(csvfilename):
                 perm = 'a'
             else:
@@ -312,7 +312,7 @@ def clean_photos(eids, relpath, newdbname, newifname, shortfilen):
                             aevname = aevinf['Name'].strip().replace(' ', '').replace(',', '')
                             aevdat = aevinf['StartTime'].strftime('%d%b%Y')
                             afulldir = os.path.join(newifname, '%s_%s%s' % (a1, aevname, aevdat))
-                            acsvfilename = os.path.join(afulldir, 'photos_figures.csv')
+                            acsvfilename = os.path.join(afulldir, '%s_%s%s_photos_figures.csv' % (a1, aevname, aevdat))
                             if os.path.isfile(acsvfilename):
                                 perm = 'a'
                             else:
@@ -368,7 +368,7 @@ def clean_gis(eids, relpath, newdbname, newifname, shortfilen):
                 os.mkdir(gisdir)
             except Exception as e:
                 print(e)
-            csvfilename = os.path.join(fulldir, 'maps_gis.csv')
+            csvfilename = os.path.join(fulldir, '%s_%s%s_maps_gis.csv' % (e1, evname, evdat))
             if os.path.isfile(csvfilename):
                 perm = 'a'
             else:
@@ -444,7 +444,7 @@ def clean_gis(eids, relpath, newdbname, newifname, shortfilen):
                                     aevname = aevinf['Name'].strip().replace(' ', '').replace(',', '')
                                     aevdat = aevinf['StartTime'].strftime('%d%b%Y')
                                     afulldir = os.path.join(newifname, '%s_%s%s' % (a1, aevname, aevdat))
-                                    acsvfilename = os.path.join(afulldir, 'maps_gis.csv')
+                                    acsvfilename = os.path.join(afulldir, '%s_%s%s_maps_gis.csv' % (a1, aevname, aevdat))
                                     if os.path.isfile(acsvfilename):
                                         perm = 'a'
                                     else:
@@ -498,13 +498,13 @@ def clean_information(eids, relpath, newdbname, newifname, shortfilen):
             cursor_output = cursor.execute("""SELECT iid, ref_id, note, pho_id, GIS_id, apply_also FROM information
                                            WHERE event_id=?""", (e1,))
             data = cursor_output.fetchall()
-            csvfilename = os.path.join(fulldir, 'information.csv')
+            csvfilename = os.path.join(fulldir, '%s_%s%s_information.csv' % (e1, evname, evdat))
             if os.path.isfile(csvfilename):
                 perm = 'a'
             else:
                 perm = 'wb'
 
-            refcsvfilename = os.path.join(fulldir, 'references.csv')
+            refcsvfilename = os.path.join(fulldir, '%s_%s%s_references.csv' % (e1, evname, evdat))
             if os.path.isfile(refcsvfilename):
                 perm2 = 'a'
             else:
@@ -603,8 +603,8 @@ def clean_information(eids, relpath, newdbname, newifname, shortfilen):
                         aevname = aevinf['Name'].strip().replace(' ', '').replace(',', '')
                         aevdat = aevinf['StartTime'].strftime('%d%b%Y')
                         afulldir = os.path.join(newifname, '%s_%s%s' % (a1, aevname, aevdat))
-                        acsvfilename = os.path.join(afulldir, 'information.csv')
-                        arefcsvfilename = os.path.join(afulldir, 'references.csv')
+                        acsvfilename = os.path.join(afulldir, '%s_%s%s_information.csv' % (a1, aevname, aevdat))
+                        arefcsvfilename = os.path.join(afulldir, '%s_%s%s_references.csv' % (a1, aevname, aevdat))
 
                         if os.path.isfile(acsvfilename):
                             perm = 'a'
@@ -673,7 +673,8 @@ def clean_seismic(eids, newdbname, newifname):
                                        ORDER BY stasource_radius_km""", (e1,))
         data = cursor_output.fetchall()
         if data is not None:
-            with open(os.path.join(fulldir, 'seismic_detections.csv'), 'wb') as csvfile:
+            csvfilename = os.path.join(fulldir, '%s_%s%s_seismic_detections.csv' % (e1, evname, evdat))
+            with open(csvfilename, 'wb') as csvfile:
                 # Put something in for the first line
                 evdat = evinf['StartTime'].strftime('%d%b%Y')
                 writer = csv.writer(csvfile)
@@ -702,6 +703,11 @@ def clean_seismic(eids, newdbname, newifname):
                             if detect_LP == 0:
                                 detect_LP = False
                             writer.writerow([Name, Network, Channel, LocationCode, Latitude, Longitude, Elevation_masl, stasource_radius_km, az, baz, detect_HF, starttimeHF, endtimeHF, absmaxampHF, detect_LP, starttimeLP, endtimeLP, absmaxampLP, source])
+                    if 'sac' in source:
+                        
+
+
+                        pass
 
 
 def make_eventsummary(eids, newdbname, newifname):
