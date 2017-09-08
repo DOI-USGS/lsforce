@@ -632,7 +632,7 @@ def clean_information(eids, relpath, newdbname, newifname, shortfilen):
     connection.close()
 
 
-def clean_seismic(eids, newdbname, newifname):
+def clean_seismic(eids, newdbname, newifname, relpath, shortfilen):
     """
     Make flat file summarizing seismic detection information for each event
     :param eids: list of event ids
@@ -703,11 +703,30 @@ def clean_seismic(eids, newdbname, newifname):
                             if detect_LP == 0:
                                 detect_LP = False
                             writer.writerow([Name, Network, Channel, LocationCode, Latitude, Longitude, Elevation_masl, stasource_radius_km, az, baz, detect_HF, starttimeHF, endtimeHF, absmaxampHF, detect_LP, starttimeLP, endtimeLP, absmaxampLP, source])
-                    if 'sac' in source:
-                        
-
-
-                        pass
+            # Copy over seismic data if necessary
+            datloc = evinf['DatLocation']
+            datl = datloc.split(',')
+            replacewith = ''
+            flag = 0
+            for s1 in datl:
+                if 'zip:' in s1:
+                    filen = s1.split('zip:')[1].replace(' ', '')
+                    fullfilename = os.path.join(relpath, filen)
+                    fn, ext = os.path.splitext(fullfilename)
+                    temp = '%s_%s%s_seismic_data' % (e1, evname, evdat)
+                    newfilen = os.path.join(fulldir, temp + ext.lower())
+                    newfilenrel = os.path.join(shortfilen, '%s_%s%s' % (e1, evname, evdat), temp + ext.lower())
+                    copy(fullfilename, newfilen)
+                    replacewith = '%s, %s' % (replacewith, newfilenrel)
+                    flag = 1
+                elif 'sac:' not in s1:
+                    replacewith = '%s, %s' % (replacewith, s1.strip())
+                    flag = 1
+            if flag == 1:
+                if replacewith[0] == ',':
+                    replacewith = replacewith[1:]
+                with connection:
+                    connection.execute('UPDATE events SET DatLocation=? WHERE Eid = ?', (replacewith, e1))
 
 
 def make_eventsummary(eids, newdbname, newifname):
@@ -763,8 +782,8 @@ def main(newdbname=None, newifname=None, database='/Users/kallstadt/LSseis/lands
     :param shortfilen: relative file path to append to new file locations when they are replaced in database
     """
     eids, relpath, newdbname, newifname, shortfilen = prepare_new(newdbname=newdbname, newifname=newifname, database=database, infofiles=infofiles, shortfilen=None)
-    clean_photos(eids, relpath, newdbname, newifname, shortfilen)
-    clean_gis(eids, relpath, newdbname, newifname, shortfilen)
-    clean_information(eids, relpath, newdbname, newifname, shortfilen)
-    clean_seismic(eids, newdbname, newifname)
-    make_eventsummary(eids, newdbname, newifname)
+    #clean_photos(eids, relpath, newdbname, newifname, shortfilen)
+    #clean_gis(eids, relpath, newdbname, newifname, shortfilen)
+    #clean_information(eids, relpath, newdbname, newifname, shortfilen)
+    clean_seismic(eids, newdbname, newifname, relpath, shortfilen)
+    #make_eventsummary(eids, newdbname, newifname)
