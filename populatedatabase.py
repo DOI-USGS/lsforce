@@ -242,7 +242,7 @@ def recalculate_distances(event_ids, database='/Users/kallstadt/LSseis/landslide
 
 def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intincrkm=100.,
                  maxreachedHF=False, maxreachedLP=False, HFlims=(1., 5.), LPlims=(20., 60.),
-                 LPoutput='DISP', maxtraces=15,
+                 LPoutput='DISP', maxtraces=15, taper=0.05,
                  database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
                  path='/Users/kallstadt/LSseis/landslideDatabase'):
     """
@@ -267,6 +267,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
       (20., 60.) standard
     :param LPoutput: Output type for LP station correction (DISP standard)
     :param maxtraces: Number of traces to view at a time
+    :param taper: percentage taper (or None for no tapering)
     :param database: Full file path of database file location
     :param path: Path to location of sac files (upstream from relative file paths listed in database)
 
@@ -298,7 +299,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                                                  staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
                                          '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
-                                         evDict['EndTime']+buffer_sec, savedat=False)
+                                         evDict['EndTime']+buffer_sec, savedat=False, detrend='demean')
             except Exception as e:
                 print(e)
         if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
@@ -307,7 +308,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                                                  staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
                                          '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
-                                         evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
+                                         evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC', detrend='demean')
             except Exception as e:
                 print(e)
         if evDict['DatLocation'] is None:
@@ -327,7 +328,8 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                             nam = filen.split('/')[-1].split('.')[0]
                             if nam in namelist:
                                 newfilenames.append(filen)
-                        stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec, endtime=evDict['EndTime']+buffer_sec)
+                        stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
+                                                       endtime=evDict['EndTime']+buffer_sec, detrend='demean')
                         stsac = Stream([trace for trace in stsac if trace.max() != 0.0])  # Get rid of any empty ones
                         originalstt = []
                         # Get earliest start time from IRIS for AK and AV
@@ -376,7 +378,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                             trace.stats.starttime = originalstt[i]
                     else:
                         stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                       endtime=evDict['EndTime']+buffer_sec)
+                                                       endtime=evDict['EndTime']+buffer_sec, detrend='demean')
                     st += stsac
 
         # Add distances
@@ -384,8 +386,8 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         st = st.sort(keys=['rdist', 'channel'])
         # Get rid of sac files etc. that are outside current range
         st = Stream([trace for trace in st if trace.stats.rdist < maxradius and trace.stats.rdist > minradius])
-        st.detrend('linear')
-        st.taper(max_percentage=0.03, type='cosine')
+        if taper is not None:
+            st.taper(max_percentage=taper, type='cosine')
         # Split into hf and lp streams and preprocess
         st_hf = st.copy()
         # pre-filter to hf_range
@@ -654,8 +656,8 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         st = st.sort(keys=['rdist', 'channel'])
         # Get rid of sac files etc. that are outside current range
         st = Stream([trace for trace in st if trace.stats.rdist < maxradius and trace.stats.rdist > newmin])
-        st.detrend('linear')
-        st.taper(max_percentage=0.03, type='cosine')
+        if taper is not None:
+            st.taper(max_percentage=taper, type='cosine')
 
         if maxreachedHF is False:
             st_hf = st.copy()
@@ -864,7 +866,8 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
 
 def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VEL',
-                        minradius=0., maxradius=None, maxtraces=15, path='/Users/kallstadt/LSseis/landslideDatabase',
+                        minradius=0., maxradius=None, maxtraces=15, taper=None, detrend='demean',
+                        path='/Users/kallstadt/LSseis/landslideDatabase',
                         database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
     Make measurements on confirmed high frequency detections, pulls data from IRIS and other sources
@@ -896,7 +899,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
 
     # Find stations where detect_HF=1 for this event
     staDict = findsta.getStaInfo(event_id, database=database, detectHF=True, minradius=minradius, maxradius=maxradius)
-    datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
+    #datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
     sttemp = Stream()
     if 'IRIS' in evDict['DatLocation']:
         stalist = []
@@ -910,14 +913,14 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
         if len(stalist) != 0:
             try:
                 sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                                   attach_response=True, clientname='IRIS')
+                                                   attach_response=True, clientname='IRIS', detrend='demean')
             except Exception as e:
                 print(e)
     if 'NCEDC' in evDict['DatLocation']:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
         if len(stalist) != 0:
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                               attach_response=True, clientname='NCEDC')
+                                               attach_response=True, clientname='NCEDC', detrend='demean')
     if evDict['DatLocation'] is None:
         print('You need to populate the DatLocation field for this event, no sac files loaded')
     if 'sac' in evDict['DatLocation']:
@@ -935,7 +938,8 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                         nam = filen.split('/')[-1].split('.')[0]
                         if nam in namelist:
                             newfilenames.append(filen)
-                    stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec, endtime=evDict['EndTime']+buffer_sec)
+                    stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
+                                                   endtime=evDict['EndTime']+buffer_sec, detrend='demean')
                     stsac = Stream([trace for trace in stsac if trace.max() != 0.0])  # Get rid of any empty ones
                     originalstt = []
                     # Get earliest start time from IRIS for AK and AV
@@ -985,7 +989,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                         trace.stats.starttime = originalstt[i]
                 else:
                     stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                   endtime=evDict['EndTime']+buffer_sec)
+                                                   endtime=evDict['EndTime']+buffer_sec, detrend='demean')
                 sttemp += stsac
 
                 for trace in sttemp:
@@ -1006,14 +1010,16 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
     st = st.sort(keys=['rdist', 'channel'])
 
     # Preprocess
-    st.detrend('demean')
-    st.taper(max_percentage=0.03, type='cosine')
+    if detrend is not None:
+        st.detrend(detrend)
+    if taper is not None:
+        st.taper(max_percentage=taper, type='cosine')
 
     # Interactive plotting to pick start and end time and make amplitude picks
     textline = ['Delete any that are clipped after making amplitude picks on them to get start and end times',
                 'Then press c for station corrected VEL data', 'Make amplitude picks by hitting A at start and end of signal',
                 'these times will be used for other calculations', 'Zoom out all the way before exiting']
-    zp = reviewData.InteractivePlot(st, cosfilt=cosfilt, output=HFoutput, textline=textline, maxtraces=maxtraces)
+    zp = reviewData.InteractivePlot(st, cosfilt=cosfilt, output=HFoutput, textline=textline, maxtraces=maxtraces, taper=taper)
 
     # Get amplitude pick times
     picks = zp.picks
@@ -1114,7 +1120,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                 print e
 
 
-def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='DISP',
+def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='DISP', taper=0.05, detrend='linear',
                         minradius=0., maxradius=None, maxtraces=15, path='/Users/kallstadt/LSseis/landslideDatabase',
                         database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
@@ -1161,14 +1167,14 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
         if len(stalist) != 0:
             try:
                 sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                                   attach_response=True, clientname='IRIS')
+                                                   attach_response=True, clientname='IRIS', detrend=detrend)
             except Exception as e:
                 print(e)
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(staDict[k]['Name'], staDict[k]['Channel'], staDict[k]['Network'], '*') for k in staDict if 'NCEDC' in staDict[k]['source']]
         if len(stalist) != 0:
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                               attach_response=True, clientname='NCEDC')
+                                               attach_response=True, clientname='NCEDC', detrend=detrend)
     if evDict['DatLocation'] is None:
         print('You need to populate the DatLocation field for this event, no sac files loaded')
     if 'sac' in evDict['DatLocation']:
@@ -1186,7 +1192,8 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                         nam = filen.split('/')[-1].split('.')[0]
                         if nam in namelist:
                             newfilenames.append(filen)
-                    stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec, endtime=evDict['EndTime']+buffer_sec)
+                    stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
+                                                   endtime=evDict['EndTime']+buffer_sec, detrend=detrend)
                     stsac = Stream([trace for trace in stsac if trace.max() != 0.0])  # Get rid of any empty ones
                     originalstt = []
                     # Get earliest start time from IRIS for AK and AV
@@ -1236,7 +1243,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                         trace.stats.starttime = originalstt[i]
                 else:
                     stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                   endtime=evDict['EndTime']+buffer_sec)
+                                                   endtime=evDict['EndTime']+buffer_sec, detrend='linear')
                 sttemp += stsac
 
     for trace in sttemp:
@@ -1256,9 +1263,9 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
     st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
     st = st.sort(keys=['rdist', 'channel'])
 
-    # Preprocess
-    st.detrend('demean')
-    st.taper(max_percentage=0.03, type='cosine')
+    # Preprocess (already detrended, if option was chosen, when downloaded data)
+    if taper is not None:
+        st.taper(max_percentage=taper, type='cosine')
 
     # Perform station correction
     temp = Stream()
@@ -1272,7 +1279,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
 
     # Interactive plotting to pick start and end time and make amplitude picks
     textline = ['Make amplitude picks on good signals, check and make sure amplitudes are not crazy']
-    zp = reviewData.InteractivePlot(st, textline=textline)
+    zp = reviewData.InteractivePlot(st, textline=textline, taper=taper)
 
     # Get amplitude pick times
     picks = zp.picks
