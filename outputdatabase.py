@@ -12,6 +12,10 @@ from obspy.clients.fdsn import Client as FDSN_Client
 import glob
 import urllib2
 import os
+from cleandatabase import get_eids
+import sqlite3 as lite
+import datetime
+import matplotlib.pyplot as plt
 
 # bufferperc=0.1
 # HFlims=(1., 5.)
@@ -24,16 +28,131 @@ import os
 # database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'
 
 
-def summary_file():
+def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
+                   placefigs='/Users/kallstadt/LSseis/landslideDatabase/InfoFiles/waveformfigs', relplacefigs='InfoFiles/waveformfigs',
+                   savedat=False, folderdat='data', reloadfile=False, Zonly=False, addtodb=False, loadfromfile=True):
     """
-    Output a csv file summarizing the database (event table primarily)
+    Make standard figures for each event and put them in the database
     """
-    pass
+
+    try:
+        os.mkdir(placefigs)
+    except Exception as e:
+        print(e)
+
+    if eids is None:
+        eids = get_eids(database)
+
+    if type(eids) is int:
+        eids = [eids]
+
+    for e1 in eids:
+        try:
+            evDict = findsta.getEventInfo(e1)
+            detectLP = False
+            if evDict['LPpotential'] == 1:
+                detectLP = True
+            st = grab_data(e1, both=True, database=database, savedat=savedat, folderdat=folderdat,
+                           bufferperc=bufferperc, numstas=numstas, Zonly=Zonly, reloadfile=reloadfile, loadfromfile=loadfromfile)
+            print('got data')
+
+            # Update numsta
+            numsta = len(reviewData.unique_list([trace.stats.station for trace in st]))
+
+            # Make high frequency figs (without taper)
+            figraw, figHF, junk, specg, junk2 = make_figures(st, bufferperc=None, raw=True, HF=True, LP=False, spectrograms=True, spectra=False,
+                                                             taper=None, detrend='demean', startline=evDict['StartTime'], endline=evDict['EndTime'])
+            print('made high frequency plots')
+            # Make lp figs and spectra (with taper)
+            if detectLP:
+                stLP = grab_data(e1, detectHF=None, detectLP=True, database=database, savedat=savedat, folderdat=folderdat + 'LP',
+                                 bufferperc=bufferperc, numstas=numstas, Zonly=Zonly, reloadfile=reloadfile, loadfromfile=loadfromfile)
+                for tr in stLP.select(channel='BDF'):
+                    stLP.remove(tr)
+                # make displacement spectra too...
+                junk1, junk2, figLP, junk3, mtLP = make_figures(stLP, bufferperc=bufferperc, raw=False, HF=False, LP=True, spectrograms=False, spectra=True,
+                                                                taper='bufferperc', detrend='linear', startline=evDict['StartTime'], endline=evDict['EndTime'],
+                                                                speccorr='DISP')
+
+            junk1, junk2, junk, junk3, mt = make_figures(st, bufferperc=bufferperc, raw=False, HF=False, LP=False, spectrograms=False, spectra=True,
+                                                         taper='bufferperc', detrend='linear')
+            print('finished the rest of the plots')
+            # make file name prefix
+            evname = evDict['Name'].strip().replace(' ', '').replace(',', '')
+            evdat = evDict['StartTime'].strftime('%d%b%Y')
+            temp = '%s_%s%s' % (e1, evname, evdat)
+
+            # Save them all
+
+            newfileR = '%s_waveforms_raw.png' % temp
+            figraw.savefig(os.path.join(placefigs, newfileR))
+            print('saved raw file')
+
+            newfileHF = '%s_waveforms_1-5Hz.png' % temp
+            figHF.savefig(os.path.join(placefigs, newfileHF))
+            print('saved HF file')
+
+            if detectLP:
+                newfileLP = '%s_waveforms_20-60sec.png' % temp
+                figLP.savefig(os.path.join(placefigs, newfileLP))
+                print('saved LP file')
+                newfileSGLP = '%s_displspectra.png' % temp
+                mtLP.savefig(os.path.join(placefigs, newfileSGLP))
+                print('saved LP spec file')
+
+            newfileSG = '%s_spectrogram.png' % temp
+            specg.savefig(os.path.join(placefigs, newfileSG))
+            print('saved specg')
+
+            newfileSP = '%s_spectra.png' % temp
+            mt.savefig(os.path.join(placefigs, newfileSP))
+            print('saved spectra')
+
+            if addtodb:
+                # Connect to database
+                connection = None
+                connection = lite.connect(database)
+                cursor = connection.cursor()
+
+                # Get max photo id currently existing
+                idlist = cursor.execute("""SELECT photo_id FROM photos""")
+                phoids = idlist.fetchall()
+                phoids = [id1[0] for id1 in phoids]
+                currentpid = np.max(phoids) + 1
+                date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+                # Put in database
+                with connection:
+                    connection.execute('INSERT INTO photos(photo_id, event_id, photographer, permission, description, date, file_extension) VALUES (?,?,?,?,?,?,?)',
+                                       (currentpid, e1, 'Kate Allstadt', 1, 'Raw waveforms from %s closest stations. Data was demeaned but no other processing was applied. Dashed lines show approximate start and end times of event (from database). Figure generation is automated and there may be artifacts present.' % numsta, date, os.path.join(relplacefigs, newfileR)))
+                    currentpid += 1
+                    connection.execute('INSERT INTO photos(photo_id, event_id, photographer, permission, description, date, file_extension) VALUES (?,?,?,?,?,?,?)',
+                                       (currentpid, e1, 'Kate Allstadt', 1, 'High frequency (1-5 Hz) ground velocity waveforms for station response from %s closest stations with detections. Dashed lines show approximate start and end times of event (from database). Waveforms are corrected for station response after removing the mean. Figure generation is automated and there may be artifacts present. Clipped waveforms have not been removed before station correction so check raw plots before interpreting high amplitude signals.' % numsta, date, os.path.join(relplacefigs, newfileHF)))
+                    currentpid += 1
+                    if detectLP:
+                        connection.execute('INSERT INTO photos(photo_id, event_id, photographer, permission, description, date, file_extension) VALUES (?,?,?,?,?,?,?)',
+                                           (currentpid, e1, 'Kate Allstadt', 1, 'Long period (20-60 sec) ground displacement waveforms from %s closest stations with detections. Dashed lines show approximate start and end times of event (from database, based on high frequency waveform). Waveforms are corrected for station response after detrending using a linear fit and tapering. Zero mean cosine filter applied with station correction may cause acausal arrivals. Figure generation is automated and there may be artifacts present. Signals with clipped waveforms and data gaps have not been removed so check raw figures before interpreting.' % numsta, date, os.path.join(relplacefigs, newfileLP)))
+                        currentpid += 1
+                        connection.execute('INSERT INTO photos(photo_id, event_id, photographer, permission, description, date, file_extension) VALUES (?,?,?,?,?,?,?)',
+                                           (currentpid, e1, 'Kate Allstadt', 1, 'Displacement spectrum from %s closest broadband stations with detections, corrected for station response with no prefiltering after detrending using a linear fit and tapering. Note that long period signals often contain noise unrelated to the event signal of interest, especially on horizontal components (e.g. tilt), so interpret with care. Figure generation is automated and there may be artifacts present. Signals with clipped waveforms and data gaps have not been removed so check raw figures before interpreting.' % numsta, date, os.path.join(relplacefigs, newfileLP)))
+                        currentpid += 1
+
+                    connection.execute('INSERT INTO photos(photo_id, event_id, photographer, permission, description, date, file_extension) VALUES (?,?,?,?,?,?,?)',
+                                       (currentpid, e1, 'Kate Allstadt', 1, 'Spectrograms of velocity waveforms corrected for station sensitivity from %s closest stations with detections. Figure generation is automated and there may be artifacts present' % numsta, date, os.path.join(relplacefigs, newfileSG)))
+                    currentpid += 1
+                    connection.execute('INSERT INTO photos(photo_id, event_id, photographer, permission, description, date, file_extension) VALUES (?,?,?,?,?,?,?)',
+                                       (currentpid, e1, 'Kate Allstadt', 1, 'Multitaper spectra (same units as Power Spectral Density) of velocity waveforms corrected for station sensitivity from %s closest stations with detections. Linear trend was removed and a taper was applied before generating spectra. Figure generation is automated and there may be artifacts present. Since station response was not removed to avoid adding artifacts at low frequencies for short and intermediate period stations, the lower frequency amplitudes should be interpreted with care.' % numsta, date, os.path.join(relplacefigs, newfileSP)))
+                    currentpid += 1
+                print('updated database')
+                connection.close()
+            plt.close('all')
+        except Exception as e:
+            print(e)
 
 
 def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis/landslideDatabase',
-              detectHF=True, detectLP=True, minradius=0., maxradius=None, Zonly=False,
-              database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
+              detectHF=None, detectLP=None, both=False, minradius=0., maxradius=None, Zonly=False, reloadfile=False, loadfromfile=False,
+              database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db', savedat=False, folderdat='data'):
 
     """
     Pulls data from IRIS and other sources and links station correction info
@@ -55,18 +174,23 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
     # Loop through and keep only the ones that were detected on HF and/or LP
     keep = []
     for k, v in statemp.items():
-        if detectHF:
-            if v['detect_HF'] == 1:
+        if both:
+            if v['detect_HF'] == 1 or v['detect_LP'] == 1:
                 keep.append(v)
-            continue
-        else:
+        elif detectHF is None and detectLP is None:
             keep.append(v)
-            continue
-        if detectLP:
+        elif detectHF is True and detectLP is False:
+            if v['detect_HF'] == 1 and v['detect_LP'] == 0:
+                keep.append(v)
+        elif detectHF is None and detectLP is True:
             if v['detect_LP'] == 1:
                 keep.append(v)
-        else:
-            keep.append(v)
+        elif detectLP is True and detectHF is False:
+            if v['detect_LP'] == 1 and v['detect_HF'] == 0:
+                keep.append(v)
+        elif detectLP is None and detectHF is True:
+            if v['detect_HF'] == 1:
+                keep.append(v)
 
     # Then keep only the numchans closest stations (all channels)
     indx, dists = zip(*[[i, k['stasource_radius_km']] for i, k in enumerate(keep)])
@@ -91,6 +215,7 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
             chanuse = '*'
         datloc1 = evDict['DatLocation'].split(',')
         datloc1 = [x.strip() for x in datloc1 if 'sac' in x]
+        count = 0
         for datl in datloc1:
             fullpath = os.path.join(path, datl.split(':')[1])
             filenames = glob.glob(fullpath)
@@ -104,7 +229,10 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
                         if nam in namelist:
                             newfilenames.append(filen)
                     stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                   endtime=evDict['EndTime']+buffer_sec, chanuse=chanuse)
+                                                   endtime=evDict['EndTime']+buffer_sec, chanuse=chanuse, savedat=savedat,
+                                                   folderdat=folderdat, filenamepref='sac%s_' % count, reloadfile=reloadfile,
+                                                   loadfromfile=loadfromfile)
+                    count += 1
                     stsac = Stream([trace for trace in stsac if trace.max() != 0.0])  # Get rid of any empty ones
                     originalstt = []
                     # Get earliest start time from IRIS for AK and AV
@@ -154,7 +282,10 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
                         trace.stats.starttime = originalstt[i]
                 else:
                     stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                   endtime=evDict['EndTime']+buffer_sec, chanuse=chanuse)
+                                                   endtime=evDict['EndTime']+buffer_sec, chanuse=chanuse, savedat=savedat,
+                                                   folderdat=folderdat, filenamepref='sac%s_' % count, reloadfile=reloadfile,
+                                                   loadfromfile=loadfromfile)
+                    count += 1
                 sttemp += stsac
 
                 for trace in sttemp:
@@ -179,14 +310,18 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
         if len(stalist) != 0:
             try:
                 sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                                   attach_response=True, clientname='IRIS')
+                                                   attach_response=True, clientname='IRIS', savedat=savedat,
+                                                   folderdat=folderdat, filenamepref='iris_', reloadfile=reloadfile,
+                                                   loadfromfile=loadfromfile)
             except Exception as e:
                 print(e)
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
         stalist = [(k['Name'], k['Channel'], k['Network'], '*') for k in staDict2 if 'NCEDC' in k['source']]
         if len(stalist) != 0:
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
-                                               attach_response=True, clientname='NCEDC')
+                                               attach_response=True, clientname='NCEDC', savedat=savedat,
+                                               folderdat=folderdat, filenamepref='ncedc_', reloadfile=reloadfile,
+                                               loadfromfile=loadfromfile)
 
     # Delete any that are not in list
     nets, stas, chans = zip(*[[k['Network'], k['Name'], k['Channel']] for k in staDict])  # Exclude location code because inconsistencies here can cause data to not be found
@@ -204,11 +339,15 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
 
 
 def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=True, spectrograms=True, spectra=True,
-                 HFlims=(1., 5.), HFoutput='VEL', LPlims=(20., 60.), LPoutput='DISP'):
+                 HFlims=(1., 5.), HFoutput='VEL', LPlims=(20., 60.), LPoutput='DISP', taper=None, detrend='demean',
+                 startline=None, endline=None, speccorr=None):
     """
     Make static figures for each event
     :param HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
     :param HFoutput: Output type for HF station correction (VEL standard)
+    :param taper: if None, no tapers, if 'bufferperc', will use bufferperc/2, if a float, will use that as the percent taper
+    :param startline: UTCDateTime for start time of the event in the database, will add vertical line here in time series
+    :param endline: UTCDateTime for end time of the event in the database, will add vertical line here in time series
     UPDATE THESE:
     spectra = multitaper, equiv to PSD
     """
@@ -216,17 +355,28 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
     cosfiltHF = (0.5*HFlims[0], HFlims[0], HFlims[1], 2*HFlims[1])
     cosfiltLP = (0.5/LPlims[1], 1/LPlims[1], 1/LPlims[0], 2/LPlims[0])
 
-    if bufferperc is None:
-        taper = 0.05
-    else:
-        taper = bufferperc/4.
+    dotaper = False
+    if bufferperc is None and taper is not None:
+        taper = taper
+        dotaper = True
+        if taper == 'bufferperc':
+            taper = 0.05
+
+    elif taper == 'bufferperc':
+        if bufferperc is not None:
+            taper = bufferperc/2.
+        else:
+            taper = 0.05
+        dotaper = True
+
+    if detrend is not None:
+        st.detrend(detrend)
 
     # Do corrections for LP, HF
     if LP:
         stLP = st.copy()
-        stLP.taper(max_percentage=taper, type='cosine')
         try:
-            stLP.remove_response(output=LPoutput, pre_filt=cosfiltLP)
+            stLP.remove_response(output=LPoutput, pre_filt=cosfiltLP, taper=dotaper, taper_fraction=taper)
         except:
             temp = Stream()
             for i, trace in enumerate(stLP):
@@ -239,9 +389,8 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
 
     if HF:
         stHF = st.copy()
-        stHF.taper(max_percentage=taper, type='cosine')
         try:
-            stHF.remove_response(output=HFoutput, pre_filt=cosfiltHF)
+            stHF.remove_response(output=HFoutput, pre_filt=cosfiltHF, taper=dotaper, taper_fraction=taper)
         except:
             temp = Stream()
             for i, trace in enumerate(stHF):
@@ -260,23 +409,32 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
         ind = stas.index(trace.stats.station)
         colors1 += cycle[ind]
 
+    vlines = []
+    if startline is not None:
+        vlines.append(startline)
+    if endline is not None:
+        vlines.append(endline)
+
     # Now make figures
-    if timeseries:
+    if raw:
         figraw = reviewData.recsec(st, norm=True, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors1,
-                                   labelsize=14, addscale=False, unitlabel=None, convert=1., labelquickdraw=False)
-        if HF:
-            figHF = reviewData.recsec(stHF, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors1,
-                                      labelsize=14, addscale=True, unitlabel='m/s', convert=1., labelquickdraw=False)
-        else:
-            figHF = None
-        if LP:
-            figLP = reviewData.recsec(stLP, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors1,
-                                      labelsize=14, addscale=True, unitlabel='m', convert=1., labelquickdraw=False)
-        else:
-            figLP = None
+                                   labelsize=14, addscale=False, unitlabel=None, convert=1., labelquickdraw=False,
+                                   vlines=vlines)
     else:
         figraw = None
+    if HF:
+        for tr in stHF.select(channel='BDF'):
+            stHF.remove(tr)
+        figHF = reviewData.recsec(stHF, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors1,
+                                  labelsize=14, addscale=True, unitlabel='m/s', convert=1., labelquickdraw=False,
+                                  vlines=vlines)
+    else:
         figHF = None
+    if LP:
+        figLP = reviewData.recsec(stLP, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors1,
+                                  labelsize=14, addscale=True, unitlabel='m', convert=1., labelquickdraw=False,
+                                  vlines=vlines)
+    else:
         figLP = None
 
     # Make spectrograms and spectra
@@ -294,12 +452,30 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
                     print 'Failed to remove sensitivity for %s, deleting this station' % (trace.stats.station + trace.stats.channel,)
 
     if spectrograms:
-        specg = reviewData.make_spectrogram(stspec, log1=True, maxtraces=15, maxPower=None, minPower=None, freqmax=None, labelsize=14)
+        specg = reviewData.make_spectrogram(stspec, log1=True, maxtraces=15, maxPower=None, minPower=None, freqmax=None, labelsize=14, render=False)
     else:
         specg = None
     if spectra:
-        mt = reviewData.make_multitaper(st, number_of_tapers=None, time_bandwidth=4., sine=False, recsec=True, colors1=colors1,
-                                        logx=True, logy=True, xunits='Hz', xlim=None, yunits='$m^2/s$', ylim=(10.**-3, 10.**9))
+        if speccorr is None:
+            j1, j2, mt = reviewData.make_multitaper(stspec, number_of_tapers=None, time_bandwidth=4., sine=False, recsec=True, colors1=colors1,
+                                                    logx=True, logy=True, xunits='Hz', xlim=[0.001, 1000.], yunits='$m^2/s$', ylim=(10.**-22, 10.**-9),
+                                                    render=False)  # ylim=(10.**-3, 10.**9)
+        else:
+            stspecD = st.copy()
+            try:
+                stspecD.remove_response(output=speccorr, taper=dotaper, taper_fraction=taper)
+            except:
+                temp = Stream()
+                for i, trace in enumerate(stspecD):
+                    #try:
+                    trace.remove_response(output=speccorr, taper=dotaper, taper_fraction=taper)
+                    temp = temp + trace
+                    #except:
+                    #    print 'Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,)
+            j1, j2, mt = reviewData.make_multitaper(stspec, number_of_tapers=None, time_bandwidth=4., sine=False, recsec=True, colors1=colors1,
+                                                    logx=True, logy=True, xunits='Hz', xlim=[0.001, 1000.], yunits='$m^2/s$', ylim=(10.**-22, 10.**-9),
+                                                    render=False)
+
     else:
         mt = None
 

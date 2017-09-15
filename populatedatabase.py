@@ -220,24 +220,26 @@ def recalculate_distances(event_ids, database='/Users/kallstadt/LSseis/landslide
         event_ids = [event_ids]
     connection = None
     connection = lite.connect(database)
-    with connection:
-        for event_id in event_ids:
-        # Get all the SRids and corresponding station_id's for event_id
-            evdict = findsta.getEventInfo(event_id, database=database)
-            cursor = connection.cursor()
-            cursor_output = (cursor.execute('SELECT SRid, station_id FROM sta_nearby WHERE event_id=?', (event_id,)))
+
+    for event_id in event_ids:
+    # Get all the SRids and corresponding station_id's for event_id
+        evdict = findsta.getEventInfo(event_id, database=database)
+        cursor = connection.cursor()
+        cursor_output = (cursor.execute('SELECT SRid, station_id FROM sta_nearby WHERE event_id=?', (event_id,)))
+        retrieved_data = cursor_output.fetchall()
+        SRid = [dat[0] for dat in retrieved_data]
+        station_id = [dat[1] for dat in retrieved_data]
+        for i, staid in enumerate(station_id):
+            cursor_output = (cursor.execute('SELECT Latitude, Longitude FROM stations WHERE Sid=?', (staid,)))
             retrieved_data = cursor_output.fetchall()
-            SRid = [dat[0] for dat in retrieved_data]
-            station_id = [dat[1] for dat in retrieved_data]
-            for i, staid in enumerate(station_id):
-                cursor_output = (cursor.execute('SELECT Latitude, Longitude FROM stations WHERE Sid=?', (staid,)))
-                retrieved_data = cursor_output.fetchall()
-                sta_lat = retrieved_data[0][0]
-                sta_lon = retrieved_data[0][1]
-                backazimuth, azimuth, distance = reviewData.pyproj_distaz(sta_lat, sta_lon, evdict['Latitude'],
-                                                                          evdict['Longitude'])
-                cursor.execute("UPDATE sta_nearby SET stasource_radius_km = ?, az = ?, baz = ? WHERE SRid=?",
-                               ('%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth, SRid[i]))
+            sta_lat = retrieved_data[0][0]
+            sta_lon = retrieved_data[0][1]
+            backazimuth, azimuth, distance = reviewData.pyproj_distaz(sta_lat, sta_lon, evdict['Latitude'],
+                                                                      evdict['Longitude'])
+            with connection:
+                connection.execute("UPDATE sta_nearby SET stasource_radius_km = ?, az = ?, baz = ? WHERE SRid=?",
+                                   ('%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth, SRid[i]))
+    connection.close()
 
 
 def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intincrkm=100.,
@@ -498,9 +500,9 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                     for Sid in Sids_good:
                         cursor.execute('UPDATE sta_nearby SET detect_HF = ? WHERE station_id = ? AND event_id = ?',
                                        (1, Sid, event_id))
-                if maxreachedHF is True:
-                    cursor.execute('UPDATE sta_nearby SET detect_HF = ? WHERE stasource_radius_km > ? AND event_id = ?',
-                                   (0, float(maxdist), event_id))
+                # if maxreachedHF is True:
+                #     cursor.execute('UPDATE sta_nearby SET detect_HF = ? WHERE stasource_radius_km > ? AND event_id = ?',
+                #                    (0, float(maxdist), event_id))
 
         if maxreachedLP is False and len(st_lp) > 0:
             print ('Interactive review of long periods starting\n')
@@ -592,9 +594,9 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                     for Sid in Sids_good:
                         cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE station_id = ? AND event_id = ?',
                                        (1, Sid, event_id))
-                if maxreachedLP is True:
-                    cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE stasource_radius_km > ? AND event_id = ?',
-                                   (0, float(maxdist), event_id))
+                # if maxreachedLP is True:
+                #     cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE stasource_radius_km > ? AND event_id = ?',
+                #                    (0, float(maxdist), event_id))
     else:
         print('no stations in current range')
 
