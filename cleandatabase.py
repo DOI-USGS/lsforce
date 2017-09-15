@@ -16,6 +16,7 @@ import glob
 import time
 import reverse_geocoder as rg
 
+# SET NULL ANY EH channels for detectLP and set NULL for any greater than maxdist
 
 def get_exif(imgfilename):
     """Returns info from exif data of an Image, if it exists.
@@ -187,6 +188,37 @@ def get_eids(newdbname):
     return eids
 
 
+def clean_stanearby(eids, database=None):
+    """Set all stations beyond max detection limits to NULL and detect_LP to NULL for any short period stations
+    """
+    for e1 in eids:
+        evinf = findsta.getEventInfo(e1, database=database)
+        # Connect to database
+        connection = None
+        connection = lite.connect(database)
+        cursor = connection.cursor()
+
+        # pull all info from sta_nearby
+        cursor_output = cursor.execute("""SELECT SRid, stasource_radius_km FROM sta_nearby WHERE event_id=?""", (e1,))
+        stadata = cursor_output.fetchall()
+        for temp in stadata:
+            SRid, stasource_radius_km = temp
+            if stasource_radius_km > evinf['maxdistHF_km']:
+                with connection:
+                    connection.execute('UPDATE sta_nearby SET detect_HF=? WHERE SRid = ?', (None, SRid))
+            if stasource_radius_km > evinf['maxdistLP_km']:
+                with connection:
+                    connection.execute('UPDATE sta_nearby SET detect_LP=? WHERE SRid = ?', (None, SRid))
+            # else:
+            #     pt = cursor.execute("""SELECT Channel FROM sta_nearby, stations ON sta_nearby.station_id = stations.Sid WHERE sta_nearby.SRid=?""", (SRid,))
+            #     channel = pt.fetchone()
+            #     if channel[:2] == 'EH':
+            #         with connection:
+            #             connection.execute('UPDATE sta_nearby SET detect_LP=? WHERE SRid = ?', (None, SRid))
+        connection.close()
+        time.sleep(0.1)
+
+
 def clean_photos(eids, relpath, newdbname, newifname, shortfilen):
     """
     Make clean copies of all photos/figures and give them uniform names, modify database to reflect changes, create flat file for each event summarizing
@@ -217,7 +249,6 @@ def clean_photos(eids, relpath, newdbname, newifname, shortfilen):
         currentpid = np.max(phoids) + 1
 
         # Go through and extract and rename all of the associated files, make summary file on each page
-        cursor = connection.cursor()
         cursor_output = cursor.execute("""SELECT photo_id FROM photos WHERE event_id=?""", (e1,))
         if cursor_output.fetchone() is not None:
             cursor_output = cursor.execute("""SELECT photo_id, photographer, description, file_extension, apply_also FROM photos WHERE event_id=?""", (e1,))
