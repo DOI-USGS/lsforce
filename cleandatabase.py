@@ -539,7 +539,7 @@ def clean_information(eids, relpath, newdbname, newifname, shortfilen):
     cursor = connection.cursor()
 
     # Get max ref id currently existing
-    idlist = cursor.execute("""SELECT Refid FROM [references]""")
+    idlist = cursor.execute("""SELECT Refid FROM [reference]""")
     phoids = idlist.fetchall()
     phoids = [id1[0] for id1 in phoids]
     currentrid = np.max(phoids) + 1
@@ -584,7 +584,7 @@ def clean_information(eids, relpath, newdbname, newifname, shortfilen):
                             newfilenrel = os.path.join(shortfilen, '%s_%s%s' % (e1, evname, evdat), os.path.basename(file_extension[0]))
                             filelist = filelist + ';' + newfilenrel
                         if ref_id is not None:
-                            refinfo = cursor.execute("""SELECT Refid, short_ref FROM [references] WHERE Refid=?""", (ref_id,))
+                            refinfo = cursor.execute("""SELECT Refid, short_ref FROM [reference] WHERE Refid=?""", (ref_id,))
                             ri = refinfo.fetchone()
                             rid, short_ref1 = ri
                         else:
@@ -645,7 +645,7 @@ def clean_references(newdbname, newifname, relpath):
     connection = lite.connect(newdbname)
     cursor = connection.cursor()
 
-    cursor_output = connection.execute("""SELECT Refid FROM [references] ORDER by short_ref""")
+    cursor_output = connection.execute("""SELECT Refid FROM [reference] ORDER by short_ref""")
     ref_id1 = cursor_output.fetchall()
     rids = [e2[0] for e2 in ref_id1]
     currentrid = np.max(rids) + 1
@@ -655,7 +655,7 @@ def clean_references(newdbname, newifname, relpath):
         # writer2.writerow(['List of all references cited'])
         writer2.writerow(['short_ref', 'Refid', 'long_ref', 'file_extension', 'url', 'event_ids'])
         for ref_id in rids:
-            refinfo = cursor.execute("""SELECT event_id, apply_also, short_ref, long_ref, file_extension, url FROM [references] WHERE Refid=?""", (ref_id,))
+            refinfo = cursor.execute("""SELECT event_id, apply_also, short_ref, long_ref, file_extension, url FROM [reference] WHERE Refid=?""", (ref_id,))
             ri = refinfo.fetchone()
             event_id, apply_also, short_ref1, long_ref1, file_extension1, url1 = ri
             shortsref = short_ref1.replace('(', '').replace(')', '').replace(' ', '_').replace(',', '').replace('.', '')
@@ -693,7 +693,7 @@ def clean_references(newdbname, newifname, relpath):
                             # replace original entry
                             #try:
                             with connection:
-                                connection.execute('UPDATE [references] SET file_extension=? WHERE Refid = ?',
+                                connection.execute('UPDATE [reference] SET file_extension=? WHERE Refid = ?',
                                                    (newfilenrel, ref_id))
                             writer2.writerow([short_ref1, ref_id, long_ref1.encode('utf-8'), newfilenrel, url1, evstring])
                             cnt += 1
@@ -703,7 +703,7 @@ def clean_references(newdbname, newifname, relpath):
                             # add new entry
                             #try:
                             with connection:
-                                connection.execute('INSERT INTO [references](Refid, short_ref, long_ref, file_extension, url) VALUES (?,?,?,?,?)', (currentrid, short_ref1, long_ref1, newfilenrel, url1))
+                                connection.execute('INSERT INTO [reference](Refid, short_ref, long_ref, file_extension, url) VALUES (?,?,?,?,?)', (currentrid, short_ref1, long_ref1, newfilenrel, url1))
                             writer2.writerow([short_ref1, ref_id, long_ref1.encode('utf-8'), newfilenrel, url1, evstring])
                             cnt += 1
                             #except Exception as e:
