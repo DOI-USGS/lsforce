@@ -97,6 +97,69 @@ def populate_station_tables(lines, source, database='/Users/kallstadt/LSseis/lan
         print(('added %s entries to stations table, %s already were there' % (val, val2)))
 
 
+def populate_redoubt_stanearby(event_ids, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
+                               update=True):
+    """
+    Also, put the station in the sta_nearby table for this event and calculate distance, az, baz
+    """
+    if type(event_ids) is int:
+        event_ids = [event_ids]
+    for event_id in event_ids:
+        evdict = findsta.getEventInfo(event_id, database=database)
+
+    stations = ['RD01', 'RD02', 'RD03', 'RDW']
+
+    connection = None
+    connection = lite.connect(database)
+    cursor = connection.cursor()
+
+    #get Sid and lat lon for each entry in line
+    val = 0
+    val1 = 0
+    val2 = 0
+    valbad = 0
+    for event_id in event_ids:
+        for sta in stations:
+                #get the Sid from stations table
+                cursor_output = cursor.execute('SELECT Sid,Latitude,Longitude FROM stations WHERE Name=?', (sta,))
+                retrieved_data = cursor_output.fetchall()
+                for dat in retrieved_data:
+                    Sid, sta_lat, sta_lon = dat
+                    try:
+                        cursor_output = cursor.execute('SELECT SRid FROM sta_nearby WHERE event_id=? AND station_id=?',
+                                                       (event_id, Sid))
+                        temp = cursor_output.fetchall()
+                    except:
+                        temp = []
+                    if len(temp) == 0:
+                        #if it isn't already there, use iris's distaz webservice to calculate stuff and save it in the table
+                        #result = client.distaz(sta_lat, sta_lon, event_lat, event_lon)
+                        backazimuth, azimuth, distance = reviewData.pyproj_distaz(sta_lat, sta_lon, evdict['Latitude'], evdict['Longitude'])
+                        with connection:
+                            try:
+                                cursor.execute('INSERT INTO sta_nearby(event_id,station_id,stasource_radius_km,az,baz) VALUES(?,?,?,?,?)',
+                                               (event_id, Sid, '%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth))
+                                val += 1
+                            except Exception as f:
+                                print(f)
+                                valbad += 1
+                    elif update is True:
+                        # update entry, if it is there
+                        with connection:
+                            try:
+                                #result = client.distaz(sta_lat, sta_lon, event_lat, event_lon)
+                                backazimuth, azimuth, distance = reviewData.pyproj_distaz(sta_lat, sta_lon, evdict['Latitude'], evdict['Longitude'])
+                                cursor.execute("UPDATE sta_nearby SET stasource_radius_km = ?, az = ?, baz = ? WHERE event_id =? AND station_id =?;",
+                                               ('%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth, event_id, Sid))
+                                val1 += 1
+                            except Exception as f:
+                                print(f)
+                                valbad += 1
+                    else:
+                        val2 += 1
+        print(('added %s entries to sta_nearby table, updated %s entries, %s left as is, %s not added because of error' % (val, val1, val2, valbad)))
+
+
 def populate_station_event_table(event_id, lines, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
                                  update=True):
     """
