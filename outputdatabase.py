@@ -54,6 +54,9 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
             detectLP = True
         st = grab_data(e1, both=True, database=database, savedat=savedat, folderdat=folderdat, minradius=minradius, maxradius=maxradius,
                        bufferperc=bufferperc, numstas=numstas, Zonly=Zonly, reloadfile=reloadfile, loadfromfile=loadfromfile)
+        if len(st) == 0:
+            print('No data for event %d, continuing to next eid' % e1)
+            continue
         print('got data')
         # remove duplicates, take higher sample rate station
 
@@ -71,7 +74,7 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
                 loccodes = np.sort(reviewData.unique_list([trace.stats.location for trace in shortlist]))
                 if len(loccodes) > 1:
                     for loc in loccodes:
-                        if loc == '':
+                        if loc == '' or loc == '00':
                             pass
                         else:
                             for tr in st.select(station=sta, location=loc):
@@ -259,6 +262,8 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
                 keep.append(v)
 
     # Then keep only the numchans closest stations (all channels)
+    if len(keep) == 0:
+        return Stream()
     indx, dists = zip(*[[i, k['stasource_radius_km']] for i, k in enumerate(keep)])
     dists = reviewData.unique_list(sorted(dists))
     # Take first x unique distances (numchans)
