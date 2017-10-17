@@ -71,17 +71,14 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
                     for tr in st.select(station=sta, sampling_rate=minrate):
                         if tr.stats.station == sta and tr.stats.sampling_rate == minrate:
                             st.remove(tr)
-                loccodes = np.sort(reviewData.unique_list([trace.stats.location for trace in shortlist]))
-                if len(loccodes) > 1:
-                    for loc in loccodes:
-                        if loc == '' or loc == '00':
-                            pass
-                        else:
-                            for tr in st.select(station=sta, location=loc):
-                                st.remove(tr)
-
-        # Update numsta
-        numstas = len(reviewData.unique_list([trace.stats.station for trace in st]))
+                # loccodes = np.sort(reviewData.unique_list([trace.stats.location for trace in shortlist]))
+                # if len(loccodes) > 1:
+                #     for loc in loccodes:
+                #         if loc == '' or loc == '00':
+                #             pass
+                #         else:
+                #             for tr in st.select(station=sta, location=loc):
+                #                 st.remove(tr)
 
         if HF:
             # Make high frequency figs (without taper)
