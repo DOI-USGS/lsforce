@@ -39,7 +39,7 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
                 lines, source = reviewData.get_stations_iris(evdict['Latitude'], evdict['Longitude'],
                                                              evdict['StartTime'], startbefore=stb4, minradiuskm=minradius,
                                                              maxradiuskm=maxradius,
-                                                             chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?'))
+                                                             chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?'))
                 populate_station_tables(lines, source, database=database)
                 populate_station_event_table(event_id, lines, update=True, database=database)
                 lines = None
@@ -52,7 +52,7 @@ def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=F
                 lines, source = reviewData.get_stations_ncedc(evdict['Latitude'], evdict['Longitude'],
                                                               evdict['StartTime'], minradiuskm=minradius,
                                                               maxradiuskm=maxradius,
-                                                              chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?'))
+                                                              chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?'))
                 populate_station_tables(lines, source, database=database)
                 populate_station_event_table(event_id, lines, update=True, database=database)
                 lines = None
@@ -350,7 +350,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
     # Load data from station list to maxradius
     if maxreachedHF is True and maxreachedLP is False:  # If only looking at LP, don't bother downloading other stuff
         staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius,
-                                     chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2', database=database)
+                                     chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2,LHZ,LHN,LHE,LH1,LH2,LH3,SLZ,SLN,SLE', database=database)
     else:
         staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius, database=database)
     datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
@@ -453,25 +453,13 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         st = Stream([trace for trace in st if trace.stats.rdist < maxradius and trace.stats.rdist > minradius])
         if taper is not None:
             st.taper(max_percentage=taper, type='cosine')
-        # Split into hf and lp streams and preprocess
-        st_hf = st.copy()
-        # pre-filter to hf_range
-        st_hf.filter('bandpass', freqmin=HFlims[0], freqmax=HFlims[1])
-        # pre-correct to lp range, delete E* channels and any that won't station correct
-        st_lp = st.copy()
-        st_lp = st_lp.select(channel='B*') + st_lp.select(channel='H*')
-        #reorder by distance
-        st_lp = st_lp.sort(keys=['rdist', 'channel'])
-        temp = Stream()
-        cosfilt = (0.5/LPlims[1], 1/LPlims[1], 1/LPlims[0], 2/LPlims[0])
-        for i, trace in enumerate(st_lp):
-            try:
-                trace.remove_response(output=LPoutput, pre_filt=cosfilt)
-                temp = temp + trace
-            except:
-                print 'Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,)
-        st_lp = temp
+
         if maxreachedHF is False:
+            # Split into hf and lp streams and preprocess
+            st_hf = st.copy()
+            # pre-filter to hf_range
+            st_hf.filter('bandpass', freqmin=HFlims[0], freqmax=HFlims[1])
+            # pre-correct to lp range, delete E* channels and any that won't station correct
             print ('Interactive review of high frequencies starting\n')
             # Interactive review of high frequencies
             zp = reviewData.InteractivePlot(st_hf, maxtraces=maxtraces, textline=['HF filtered data for your review',
@@ -567,33 +555,72 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 #     cursor.execute('UPDATE sta_nearby SET detect_HF = ? WHERE stasource_radius_km > ? AND event_id = ?',
                 #                    (0, float(maxdist), event_id))
 
-        if maxreachedLP is False and len(st_lp) > 0:
-            print ('Interactive review of long periods starting\n')
-            # Interactive review of long periods
-            zp = reviewData.InteractivePlot(st_lp, maxtraces=maxtraces, textline=['Station corrected LP data for your review',
-                                            'Delete bad traces and take note of distance when you reach maximum observation',
-                                            'hit Q to exit when ready to continue'])
-            # Get info about what was kept and what wasn't
-            st_lpgood = zp.st_current
-            lpbad = zp.deleted
+        if maxreachedLP is False:
+            st_lp = st.copy()
+            st_lp = st_lp.select(channel='B*') + st_lp.select(channel='H*') + st_lp.select(channel='L*')
+            if len(st_lp) > 0:
+                #reorder by distance
+                st_lp = st_lp.sort(keys=['rdist', 'channel'])
+                temp = Stream()
+                cosfilt = (0.5/LPlims[1], 1/LPlims[1], 1/LPlims[0], 2/LPlims[0])
+                for i, trace in enumerate(st_lp):
+                    try:
+                        trace.remove_response(output=LPoutput, pre_filt=cosfilt)
+                        temp = temp + trace
+                    except:
+                        print 'Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,)
+                st_lp = temp
 
-            connection = None
-            connection = lite.connect(database)
+                print ('Interactive review of long periods starting\n')
+                # Interactive review of long periods
+                zp = reviewData.InteractivePlot(st_lp, maxtraces=maxtraces, textline=['Station corrected LP data for your review',
+                                                'Delete bad traces and take note of distance when you reach maximum observation',
+                                                'hit Q to exit when ready to continue'])
+                # Get info about what was kept and what wasn't
+                st_lpgood = zp.st_current
+                lpbad = zp.deleted
 
-            # See if maxradiuslp was reached
-            maxdist = np.max([trace.stats.rdist for trace in st_lpgood])
-            feedback = raw_input(('is %4.1f km the maximum distance observed for lp? Y or N\n') % (maxdist,))
-            if feedback.lower() == 'n':
-                feedback = raw_input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
-                if feedback.lower() == 'y':
-                    maxdist = float(raw_input('Enter the maximum distance observed in km (round up to nearest km)\n'))
-                    # delete all stations that were greater than maximum distance and that are in st_lpbad, and put good stations in database
-                    goodstas = [str(trace.stats.station) for trace in st_lpgood if trace.stats.rdist < maxdist]
-                    goodchans = [str(trace.stats.channel) for trace in st_lpgood if trace.stats.rdist < maxdist]
-                    goodnets = [str(trace.stats.network) for trace in st_lpgood if trace.stats.rdist < maxdist]
-                    badstas = [str(trace.stats.station) for trace in st_lpgood if trace.stats.rdist > maxdist] + [str(g.split('.')[0]) for g in lpbad]
-                    badchans = [str(trace.stats.channel) for trace in st_lpgood if trace.stats.rdist > maxdist] + [str(g.split('.')[1]) for g in lpbad]
-                    badnets = [str(trace.stats.network) for trace in st_lpgood if trace.stats.rdist > maxdist] + [str(g.split('.')[3].split(' - ')[0]) for g in lpbad]
+                connection = None
+                connection = lite.connect(database)
+
+                # See if maxradiuslp was reached
+                maxdist = np.max([trace.stats.rdist for trace in st_lpgood])
+                feedback = raw_input(('is %4.1f km the maximum distance observed for lp? Y or N\n') % (maxdist,))
+                if feedback.lower() == 'n':
+                    feedback = raw_input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
+                    if feedback.lower() == 'y':
+                        maxdist = float(raw_input('Enter the maximum distance observed in km (round up to nearest km)\n'))
+                        # delete all stations that were greater than maximum distance and that are in st_lpbad, and put good stations in database
+                        goodstas = [str(trace.stats.station) for trace in st_lpgood if trace.stats.rdist < maxdist]
+                        goodchans = [str(trace.stats.channel) for trace in st_lpgood if trace.stats.rdist < maxdist]
+                        goodnets = [str(trace.stats.network) for trace in st_lpgood if trace.stats.rdist < maxdist]
+                        badstas = [str(trace.stats.station) for trace in st_lpgood if trace.stats.rdist > maxdist] + [str(g.split('.')[0]) for g in lpbad]
+                        badchans = [str(trace.stats.channel) for trace in st_lpgood if trace.stats.rdist > maxdist] + [str(g.split('.')[1]) for g in lpbad]
+                        badnets = [str(trace.stats.network) for trace in st_lpgood if trace.stats.rdist > maxdist] + [str(g.split('.')[3].split(' - ')[0]) for g in lpbad]
+                        maxreachedLP = True
+                        # Insert maxdistlp into database
+                        with connection:
+                            cursor = connection.cursor()
+                            try:
+                                cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
+                            except Exception as e:
+                                print e
+                    if feedback.lower() == 'n':
+                        print 'Filling current info into database, then will load more distant data for further analysis\n'
+                        badstas = [str(g.split('.')[0]) for g in lpbad]
+                        badchans = [str(g.split('.')[1]) for g in lpbad]
+                        badnets = [str(g.split('.')[3].split(' - ')[0]) for g in lpbad]
+                        goodstas = [str(trace.stats.station) for trace in st_lpgood]
+                        goodchans = [str(trace.stats.channel) for trace in st_lpgood]
+                        goodnets = [str(trace.stats.network) for trace in st_lpgood]
+                elif feedback.lower() == 'y':
+                    # put info in database
+                    badstas = [str(g.split('.')[0]) for g in lpbad]
+                    badchans = [str(g.split('.')[1]) for g in lpbad]
+                    badnets = [str(g.split('.')[3].split(' - ')[0]) for g in lpbad]
+                    goodstas = [str(trace.stats.station) for trace in st_lpgood]
+                    goodchans = [str(trace.stats.channel) for trace in st_lpgood]
+                    goodnets = [str(trace.stats.network) for trace in st_lpgood]
                     maxreachedLP = True
                     # Insert maxdistlp into database
                     with connection:
@@ -602,66 +629,42 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                             cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
                         except Exception as e:
                             print e
-                if feedback.lower() == 'n':
-                    print 'Filling current info into database, then will load more distant data for further analysis\n'
-                    badstas = [str(g.split('.')[0]) for g in lpbad]
-                    badchans = [str(g.split('.')[1]) for g in lpbad]
-                    badnets = [str(g.split('.')[3].split(' - ')[0]) for g in lpbad]
-                    goodstas = [str(trace.stats.station) for trace in st_lpgood]
-                    goodchans = [str(trace.stats.channel) for trace in st_lpgood]
-                    goodnets = [str(trace.stats.network) for trace in st_lpgood]
-            elif feedback.lower() == 'y':
-                # put info in database
-                badstas = [str(g.split('.')[0]) for g in lpbad]
-                badchans = [str(g.split('.')[1]) for g in lpbad]
-                badnets = [str(g.split('.')[3].split(' - ')[0]) for g in lpbad]
-                goodstas = [str(trace.stats.station) for trace in st_lpgood]
-                goodchans = [str(trace.stats.channel) for trace in st_lpgood]
-                goodnets = [str(trace.stats.network) for trace in st_lpgood]
-                maxreachedLP = True
-                # Insert maxdistlp into database
+                # Fill info into database
+                Sids_bad = []
+                Sids_good = []
                 with connection:
                     cursor = connection.cursor()
-                    try:
-                        cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
-                    except Exception as e:
-                        print e
-            # Fill info into database
-            Sids_bad = []
-            Sids_good = []
-            with connection:
-                cursor = connection.cursor()
-                for i, badsta in enumerate(badstas):
-                    try:
-                        cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
-                                                       (badstas[i], badnets[i], badchans[i]))
-                        retrieved_data = cursor_output.fetchall()
-                        if retrieved_data:
-                            Sids_bad += [val[0] for val in retrieved_data]
-                    except Exception as e:
-                        print e
-                for i, goodsta in enumerate(goodstas):
-                    try:
-                        cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
-                                                       (goodstas[i], goodnets[i], goodchans[i]))
-                        retrieved_data = cursor_output.fetchall()
-                        if retrieved_data:
-                            Sids_good += [val[0] for val in retrieved_data]
-                    except Exception as e:
-                        print e
-                if Sids_bad:
-                    for Sid in Sids_bad:
-                        cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE station_id = ? AND event_id = ?',
-                                       (0, Sid, event_id))
-                if Sids_good:
-                    for Sid in Sids_good:
-                        cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE station_id = ? AND event_id = ?',
-                                       (1, Sid, event_id))
-                # if maxreachedLP is True:
-                #     cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE stasource_radius_km > ? AND event_id = ?',
-                #                    (0, float(maxdist), event_id))
-    else:
-        print('no stations in current range')
+                    for i, badsta in enumerate(badstas):
+                        try:
+                            cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
+                                                           (badstas[i], badnets[i], badchans[i]))
+                            retrieved_data = cursor_output.fetchall()
+                            if retrieved_data:
+                                Sids_bad += [val[0] for val in retrieved_data]
+                        except Exception as e:
+                            print e
+                    for i, goodsta in enumerate(goodstas):
+                        try:
+                            cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
+                                                           (goodstas[i], goodnets[i], goodchans[i]))
+                            retrieved_data = cursor_output.fetchall()
+                            if retrieved_data:
+                                Sids_good += [val[0] for val in retrieved_data]
+                        except Exception as e:
+                            print e
+                    if Sids_bad:
+                        for Sid in Sids_bad:
+                            cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE station_id = ? AND event_id = ?',
+                                           (0, Sid, event_id))
+                    if Sids_good:
+                        for Sid in Sids_good:
+                            cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE station_id = ? AND event_id = ?',
+                                           (1, Sid, event_id))
+                    # if maxreachedLP is True:
+                    #     cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE stasource_radius_km > ? AND event_id = ?',
+                    #                    (0, float(maxdist), event_id))
+            else:
+                print('no stations in current range')
 
     # Continue searching for maximum distance
     while maxreachedHF is False or maxreachedLP is False:
@@ -679,7 +682,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         # Load data from station list to maxradius
         if maxreachedHF is True and maxreachedLP is False:  # If only looking at LP, don't bother downloading other stuff
             staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin,
-                                         chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2', database=database)
+                                         chanuse='BHZ,BHE,BHN,BH1,BH2,HHZ,HHE,HHN,HH1,HH2,LHZ,LHN,LHE,LH1,LH2,LH3,SLZ,SLN,SLE', database=database)
         else:
             staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin, database=database)
         datlocs = reviewData.unique_list([staDict[k]['source'] for k in staDict])
@@ -825,7 +828,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
         if maxreachedLP is False:
             st_lp = st.copy()
-            st_lp = st_lp.select(channel='B*') + st_lp.select(channel='H*')
+            st_lp = st_lp.select(channel='B*') + st_lp.select(channel='H*') + st_lp.select(channel='L*')
             #reorder by distance
             st_lp = st_lp.sort(keys=['rdist', 'channel'])
             temp = Stream()
