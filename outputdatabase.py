@@ -31,7 +31,8 @@ import matplotlib.pyplot as plt
 def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
                    placefigs='/Users/kallstadt/LSseis/landslideDatabase/InfoFiles/waveformfigs', relplacefigs='InfoFiles/waveformfigs',
                    savedat=False, folderdat='data', reloadfile=False, Zonly=False, addtodb=False, loadfromfile=True,
-                   minradius=0., maxradius=None, removeoutliers=False, raw=True, HF=True, LP=True, timeseries=True, spectrograms=True, spectra=True):
+                   minradius=0., maxradius=None, removeoutliers=False, raw=True, HF=True, LP=True, timeseries=True,
+                   spectrograms=True, spectra=True, merge=True, pad=True, fill_value=0., detrend='demean'):
     """
     Make standard figures for each event and put them in the database
     """
@@ -53,7 +54,8 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
         if evDict['LPpotential'] == 1:
             detectLP = True
         st = grab_data(e1, both=True, database=database, savedat=savedat, folderdat=folderdat, minradius=minradius, maxradius=maxradius,
-                       bufferperc=bufferperc, numstas=numstas, Zonly=Zonly, reloadfile=reloadfile, loadfromfile=loadfromfile)
+                       bufferperc=bufferperc, numstas=numstas, Zonly=Zonly, reloadfile=reloadfile, loadfromfile=loadfromfile,
+                       merge=merge, pad=pad, fill_value=fill_value, detrend=detrend)
         if len(st) == 0:
             print('No data for event %d, continuing to next eid' % e1)
             continue
@@ -79,15 +81,14 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
                 #         else:
                 #             for tr in st.select(station=sta, location=loc):
                 #                 st.remove(tr)
-
         if HF:
             # Make high frequency figs (without taper)
             figraw, figHF, junk, specg, junk2 = make_figures(st, bufferperc=None, raw=True, HF=True, LP=False, spectrograms=True, spectra=False,
-                                                             taper=None, detrend='demean', startline=evDict['StartTime'], endline=evDict['EndTime'],
+                                                             taper=None, detrend=detrend, startline=evDict['StartTime'], endline=evDict['EndTime'],
                                                              removeoutliers=removeoutliers)
         if raw and not HF:
             figraw, figHF, junk, specg, junk2 = make_figures(st, bufferperc=None, raw=True, HF=False, LP=False, spectrograms=False, spectra=False,
-                                                             taper=None, detrend='demean', startline=evDict['StartTime'], endline=evDict['EndTime'],
+                                                             taper=None, detrend=detrend, startline=evDict['StartTime'], endline=evDict['EndTime'],
                                                              removeoutliers=removeoutliers)
             figHF = None
 
@@ -96,9 +97,10 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
 
         print('made high frequency plots')
         # Make lp figs and spectra (with taper)
-        if detectLP:
+        if detectLP and LP:
             stLP = grab_data(e1, detectHF=None, detectLP=True, database=database, savedat=savedat, folderdat=folderdat + 'LP', minradius=minradius, maxradius=maxradius,
-                             bufferperc=bufferperc, numstas=numstas, Zonly=Zonly, reloadfile=reloadfile, loadfromfile=loadfromfile)
+                             bufferperc=bufferperc, numstas=numstas, Zonly=Zonly, reloadfile=reloadfile, loadfromfile=loadfromfile,
+                             merge=merge, pad=pad, fill_value=fill_value, detrend=detrend)
             for tr in stLP.select(channel='BDF'):
                 stLP.remove(tr)
             unilist = reviewData.unique_list([trace.stats.station for trace in stLP])
@@ -129,8 +131,12 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
             mtLP = None
 
         if spectra and (HF or LP):
-            junk1, junk2, junk, junk3, mt = make_figures(st, bufferperc=bufferperc, raw=False, HF=False, LP=False, spectrograms=False, spectra=True,
-                                                         taper='bufferperc', detrend='linear', removeoutliers=removeoutliers)
+            if detrend is None:
+                junk1, junk2, junk, junk3, mt = make_figures(st, bufferperc=bufferperc, raw=False, HF=False, LP=False, spectrograms=False, spectra=True,
+                                                             taper='bufferperc', detrend=None, removeoutliers=removeoutliers)
+            else:
+                junk1, junk2, junk, junk3, mt = make_figures(st, bufferperc=bufferperc, raw=False, HF=False, LP=False, spectrograms=False, spectra=True,
+                                                             taper='bufferperc', detrend='linear', removeoutliers=removeoutliers)
         else:
             mt = None
 
@@ -217,8 +223,9 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
 
 
 def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis/landslideDatabase',
-              detectHF=None, detectLP=None, both=False, minradius=0., maxradius=None, Zonly=False, reloadfile=False, loadfromfile=False,
-              database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db', savedat=False, folderdat='data'):
+              detectHF=None, detectLP=None, both=False, minradius=0., maxradius=None, Zonly=False, reloadfile=False,
+              loadfromfile=False, savedat=False, folderdat='data', merge=True, pad=True, fill_value=0., detrend='demean',
+              database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
 
     """
     Pulls data from IRIS and other sources and links station correction info
@@ -296,7 +303,8 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
                         if nam in namelist:
                             newfilenames.append(filen)
                     stsac += reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                    endtime=evDict['EndTime']+buffer_sec, chanuse=chanuse, savedat=False)
+                                                    endtime=evDict['EndTime']+buffer_sec, chanuse=chanuse, savedat=False,
+                                                    merge=merge, pad=pad, fill_value=fill_value)
                     originalstt = []
                     # Get earliest start time from IRIS for AK and AV
                     url1 = ('http://service.iris.edu/fdsnws/station/1/query?network=AV&level=station&format=text&nodata=404')
@@ -345,7 +353,8 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
                         trace.stats.starttime = originalstt[i]
                 else:
                     stsac += reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
-                                                    endtime=evDict['EndTime']+buffer_sec, chanuse=chanuse, savedat=False)
+                                                    endtime=evDict['EndTime']+buffer_sec, chanuse=chanuse, savedat=False,
+                                                    merge=merge, pad=pad, fill_value=fill_value)
                 stsac = Stream([trace for trace in stsac if trace.max() != 0.0])  # Get rid of any empty ones
                 sttemp += stsac
 
@@ -373,7 +382,7 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
                 sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                                    attach_response=True, clientname='IRIS', savedat=savedat,
                                                    folderdat=folderdat, filenamepref='iris_', reloadfile=reloadfile,
-                                                   loadfromfile=loadfromfile)
+                                                   loadfromfile=loadfromfile, merge=merge, pad=pad, fill_value=fill_value)
             except Exception as e:
                 print(e)
     if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
@@ -382,7 +391,7 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
             sttemp += reviewData.getdata_exact(stalist, evDict['StartTime'] - buffer_sec, evDict['EndTime'] + buffer_sec,
                                                attach_response=True, clientname='NCEDC', savedat=savedat,
                                                folderdat=folderdat, filenamepref='ncedc_', reloadfile=reloadfile,
-                                               loadfromfile=loadfromfile)
+                                               loadfromfile=loadfromfile, merge=merge, pad=pad, fill_value=fill_value)
 
     # Delete any that are not in list
     nets, stas, chans = zip(*[[k['Network'], k['Name'], k['Channel']] for k in staDict])  # Exclude location code because inconsistencies here can cause data to not be found
@@ -394,7 +403,8 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
     st = st.sort(keys=['rdist', 'channel'])
 
     # Preprocess
-    st.detrend('demean')
+    if detrend is not None:
+        st.detrend(detrend)
 
     return st
 
@@ -472,12 +482,13 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
             stHF = temp.copy()
         if removeoutliers:
             for trace in stHF:
-                if np.abs(trace.max()) > 100*np.median(np.abs(stHF.max())):
+                print('made it here')
+                if np.abs(trace.max()) > 10*np.median(np.abs(stHF.max())):
                     stHF.remove(trace)
                     removelater += trace
 
     # Figure out the colors, make sure same station has same color
-    cycle = ['r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k']
+    cycle = ['r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k', 'r', 'b', 'g', 'm', 'k']
 
     vlines = []
     if startline is not None:
@@ -494,7 +505,7 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
             colors1 += cycle[ind]
         figraw = reviewData.recsec(st, norm=True, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors1,
                                    labelsize=14, addscale=False, unitlabel=None, convert=1., labelquickdraw=False,
-                                   vlines=vlines)
+                                   vlines=vlines, pad=True)
     else:
         figraw = None
     if HF:
@@ -507,7 +518,7 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
             colors1 += cycle[ind]
         figHF = reviewData.recsec(stHF, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors1,
                                   labelsize=14, addscale=True, unitlabel='m/s', convert=1., labelquickdraw=False,
-                                  vlines=vlines)
+                                  vlines=vlines, pad=True)
     else:
         figHF = None
     if LP:
@@ -518,7 +529,7 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
             colors1 += cycle[ind]
         figLP = reviewData.recsec(stLP, norm=False, maxtraces=15, quickdraw=True, figsize=(13, 14), colors=colors1,
                                   labelsize=14, addscale=True, unitlabel='m', convert=1., labelquickdraw=False,
-                                  vlines=vlines)
+                                  vlines=vlines, pad=True)
     else:
         figLP = None
 
@@ -546,7 +557,8 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
                     stspec.remove(trace)
 
     if spectrograms:
-        specg = reviewData.make_spectrogram(stspec, log1=True, maxtraces=15, maxPower=None, minPower=None, freqmax=None, labelsize=14, render=False)
+        specg = reviewData.make_spectrogram(stspec, log1=True, maxtraces=15, maxPower=None, minPower=None, freqmax=None,
+                                            labelsize=14, render=False)
     else:
         specg = None
     if spectra:
@@ -558,7 +570,7 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
                 colors1 += cycle[ind]
             j1, j2, mt = reviewData.make_multitaper(stspec, number_of_tapers=None, time_bandwidth=4., sine=False, recsec=True, colors1=colors1,
                                                     logx=True, logy=True, xunits='Hz', xlim=[0.001, 1000.], yunits='$m^2/s$', ylim=(10.**-22, 10.**-9),
-                                                    render=False)  # ylim=(10.**-3, 10.**9)
+                                                    render=False, detrend=detrend)  # ylim=(10.**-3, 10.**9)
         else:
             if speccorr == 'DISP':
                 yunits = '$m/s$'
