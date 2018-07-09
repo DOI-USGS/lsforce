@@ -222,7 +222,7 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
         plt.close('all')
 
 
-def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis/landslideDatabase',
+def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis/landslideDatabase', ampdetectHF=None,
               detectHF=None, detectLP=None, both=False, minradius=0., maxradius=None, Zonly=False, reloadfile=False,
               loadfromfile=False, savedat=False, folderdat='data', merge=True, pad=True, fill_value=0., detrend='demean',
               database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
@@ -242,51 +242,22 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
 
     buffer_sec = (evDict['EndTime'] - evDict['StartTime']) * bufferperc
 
+    if Zonly:
+        chanuse = 'BHZ,EHZ,HHZ'
+    else:
+        chanuse = '*'
+
     # Find stations where detect_HF=1 or detect_LP=1 for this event
-    statemp = findsta.getStaInfo(event_id, database=database, minradius=minradius, maxradius=maxradius)
-    # Loop through and keep only the ones that were detected on HF and/or LP
-    keep = []
-    for k, v in statemp.items():
-        if both:
-            if v['detect_HF'] == 1 or v['detect_LP'] == 1:
-                keep.append(v)
-        elif detectHF is None and detectLP is None:
-            keep.append(v)
-        elif detectHF is True and detectLP is False:
-            if v['detect_HF'] == 1 and v['detect_LP'] == 0:
-                keep.append(v)
-        elif detectHF is None and detectLP is True:
-            if v['detect_LP'] == 1:
-                keep.append(v)
-        elif detectLP is True and detectHF is False:
-            if v['detect_LP'] == 1 and v['detect_HF'] == 0:
-                keep.append(v)
-        elif detectLP is None and detectHF is True:
-            if v['detect_HF'] == 1:
-                keep.append(v)
-
-    # Then keep only the numchans closest stations (all channels)
-    if len(keep) == 0:
+    staDict = findsta.getStaInfo(event_id, database=database, minradius=minradius, maxradius=maxradius, both=both,
+                                 detectHF=detectHF, detectLP=detectLP, ampdetectHF=ampdetectHF, numstas=numstas,
+                                 chanuse=chanuse)
+    if len(staDict) == 0:
+        print('No stations match criteria')
         return Stream()
-    indx, dists = zip(*[[i, k['stasource_radius_km']] for i, k in enumerate(keep)])
-    dists = reviewData.unique_list(sorted(dists))
-    # Take first x unique distances (numchans)
-    unique_dist = reviewData.unique_list(dists)
-    these = unique_dist[:numstas]
-
-    # Take those ones from the keep dictionary
-    staDict = []
-    for k in keep:
-        if k['stasource_radius_km'] in these:
-            staDict.append(k)
 
     datlocs = reviewData.unique_list([k['source'] for k in staDict])
     sttemp = Stream()
     if 'sac' in evDict['DatLocation']:
-        if Zonly:
-            chanuse = 'BHZ,EHZ,HHZ'
-        else:
-            chanuse = '*'
         datloc1 = evDict['DatLocation'].split(',')
         datloc1 = [x.strip() for x in datloc1 if 'sac' in x]
         stsac = Stream()
@@ -368,9 +339,6 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
     if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
         stalist = []
         for k in staDict2:
-            if Zonly is True:
-                if k['Channel'][-1].lower() != 'z':
-                    continue
             if 'IRIS' in k['source']:
                 if 'Iliamna' not in evDict['DatLocation']:
                     stalist.append((k['Name'], k['Channel'], k['Network'], '*'))

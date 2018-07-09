@@ -89,9 +89,9 @@ def getEventInfo(event_id, database='/Users/kallstadt/LSseis/landslideDatabase/l
         return eventDict
 
 
-def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=None,
+def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=None, both=False,
                ampdetectHF=None, ampdetectLP=None, durationHF=None, durationLP=None,
-               chanuse='*', database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
+               chanuse='*', numstas=None, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """Get all the station detection information with or without constraints on radius,
     whether or not it was detected in HF or LP bands, and whether or not there
     are amplitude and duration measurements in HF or LP bands.
@@ -101,15 +101,18 @@ def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=N
     :param minradius: Minimum radius to search in km
     :param detectHF: Return HF detections? None, True, or False
     :param detectLP: Return LP detections? None, True, or False
+    :param both: True if want both detectHF and detectLP, but don't need both to be true for a given station
     :param ampdetectHF: Return stations with HF amplitude measurements? None, True, or False
     :param ampdetectLP: Return stations with HF amplitude measurements? None, True, or False
     :param durationHF: Return stations with HF duration measurements? None, True or False
     :param durationLP: Return stations with LP duration measurements? None, True or False
     :param chanuse: Single string of channel names, return only stations that match channels defined,
      '*' for all channels
+    :para numstas: Number of detections meeting criteria to return, starting from closest distance,
+        if None, will return all. Channels from the same station count as one.
     :param database: Full file path to SQLite3 landslide database file
     :type database: string
-    :returns staDict: Dictionary containing all entries of all fields from event table
+    :returns staDict: List of dictionaries containing all entries of all fields from event table
      of database
     :type staDict: Dictionary
 
@@ -161,77 +164,86 @@ def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=N
             dat = cursor_output.fetchall()
             temp = cursor.description
             names = [t[0] for t in temp]
-            # Turn into dictionary using Sid as key
-            staDict = {}
+            # Turn into list of dictionaries
+            staDict = []
             for d in dat:
-                staDict[d[0]] = dict(zip(names, d))
+                staDict.append(dict(zip(names, d)))
         except Exception as e:
             print(e)
             return
     # Now filter out undesired entries
-    removekeys = []
-    for key in staDict:
-        if detectHF is True and (staDict[key]['detect_HF'] == 0 or staDict[key]['detect_HF'] is None):
-            removekeys.append(key)
-            continue
-        if detectHF is False and staDict[key]['detect_HF'] == 1:
-            removekeys.append(key)
-            continue
-        if detectLP is True and (staDict[key]['detect_LP'] == 0 or staDict[key]['detect_LP'] is None):
-            removekeys.append(key)
-            continue
-        if detectLP is False and staDict[key]['detect_LP'] == 1:
-            removekeys.append(key)
-            continue
-        if ampdetectHF is True and staDict[key]['absmaxampHF'] is None:
-            removekeys.append(key)
-            continue
-        if ampdetectHF is False and staDict[key]['absmaxampHF'] is not None:
-            removekeys.append(key)
-            continue
-        if ampdetectLP is True and staDict[key]['absmaxampLP'] is None:
-            removekeys.append(key)
-            continue
-        if ampdetectLP is False and staDict[key]['absmaxampLP'] is not None:
-            removekeys.append(key)
-            continue
-        if durationHF is True and staDict[key]['duration_secHF'] is None:
-            removekeys.append(key)
-            continue
-        if durationHF is False and staDict[key]['duration_secHF'] is not None:
-            removekeys.append(key)
-            continue
-        if durationLP is True and staDict[key]['duration_secLP'] is None:
-            removekeys.append(key)
-            continue
-        if durationLP is False and staDict[key]['duration_secLP'] is not None:
-            removekeys.append(key)
-            continue
+    newstas = []
+    for stad in staDict:
+        if not both:
+            if detectHF and (stad['detect_HF'] == 0 or stad['detect_HF'] is None):
+                continue
+            if detectLP and (stad['detect_LP'] == 0 or stad['detect_LP'] is None):
+                continue
+            if detectHF is not None:
+                if not detectHF and stad['detect_HF'] == 1:
+                    continue
+            if detectLP is not None:
+                if not detectLP and stad['detect_LP'] == 1:
+                    continue
+        else:  # Get rid of station is both HF and LP are non-detections
+            if (stad['detect_HF'] == 0 or stad['detect_HF'] is None) and (stad['detect_LP'] == 0 or stad['detect_LP'] is None):
+                continue
+
+        if ampdetectHF is not None:
+            if ampdetectHF and stad['absmaxampHF'] is None:
+                continue
+            if not ampdetectHF and stad['absmaxampHF'] is not None:
+                continue
+        if ampdetectLP is not None:
+            if ampdetectLP and stad['absmaxampLP'] is None:
+                continue
+            if not ampdetectLP and stad['absmaxampLP'] is not None:
+                continue
+        if durationHF is not None:
+            if durationHF and stad['duration_secHF'] is None:
+                continue
+            if not durationHF and stad['duration_secHF'] is not None:
+                continue
+        if durationLP is not None:
+            if durationLP and stad['duration_secLP'] is None:
+                continue
+            if not durationLP and stad['duration_secLP'] is not None:
+                continue
+
         if chanuse == '*':
             pass
-        elif staDict[key]['Channel'] not in chanuse:
-            removekeys.append(key)
+        elif stad['Channel'] not in chanuse:
             continue
         try:
-            temp = staDict[key]['starttimeHF'].split(' ')
-            staDict[key]['starttimeHF'] = UTCDateTime(temp[0]+'T'+temp[1])
-            temp = staDict[key]['endtimeHF'].split(' ')
-            staDict[key]['endtimeHF'] = UTCDateTime(temp[0]+'T'+temp[1])
+            temp = stad['starttimeHF'].split(' ')
+            stad['starttimeHF'] = UTCDateTime(temp[0]+'T'+temp[1])
+            temp = stad['endtimeHF'].split(' ')
+            stad['endtimeHF'] = UTCDateTime(temp[0]+'T'+temp[1])
         except Exception as e:
             pass
             #print(e)
         try:
-            temp = staDict[key]['starttimeLP'].split(' ')
-            staDict[key]['starttimeLP'] = UTCDateTime(temp[0]+'T'+temp[1])
-            temp = staDict[key]['endtimeLP'].split(' ')
-            staDict[key]['endtimeLP'] = UTCDateTime(temp[0]+'T'+temp[1])
+            temp = stad['starttimeLP'].split(' ')
+            stad['starttimeLP'] = UTCDateTime(temp[0]+'T'+temp[1])
+            temp = stad['endtimeLP'].split(' ')
+            stad['endtimeLP'] = UTCDateTime(temp[0]+'T'+temp[1])
         except Exception as e:
             pass
-            #print(e)
+        # If it made it to here, keep it
+        newstas.append(stad)
 
-    for k in removekeys:
-        staDict.pop(k, None)
-    return staDict
+    if numstas is not None and len(newstas) > 0:
+        # Order by distance
+        dists = [sta['stasource_radius_km'] for sta in newstas]
+        keep = np.sort(np.unique(dists))
+        if len(newstas) > numstas:
+            keep = keep[0:numstas]
+        keepmax = keep.max()
+        newstas2 = [sta for sta in newstas if sta['stasource_radius_km'] <= keepmax]
+    else:
+        newstas2 = newstas
+
+    return newstas2
 
 
 def attach_distaz(st, event_lat, event_lon, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
