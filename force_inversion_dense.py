@@ -7,7 +7,7 @@ import glob
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import scipy as sp
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import random as rnd
 import pickle
 
@@ -27,7 +27,7 @@ def rotate(st, baz=None):
         try:
             st[0].stats.back_azimuth
         except:
-            print 'need to attach baz'
+            print('need to attach baz')
             return
     #get list of station location code pairs present
     staloc = list(set([trace.stats.station+'.'+trace.stats.location for trace in st]))
@@ -52,7 +52,7 @@ def rotate(st, baz=None):
                             else:
                                 loc = trace.stats.location
                             url = ('http://service.iris.edu/fdsnws/station/1/query?net=%s&sta=%s&loc=%s&cha=%s&level=channel&format=text&includecomments=true&nodata=404' % (trace.stats.network, trace.stats.station, loc, trace.stats.channel))
-                            temp = urllib2.urlopen(url)
+                            temp = urllib.request.urlopen(url)
                             file1 = temp.read()
                             lines = [line.split('|') for line in file1.split('\n')[1:]]
                             trace.stats.cmpaz = float(lines[0][8])
@@ -64,7 +64,7 @@ def rotate(st, baz=None):
                         st_temp.select(component='2')[0].data = e1
                         st_temp.select(component='2')[0].stats.channel = 'BHE'
                     except:
-                        print 'couldnt get cmpaz orientation from IRIS, rotation failed'
+                        print('couldnt get cmpaz orientation from IRIS, rotation failed')
                         continue
                 st_h = st_temp.select(component='N').copy()+st_temp.select(component='E').copy()
                 st_h.rotate('NE->RT')
@@ -80,9 +80,9 @@ def rotate(st, baz=None):
                 st_h.rotate('NE->RT')
                 st_rotated = st_rotated+st_h.copy()
             except:
-                print('weird number of components for '+station+' -skipping')
+                print(('weird number of components for '+station+' -skipping'))
         else:
-            print('weird number of components for '+station+' -skipping')
+            print(('weird number of components for '+station+' -skipping'))
     st_rotated.pop(0)  # pop off the placeholder
 
     return st_rotated
@@ -119,7 +119,7 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
     temp.resample(samplerate)
     greenlength = len(temp.data)
     if greenlength > datalength:
-        print 'greenlength is greater than datalength so everything is messed up'
+        print('greenlength is greater than datalength so everything is messed up')
         import pdb
         pdb.set_trace()
         return
@@ -196,7 +196,7 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
             newline = np.hstack((TVF, K*THF*math.sin(az), -K*THF*math.cos(az)))  # sparse.hstack((K*TVF, K*THF*math.sin(az), -K*THF*math.cos(az)))
             datline = trace.data
         else:
-            print 'st not rotated to T and R, abort!'
+            print('st not rotated to T and R, abort!')
             import pdb
             pdb.set_trace()
             return
@@ -217,7 +217,7 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
             indx += datalength
 
     if np.shape(G)[0] != len(d):
-        print 'G and d sizes are not compatible, fix something somewhere'
+        print('G and d sizes are not compatible, fix something somewhere')
     G = G * 1/samplerate  # multiply by sample interval (sec) since convolution is an integral
     d = d * 100  # convert data from m to cm
     if weights is not None:
@@ -319,7 +319,7 @@ def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, per
             az = math.radians(np.round(trace.stats.azimuth))
             newline = np.hstack((TVF, K*THF*math.sin(az), -K*THF*math.cos(az)))  # sparse.hstack((K*TVF, K*THF*math.sin(az), -K*THF*math.cos(az)))
         else:
-            print 'st not rotated to T and R, abort!'
+            print('st not rotated to T and R, abort!')
             return
         datline = np.fft.fft(trace.data, NFFT)
         if i == 0:
@@ -338,7 +338,7 @@ def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, per
             Wvec[indx:indx+NFFT] = Wvec[indx:indx+NFFT]*weight[i]
             indx += NFFT
     if np.shape(G)[0] != len(d):
-        print 'G and d sizes are not compatible, fix something somewhere'
+        print('G and d sizes are not compatible, fix something somewhere')
         return
     G = G * 1./samplerate  # multiply by sample interval (sec) since convolution is an integral
     d = d * 100  # convert data from m to cm
@@ -405,7 +405,7 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
     #I = I.tocsr()
     if alphaset is None:
         alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=0.5)
-        print 'best alpha is %6.1E' % alpha,
+        print('best alpha is %6.1E' % alpha, end=' ')
     else:
         fit1 = None
         size1 = None
@@ -437,7 +437,7 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
 
     #compute variance reduction
     VR = varred(dt, dtnew)
-    print('variance reduction %f percent') % (VR,)
+    print(('variance reduction %f percent') % (VR,))
     tvec = np.arange(0, len(Zforce)*1/samplerate, 1/samplerate)-T0
     #np.linspace(0,(len(Zforce)-1)*1/samplerate,len(Zforce))-T0
     if zeroTime is not None:
@@ -467,7 +467,7 @@ def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.
     VR_all = []
 
     if alphaset is None:
-        print 'You need to define alpha'
+        print('You need to define alpha')
     else:
         alpha = alphaset
 
@@ -488,9 +488,9 @@ def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.
             dhat1 = dhat
         else:
             numcut = int(round(frac_delete*numsta))
-            indxcut = rnd.sample(range(numsta), numcut)
+            indxcut = rnd.sample(list(range(numsta)), numcut)
             #TEST AND MAKE SURE THIS IS RIGHT
-            obj = [sum(ind) for ind in zip(np.tile(range(datlen), len(indxcut)), np.repeat([x*datlen for x in indxcut], datlen))]
+            obj = [sum(ind) for ind in zip(np.tile(list(range(datlen)), len(indxcut)), np.repeat([x*datlen for x in indxcut], datlen))]
             dhat1 = np.delete(dhat.copy(), obj)
             Ghat1 = np.delete(Ghat.copy(), obj, axis=0)
 
@@ -560,7 +560,7 @@ def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.
 
         #compute variance reduction
         VR = varred(dt, dtnew)
-        print('variance reduction %f percent') % (VR,)
+        print(('variance reduction %f percent') % (VR,))
 
         # Save all critical information
         if ii == 0:  # distinguish data from full run
@@ -678,8 +678,8 @@ def findalpha(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance
     size1 = []
     alphas = []
     while opposite is False:
-        print ('ak = %s' % (ak,))
-        print ('bk = %s' % (bk,))
+        print(('ak = %s' % (ak,)))
+        print(('bk = %s' % (bk,)))
         modelak, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ak**2, I), np.dot(Ghat.T, dhat))
         modelbk, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(bk**2, I), np.dot(Ghat.T, dhat))
         fitak = sp.linalg.norm(np.dot(Ghat, modelak.T)-dhat)
@@ -693,8 +693,8 @@ def findalpha(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance
         size1.append(sp.linalg.norm(modelbk))
         fak = fitak - noise  # should be negative
         fbk = fitbk - noise  # should be positive
-        print ('fak = %s' % (fak,))
-        print ('fbk = %s' % (fbk,))
+        print(('fak = %s' % (fak,)))
+        print(('fbk = %s' % (fbk,)))
         if fak*fbk < 0:
             opposite = True
         if fak > 0:
@@ -714,20 +714,20 @@ def findalpha(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance
         alphas.append(ck)
         size1.append(sp.linalg.norm(modelck))
         fck = fitck - noise
-        print ('ck = %s' % (ck,))
-        print ('fitck = %s' % (fitck,))
-        print ('fck = %s' % (fck,))
+        print(('ck = %s' % (ck,)))
+        print(('fitck = %s' % (fitck,)))
+        print(('fck = %s' % (fck,)))
         tol = np.abs(np.log10(fck))
         if fck*fak < 0:
             bk = ck
         else:
             ak = ck
-        print ('ak = %s' % (ak,))
-        print ('bk = %s' % (bk,))
+        print(('ak = %s' % (ak,)))
+        print(('bk = %s' % (bk,)))
         import pdb;pdb.set_trace()
 
     bestalpha = ck
-    print ('best alpha = %s' % (bestalpha,))
+    print(('best alpha = %s' % (bestalpha,)))
     fit1 = np.array(fit1)
     size1 = np.array(size1)
     Lcurve(fit1, size1, alphas)
@@ -906,15 +906,15 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None
         x = np.concatenate((tvec, tvec[::-1]))
         if Zupper is not None and Zlower is not None:
             y = np.concatenate((Zlower, Zupper[::-1]))
-            poly = plt.Polygon(zip(x, y), facecolor='b', edgecolor='none', alpha=0.2)
+            poly = plt.Polygon(list(zip(x, y)), facecolor='b', edgecolor='none', alpha=0.2)
             ax1.add_patch(poly)
         if Nupper is not None and Nlower is not None:
             y = np.concatenate((Nlower, Nupper[::-1]))
-            poly = plt.Polygon(zip(x, y), facecolor='r', edgecolor='none', alpha=0.2)
+            poly = plt.Polygon(list(zip(x, y)), facecolor='r', edgecolor='none', alpha=0.2)
             ax2.add_patch(poly)
         if Eupper is not None and Elower is not None:
             y = np.concatenate((Elower, Eupper[::-1]))
-            poly = plt.Polygon(zip(x, y), facecolor='g', edgecolor='none', alpha=0.2)
+            poly = plt.Polygon(list(zip(x, y)), facecolor='g', edgecolor='none', alpha=0.2)
             ax3.add_patch(poly)
         if xlim:
             ax1.set_xlim(xlim)
@@ -930,15 +930,15 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None
         x = np.concatenate((tvec, tvec[::-1]))
         if Zupper is not None and Zlower is not None:
             y = np.concatenate((Zlower, Zupper[::-1]))
-            poly = plt.Polygon(zip(x, y), facecolor='b', edgecolor='none', alpha=0.2)
+            poly = plt.Polygon(list(zip(x, y)), facecolor='b', edgecolor='none', alpha=0.2)
             ax.add_patch(poly)
         if Nupper is not None and Nlower is not None:
             y = np.concatenate((Nlower, Nupper[::-1]))
-            poly = plt.Polygon(zip(x, y), facecolor='r', edgecolor='none', alpha=0.2)
+            poly = plt.Polygon(list(zip(x, y)), facecolor='r', edgecolor='none', alpha=0.2)
             ax.add_patch(poly)
         if Eupper is not None and Elower is not None:
             y = np.concatenate((Elower, Eupper[::-1]))
-            poly = plt.Polygon(zip(x, y), facecolor='g', edgecolor='none', alpha=0.2)
+            poly = plt.Polygon(list(zip(x, y)), facecolor='g', edgecolor='none', alpha=0.2)
             ax.add_patch(poly)
         if xlim:
             ax.set_xlim(xlim)
@@ -984,15 +984,15 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
     x = np.concatenate((tvec, tvec[::-1]))
     if Zupper is not None and Zlower is not None:
         y = np.concatenate((Zlower, Zupper[::-1]))
-        poly = plt.Polygon(zip(x, y), facecolor='b', edgecolor='none', alpha=0.2)
+        poly = plt.Polygon(list(zip(x, y)), facecolor='b', edgecolor='none', alpha=0.2)
         ax.add_patch(poly)
     if Nupper is not None and Nlower is not None:
         y = np.concatenate((Nlower, Nupper[::-1]))
-        poly = plt.Polygon(zip(x, y), facecolor='r', edgecolor='none', alpha=0.2)
+        poly = plt.Polygon(list(zip(x, y)), facecolor='r', edgecolor='none', alpha=0.2)
         ax.add_patch(poly)
     if Eupper is not None and Elower is not None:
         y = np.concatenate((Elower, Eupper[::-1]))
-        poly = plt.Polygon(zip(x, y), facecolor='g', edgecolor='none', alpha=0.2)
+        poly = plt.Polygon(list(zip(x, y)), facecolor='g', edgecolor='none', alpha=0.2)
         ax.add_patch(poly)
     if xlim:
         ax.set_xlim(xlim)
@@ -1003,9 +1003,9 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
 
     # Plot the magnitudes in second one
     ax1 = fig.add_subplot(412)
-    Mag = np.linalg.norm(zip(Zforce, Eforce, Nforce), axis=1)
-    MagU = np.linalg.norm(zip(np.maximum(np.abs(Zupper), np.abs(Zlower)), np.maximum(np.abs(Eupper), np.abs(Elower)), np.maximum(np.abs(Nupper), np.abs(Nlower))), axis=1)
-    MagL = np.linalg.norm(zip(np.minimum(np.abs(Zupper), np.abs(Zlower)), np.minimum(np.abs(Eupper), np.abs(Elower)), np.minimum(np.abs(Nupper), np.abs(Nlower))), axis=1)
+    Mag = np.linalg.norm(list(zip(Zforce, Eforce, Nforce)), axis=1)
+    MagU = np.linalg.norm(list(zip(np.maximum(np.abs(Zupper), np.abs(Zlower)), np.maximum(np.abs(Eupper), np.abs(Elower)), np.maximum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
+    MagL = np.linalg.norm(list(zip(np.minimum(np.abs(Zupper), np.abs(Zlower)), np.minimum(np.abs(Eupper), np.abs(Elower)), np.minimum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
     ax1.plot(tvec, Mag, 'k', label='best')
     ax1.plot(tvec, MagL, 'r', label='lower')
     ax1.plot(tvec, MagU, 'r', label='upper')
