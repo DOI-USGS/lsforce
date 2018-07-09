@@ -59,19 +59,19 @@ def setup(event_id, modelfile, stacodes, samplerate, duration, T0, stfilename=No
     try:
         os.mkdir(evdir)
     except Exception as e:
-        print e
+        print(e)
     try:
         os.mkdir(moddir)
     except Exception as e:
-        print e
+        print(e)
     try:
         os.mkdir(sacdir)  # folder for renamed sac files to go into
     except Exception as e:
-        print e
+        print(e)
     try:
         os.mkdir(sacodir)  # folder to keep original sac files
     except Exception as e:
-        print e
+        print(e)
 
     #write T0 file
     f = open(moddir+'/T0.txt', 'w')
@@ -103,7 +103,7 @@ def setup(event_id, modelfile, stacodes, samplerate, duration, T0, stfilename=No
             except Exception as e:
                 print(e)
 
-    stations, dist = zip(*sorted(zip(stations, dist)))
+    stations, dist = list(zip(*sorted(zip(stations, dist))))
 
     #write stadistlist.txt
     f = open(moddir+'/stadistlist.txt', 'w')
@@ -184,19 +184,19 @@ def setup_orphan(event_id, modelfile, stacodes, dists, samplerate, duration, T0,
     try:
         os.mkdir(evdir)
     except Exception as e:
-        print e
+        print(e)
     try:
         os.mkdir(moddir)
     except Exception as e:
-        print e
+        print(e)
     try:
         os.mkdir(sacdir)  # folder for renamed sac files to go into
     except Exception as e:
-        print e
+        print(e)
     try:
         os.mkdir(sacodir)  # folder to keep original sac files
     except Exception as e:
-        print e
+        print(e)
 
     #write T0 file
     f = open(moddir+'/T0.txt', 'w')
@@ -208,7 +208,7 @@ def setup_orphan(event_id, modelfile, stacodes, dists, samplerate, duration, T0,
     stacods = unique_list(stacods)
     stas = [stacod.split('.')[1] for stacod in stacods]
 
-    stations, dist = zip(*sorted(zip(stas, dists)))
+    stations, dist = list(zip(*sorted(zip(stas, dists))))
 
     #write stadistlist.txt
     f = open(moddir+'/stadistlist.txt', 'w')
@@ -260,7 +260,7 @@ def compute_greens(event_id, filepath, shellscript='CPScommands.sh'):
     lines = f.readlines()
     lines = [line.split('\t') for line in lines]
     temp2 = [(line[0], float(line[1].split('\n')[0])) for line in lines]
-    sta, dist = zip(*temp2)
+    sta, dist = list(zip(*temp2))
 
     #copy and rename files
     files = [os.path.basename(x) for x in glob.glob(filepath+'/sacdata/*.sac')]

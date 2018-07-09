@@ -11,61 +11,45 @@ import sqlite3 as lite
 from obspy import Stream, UTCDateTime
 from obspy.clients.fdsn import Client as FDSN_Client
 import glob
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import os
 from sigproc import sigproc
 import shutil
 import datetime
 
 
-def initial_populate(event_ids, minradius=0., maxradius=500., IRIS=True, NCEDC=False,
+def initial_populate(event_ids, minradius=0., maxradius=500., clients=['IRIS'],
                      database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
     :param event_ids: either single integer or list or numpy array of integers, eg np.arange(62,65)
     :param maxradius: Maximum radius to go out to in searching for nearby stations in stasource_radius_km
-    :param IRIS: If True, will search IRIS for stations nearby
-    :param NCEDC: If True, will search NCEDC for stations nearby
+    :param clients: list of FDSN clients to search, see list here: https://docs.obspy.org/packages/obspy.clients.fdsn.html
     """
     if type(event_ids) is int:
         event_ids = [event_ids]
     for event_id in event_ids:
+        event_id = int(event_id)
         evdict = findsta.getEventInfo(event_id, database=database)
-        if IRIS is True:
-            if 'AlaskaData' in evdict['DatLocation']:  # Need to trick the system because IRIS doesn't have the actual install dates for these stations
-                stb4 = UTCDateTime(2009, 9, 1, 0, 0, 0)
-            else:
-                stb4 = None
-            try:
-                lines, source = reviewData.get_stations_iris(evdict['Latitude'], evdict['Longitude'],
-                                                             evdict['StartTime'], startbefore=stb4, minradiuskm=minradius,
-                                                             maxradiuskm=maxradius,
-                                                             chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?'))
-                populate_station_tables(lines, source, database=database)
-                populate_station_event_table(event_id, lines, update=True, database=database)
-                lines = None
-                source = None
-            except Exception as e:
-                print(e)
-                print('No IRIS stations found or failed to connect')
-        if NCEDC is True:
-            try:
-                lines, source = reviewData.get_stations_ncedc(evdict['Latitude'], evdict['Longitude'],
-                                                              evdict['StartTime'], minradiuskm=minradius,
-                                                              maxradiuskm=maxradius,
-                                                              chan=('BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?'))
-                populate_station_tables(lines, source, database=database)
-                populate_station_event_table(event_id, lines, update=True, database=database)
-                lines = None
-                source = None
-            except:
-                #print(e)
-                print('No NCEDC stations found or failed to connect')
+        if 'AlaskaData' in evdict['DatLocation']:  # Need to trick the system because IRIS doesn't have the actual install dates for these stations
+            stb4 = UTCDateTime(2009, 9, 1, 0, 0, 0)
+        else:
+            stb4 = None
+        for client in clients:
+            inventory = reviewData.get_stations(evdict['Latitude'], evdict['Longitude'], evdict['StartTime'],
+                                                clients=[client], startbefore=stb4, endafter=stb4, minradiuskm=minradius,
+                                                maxradiuskm=maxradius, chan='BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?')
+            populate_station_tables(inventory, client=client)
+            populate_station_event_table(event_id, inventory)
 
 
-def populate_station_tables(lines, source, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
+def populate_station_tables(inventory, client=None, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
     Helper code used to put the station info into the stations table of database if it's not already there
     """
+    if client is None:
+        source = 'unknown'
+    else:
+        source = client
     #loop over each line, parse info, see if it already is in table, if not, insert it
     connection = None
     connection = lite.connect(database)
@@ -73,27 +57,28 @@ def populate_station_tables(lines, source, database='/Users/kallstadt/LSseis/lan
         cursor = connection.cursor()
         val = 0
         val2 = 0
-        for line in lines:
-            try:
-                #see if the station is already there
-                cursor_output = (cursor.execute(
-                    'SELECT * FROM stations WHERE Name=? AND Channel=? AND Network=?', (line[1], line[3], line[0])))
-            except Exception as e:
-                print(e)
-            retrieved_data = cursor_output.fetchall()
-            if len(retrieved_data) == 0:  # if the station isn't already there, put it there
-                try:
-                    loccode = line[2]
-                    if line[2] == '--':
-                        loccode = ''
-                    cursor.execute(
-                        'INSERT INTO stations(Network,Name,LocationCode,Channel,Latitude,Longitude,Elevation_masl,source) VALUES(?,?,?,?,?,?,?,?)',
-                        (line[0], line[1], loccode, line[3], line[4], line[5], line[6], source))
-                    val += 1
-                except Exception as f:
-                    print(f)
-            else:
-                val2 += 1
+        networks = inventory.networks
+        for net in networks:
+            stations = net.stations
+            for sta in stations:
+                channels = sta.channels
+                for chan in channels:
+                    if chan.restricted_status != 'open':
+                        continue
+                    try:
+                        #see if the station is already there
+                        cursor_output = (cursor.execute(
+                            'SELECT * FROM stations WHERE Name=? AND Channel=? AND Network=?', (sta.code, chan.code, net.code)))
+                    except Exception as e:
+                        print(e)
+                    retrieved_data = cursor_output.fetchall()
+                    if len(retrieved_data) == 0:  # if the station isn't already there, put it there
+                        cursor.execute(
+                            'INSERT INTO stations(Network,Name,LocationCode,Channel,Latitude,Longitude,Elevation_masl,source) VALUES(?,?,?,?,?,?,?,?)',
+                            (net.code, sta.code, chan.location_code, chan.code, chan.latitude, chan.longitude, chan.elevation, source))
+                        val += 1
+                    else:
+                        val2 += 1
         print(('added %s entries to stations table, %s already were there' % (val, val2)))
 
 
@@ -157,10 +142,11 @@ def populate_redoubt_stanearby(event_ids, database='/Users/kallstadt/LSseis/land
                                 valbad += 1
                     else:
                         val2 += 1
+
         print(('added %s entries to sta_nearby table, updated %s entries, %s left as is, %s not added because of error' % (val, val1, val2, valbad)))
 
 
-def populate_station_event_table(event_id, lines, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
+def populate_station_event_table(event_id, inventory, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
                                  update=True):
     """
     Also, put the station in the sta_nearby table for this event and calculate distance, az, baz
@@ -183,49 +169,53 @@ def populate_station_event_table(event_id, lines, database='/Users/kallstadt/LSs
     val1 = 0
     val2 = 0
     valbad = 0
-    for line in lines:
-        with connection:
-            try:
-                #get the Sid from stations table
-                cursor_output = cursor.execute('SELECT Sid,Latitude,Longitude FROM stations WHERE Name=? AND Channel=? AND Network=?',
-                                               (line[1], line[3], line[0]))
-                retrieved_data = cursor_output.fetchone()
-                Sid, sta_lat, sta_lon = retrieved_data
-            except:
-                sta_lat = None
-                sta_lon = None
-            try:
-                cursor_output = cursor.execute('SELECT SRid FROM sta_nearby WHERE event_id=? AND station_id=?',
-                                               (event_id, Sid))
-                retrieved_data = cursor_output.fetchall()
-            except:
-                retrieved_data = []
-        if len(retrieved_data) == 0:
-            #if it isn't already there, use iris's distaz webservice to calculate stuff and save it in the table
-            #result = client.distaz(sta_lat, sta_lon, event_lat, event_lon)
-            backazimuth, azimuth, distance = reviewData.pyproj_distaz(sta_lat, sta_lon, event_lat, event_lon)
-            with connection:
-                try:
-                    cursor.execute('INSERT INTO sta_nearby(event_id,station_id,stasource_radius_km,az,baz) VALUES(?,?,?,?,?)',
-                                   (event_id, Sid, '%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth))
-                    val += 1
-                except Exception as f:
-                    print(f)
-                    valbad += 1
-        elif update is True:
-            #if it isn't already there, use iris's distaz webservice to calculate stuff and save it in the table
-            with connection:
-                try:
-                    #result = client.distaz(sta_lat, sta_lon, event_lat, event_lon)
+
+    networks = inventory.networks
+    for net in networks:
+        stations = net.stations
+        for sta in stations:
+            channels = sta.channels
+            for chan in channels:
+                if chan.restricted_status != 'open':
+                    continue
+                with connection:
+                    #Get station id
+                    cursor_output = cursor.execute(
+                        'SELECT Sid, Latitude, Longitude FROM stations WHERE Name=? AND Channel=? AND Network=?', (sta.code, chan.code, net.code))
+                    retrieved_data = cursor_output.fetchone()
+                    Sid, sta_lat, sta_lon = retrieved_data
+                    # See if entry is already there
+                    try:
+                        cursor_output = cursor.execute('SELECT SRid FROM sta_nearby WHERE event_id=? AND station_id=?',
+                                                       (event_id, Sid))
+                        retrieved_data = cursor_output.fetchall()
+                    except:
+                        retrieved_data = []
+
+                if len(retrieved_data) == 0:
+                    #if it isn't already there, use calculate stuff and save it in the table
                     backazimuth, azimuth, distance = reviewData.pyproj_distaz(sta_lat, sta_lon, event_lat, event_lon)
-                    cursor.execute("UPDATE sta_nearby SET stasource_radius_km = ?, az = ?, baz = ? WHERE event_id =? AND station_id =?;",
-                                   ('%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth, event_id, Sid))
-                    val1 += 1
-                except Exception as f:
-                    print(f)
-                    valbad += 1
-        else:
-            val2 += 1
+                    with connection:
+                        try:
+                            cursor.execute('INSERT INTO sta_nearby(event_id,station_id,stasource_radius_km,az,baz) VALUES(?,?,?,?,?)',
+                                           (event_id, Sid, '%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth))
+                            val += 1
+                        except Exception as f:
+                            print(f)
+                            valbad += 1
+                elif update is True:
+                    with connection:
+                        try:
+                            #result = client.distaz(sta_lat, sta_lon, event_lat, event_lon)
+                            backazimuth, azimuth, distance = reviewData.pyproj_distaz(sta_lat, sta_lon, event_lat, event_lon)
+                            cursor.execute("UPDATE sta_nearby SET stasource_radius_km = ?, az = ?, baz = ? WHERE event_id =? AND station_id =?;",
+                                           ('%3.3f' % distance, '%3.2f' % azimuth, '%3.2f' % backazimuth, event_id, Sid))
+                            val1 += 1
+                        except Exception as f:
+                            print(f)
+                            valbad += 1
+                else:
+                    val2 += 1
     print(('added %s entries to sta_nearby table, updated %s entries, %s left as is, %s not added because of error' % (val, val1, val2, valbad)))
 
 
@@ -248,7 +238,7 @@ def remove_events(event_ids, savecopy=None, gisfiles=False, photos=False, inform
             # add datetime to end
             shutil.copy(database, filename)
         except Exception as e:
-            print e
+            print(e)
             print('Unable to save a copy of the database, exiting')
             return
 
@@ -338,7 +328,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
     """
     evDict = findsta.getEventInfo(event_id, database=database)
-    print(('Now analysing Eid %s - %s') % (event_id, evDict['Name']))
+    print((('Now analysing Eid %s - %s') % (event_id, evDict['Name'])))
     # Populate database with stations, if it isn't already populated, out to maxradius
     staDict = findsta.getStaInfo(event_id, database=database)
     dists = [staDict[k]['stasource_radius_km'] for k in staDict]
@@ -360,8 +350,8 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         st = Stream()
         if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
             try:
-                stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
-                                                 staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
+                stalist, netlist, chanlist = list(zip(*[[staDict[k]['Name'], staDict[k]['Network'],
+                                                  staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']]))
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
                                          '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
                                          evDict['EndTime']+buffer_sec, savedat=False, detrend='demean')
@@ -369,8 +359,8 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 print(e)
         if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
             try:
-                stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'],
-                                                 staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
+                stalist, netlist, chanlist = list(zip(*[[staDict[k]['Name'], staDict[k]['Network'],
+                                                  staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']]))
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
                                          '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
                                          evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC', detrend='demean')
@@ -400,19 +390,19 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         # Get earliest start time from IRIS for AK and AV
                         url1 = ('http://service.iris.edu/fdsnws/station/1/query?network=AV&level=station&format=text&nodata=404')
                         url2 = ('http://service.iris.edu/fdsnws/station/1/query?network=AK&level=station&format=text&nodata=404')
-                        f = urllib2.urlopen(url1)
+                        f = urllib.request.urlopen(url1)
                         file1 = f.read()
                         lines1 = [line.split('|') for line in file1.split('\n')[1:]]
                         stdict = {}
                         f.close()
-                        f = urllib2.urlopen(url2)
+                        f = urllib.request.urlopen(url2)
                         file2 = f.read()
                         lines2 = [line.split('|') for line in file2.split('\n')[1:]]
                         f.close()
                         for line in lines1[:-1]:
                             stdict[line[1]] = (line[0], UTCDateTime(line[6]))
                         for line in lines2[:-1]:
-                            if line[1] in stdict.keys():
+                            if line[1] in list(stdict.keys()):
                                 # Take the minimum if shows up for both network codes
                                 stdict[line[1]] = (line[0], np.min([stdict[line[1]], UTCDateTime(line[6])]))
                             else:
@@ -425,14 +415,14 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                             if temp.stats.station in stdict:
                                 temp.stats.network = stdict[temp.stats.station][0]
                             else:
-                                print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                                print('could not attach response info for %s, station correction will not work' % temp.stats.station)
                                 continue
-                            if 'response' not in temp.stats.keys():
+                            if 'response' not in list(temp.stats.keys()):
                                 # Change starttime of temp to earliest start time at IRIS for this station
                                 try:
                                     temp.stats.starttime = stdict[temp.stats.station][1] + 86400.
                                 except:
-                                    print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                                    print('could not attach response info for %s, station correction will not work' % temp.stats.station)
                         # Get responses from IRIS
                         client = FDSN_Client('IRIS')
                         akstas = ','.join([tr.stats.station for tr in stsac])
@@ -474,13 +464,13 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
             # See if maxradiusHF was reached
             maxdist = np.max([trace.stats.rdist for trace in st_hfgood])
-            feedback = raw_input(('is %4.1f km the maximum distance observed for HF? Y or N\n') % (maxdist,))
+            feedback = input(('is %4.1f km the maximum distance observed for HF? Y or N\n') % (maxdist,))
             if feedback.lower() != 'n' and feedback.lower() != 'y':
-                feedback = raw_input(('Try again, is %4.1f km the maximum distance observed for HF? Y or N\n') % (maxdist,))
+                feedback = input(('Try again, is %4.1f km the maximum distance observed for HF? Y or N\n') % (maxdist,))
             if feedback.lower() == 'n':
-                feedback = raw_input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
+                feedback = input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
                 if feedback.lower() == 'y':
-                    maxdist = float(raw_input('Enter the maximum distance observed in km (round up to nearest km)\n'))
+                    maxdist = float(input('Enter the maximum distance observed in km (round up to nearest km)\n'))
                     # delete all stations that were greater than maximum distance and that are in st_hfbad, and put good stations in database
                     goodstas = [str(trace.stats.station) for trace in st_hfgood if trace.stats.rdist <= maxdist]
                     goodchans = [str(trace.stats.channel) for trace in st_hfgood if trace.stats.rdist <= maxdist]
@@ -495,9 +485,9 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         try:
                             cursor.execute('UPDATE events SET maxdistHF_km = ? WHERE Eid = ?', (maxdist, event_id))
                         except Exception as e:
-                            print e
+                            print(e)
                 if feedback.lower() == 'n':
-                    print 'Filling current info into database, then will load more distant data for further analysis\n'
+                    print('Filling current info into database, then will load more distant data for further analysis\n')
                     badstas = [str(g.split('.')[0]) for g in hfbad]
                     badchans = [str(g.split('.')[1]) for g in hfbad]
                     badnets = [str(g.split('.')[3].split(' - ')[0]) for g in hfbad]
@@ -519,7 +509,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                     try:
                         cursor.execute('UPDATE events SET maxdistHF_km = ? WHERE Eid = ?', (maxdist, event_id))
                     except Exception as e:
-                        print e
+                        print(e)
             # Fill info into database
             Sids_bad = []
             Sids_good = []
@@ -533,7 +523,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         if retrieved_data:
                             Sids_bad += [val[0] for val in retrieved_data]
                     except Exception as e:
-                        print e
+                        print(e)
                 for i, goodsta in enumerate(goodstas):
                     try:
                         cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
@@ -542,7 +532,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         if retrieved_data:
                             Sids_good += [val[0] for val in retrieved_data]
                     except Exception as e:
-                        print e
+                        print(e)
                 if Sids_bad:
                     for Sid in Sids_bad:
                         cursor.execute('UPDATE sta_nearby SET detect_HF = ? WHERE station_id = ? AND event_id = ?',
@@ -568,7 +558,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         trace.remove_response(output=LPoutput, pre_filt=cosfilt)
                         temp = temp + trace
                     except:
-                        print 'Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,)
+                        print('Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,))
                 st_lp = temp
 
                 print ('Interactive review of long periods starting\n')
@@ -585,11 +575,11 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
                 # See if maxradiuslp was reached
                 maxdist = np.max([trace.stats.rdist for trace in st_lpgood])
-                feedback = raw_input(('is %4.1f km the maximum distance observed for lp? Y or N\n') % (maxdist,))
+                feedback = input(('is %4.1f km the maximum distance observed for lp? Y or N\n') % (maxdist,))
                 if feedback.lower() == 'n':
-                    feedback = raw_input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
+                    feedback = input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
                     if feedback.lower() == 'y':
-                        maxdist = float(raw_input('Enter the maximum distance observed in km (round up to nearest km)\n'))
+                        maxdist = float(input('Enter the maximum distance observed in km (round up to nearest km)\n'))
                         # delete all stations that were greater than maximum distance and that are in st_lpbad, and put good stations in database
                         goodstas = [str(trace.stats.station) for trace in st_lpgood if trace.stats.rdist < maxdist]
                         goodchans = [str(trace.stats.channel) for trace in st_lpgood if trace.stats.rdist < maxdist]
@@ -604,9 +594,9 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                             try:
                                 cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
                             except Exception as e:
-                                print e
+                                print(e)
                     if feedback.lower() == 'n':
-                        print 'Filling current info into database, then will load more distant data for further analysis\n'
+                        print('Filling current info into database, then will load more distant data for further analysis\n')
                         badstas = [str(g.split('.')[0]) for g in lpbad]
                         badchans = [str(g.split('.')[1]) for g in lpbad]
                         badnets = [str(g.split('.')[3].split(' - ')[0]) for g in lpbad]
@@ -628,7 +618,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         try:
                             cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
                         except Exception as e:
-                            print e
+                            print(e)
                 # Fill info into database
                 Sids_bad = []
                 Sids_good = []
@@ -642,7 +632,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                             if retrieved_data:
                                 Sids_bad += [val[0] for val in retrieved_data]
                         except Exception as e:
-                            print e
+                            print(e)
                     for i, goodsta in enumerate(goodstas):
                         try:
                             cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
@@ -651,7 +641,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                             if retrieved_data:
                                 Sids_good += [val[0] for val in retrieved_data]
                         except Exception as e:
-                            print e
+                            print(e)
                     if Sids_bad:
                         for Sid in Sids_bad:
                             cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE station_id = ? AND event_id = ?',
@@ -668,7 +658,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
     # Continue searching for maximum distance
     while maxreachedHF is False or maxreachedLP is False:
-        print 'Going out another %3.0f km' % (intincrkm,)
+        print('Going out another %3.0f km' % (intincrkm,))
         newmin = maxradius
         maxradius = maxradius + intincrkm
 
@@ -696,7 +686,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
         if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
             try:
-                stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']])
+                stalist, netlist, chanlist = list(zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'IRIS' in staDict[k]['source']]))
                 # Remove any BDF's
                 #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
@@ -706,7 +696,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 print('No data from IRIS found in current distance interval')
         if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
             try:
-                stalist, netlist, chanlist = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']])
+                stalist, netlist, chanlist = list(zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel']] for k in staDict if 'NCEDC' in staDict[k]['source']]))
                 st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
                                          '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
                                          evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
@@ -745,13 +735,13 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
             connection = None
             connection = lite.connect(database)
             maxdist = np.max([trace.stats.rdist for trace in st_hfgood])
-            feedback = raw_input(('is %4.1f km the maximum distance observed for HF? Y or N\n') % (maxdist,))
+            feedback = input(('is %4.1f km the maximum distance observed for HF? Y or N\n') % (maxdist,))
             if feedback.lower() != 'n' and feedback.lower != 'y':
-                feedback = raw_input(('Try again, is %4.1f km the maximum distance observed for HF? Y or N\n') % (maxdist,))
+                feedback = input(('Try again, is %4.1f km the maximum distance observed for HF? Y or N\n') % (maxdist,))
             if feedback.lower() == 'n':
-                feedback = raw_input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
+                feedback = input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
                 if feedback.lower() == 'y':
-                    maxdist = float(raw_input('Enter the maximum distance observed in km (round up to nearest km)\n'))
+                    maxdist = float(input('Enter the maximum distance observed in km (round up to nearest km)\n'))
                     # delete all stations that were greater than maximum distance and that are in st_hfbad, and put good stations in database
                     goodstas = [str(trace.stats.station) for trace in st_hfgood if trace.stats.rdist <= maxdist]
                     goodchans = [str(trace.stats.channel) for trace in st_hfgood if trace.stats.rdist <= maxdist]
@@ -766,9 +756,9 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         try:
                             cursor.execute('UPDATE events SET maxdistHF_km = ? WHERE Eid = ?', (maxdist, event_id))
                         except Exception as e:
-                            print e
+                            print(e)
                 if feedback.lower() == 'n':
-                    print 'Filling current info into database, then will load more distant data for further analysis\n'
+                    print('Filling current info into database, then will load more distant data for further analysis\n')
                     badstas = [str(g.split('.')[0]) for g in hfbad]
                     badchans = [str(g.split('.')[1]) for g in hfbad]
                     badnets = [str(g.split('.')[3].split(' - ')[0]) for g in hfbad]
@@ -790,7 +780,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                     try:
                         cursor.execute('UPDATE events SET maxdistHF_km = ? WHERE Eid = ?', (maxdist, event_id))
                     except Exception as e:
-                        print e
+                        print(e)
             # Fill info into database
             Sids_bad = []
             Sids_good = []
@@ -804,7 +794,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         if retrieved_data:
                             Sids_bad += [val[0] for val in retrieved_data]
                     except Exception as e:
-                        print e
+                        print(e)
                 for i, goodsta in enumerate(goodstas):
                     try:
                         cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
@@ -813,7 +803,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         if retrieved_data:
                             Sids_good += [val[0] for val in retrieved_data]
                     except Exception as e:
-                        print e
+                        print(e)
                 if Sids_bad:
                     for Sid in Sids_bad:
                         cursor.execute('UPDATE sta_nearby SET detect_HF = ? WHERE station_id = ? AND event_id = ?',
@@ -838,7 +828,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                     trace.remove_response(output=LPoutput, pre_filt=cosfilt)
                     temp = temp + trace
                 except:
-                    print 'Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,)
+                    print('Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,))
             st_lp = temp
 
             print ('Interactive review of long periods starting\n')
@@ -853,11 +843,11 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
             connection = None
             connection = lite.connect(database)
             maxdist = np.max([trace.stats.rdist for trace in st_lpgood])
-            feedback = raw_input(('is %4.1f km the maximum distance observed for lp? Y or N\n') % (maxdist,))
+            feedback = input(('is %4.1f km the maximum distance observed for lp? Y or N\n') % (maxdist,))
             if feedback.lower() == 'n':
-                feedback = raw_input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
+                feedback = input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
                 if feedback.lower() == 'y':
-                    maxdist = float(raw_input('Enter the maximum distance observed in km (round up to nearest km)\n'))
+                    maxdist = float(input('Enter the maximum distance observed in km (round up to nearest km)\n'))
                     # delete all stations that were greater than maximum distance and that are in st_lpbad, and put good stations in database
                     goodstas = [str(trace.stats.station) for trace in st_lpgood if trace.stats.rdist < maxdist]
                     goodchans = [str(trace.stats.channel) for trace in st_lpgood if trace.stats.rdist < maxdist]
@@ -872,9 +862,9 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         try:
                             cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
                         except Exception as e:
-                            print e
+                            print(e)
                 if feedback.lower() == 'n':
-                    print 'Filling current info into database, then will load more distant data for further analysis\n'
+                    print('Filling current info into database, then will load more distant data for further analysis\n')
                     badstas = [str(g.split('.')[0]) for g in lpbad]
                     badchans = [str(g.split('.')[1]) for g in lpbad]
                     badnets = [str(g.split('.')[3].split(' - ')[0]) for g in lpbad]
@@ -896,7 +886,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                     try:
                         cursor.execute('UPDATE events SET maxdistLP_km = ? WHERE Eid = ?', (maxdist, event_id))
                     except Exception as e:
-                        print e
+                        print(e)
             # Fill info into database
             Sids_bad = []
             Sids_good = []
@@ -910,7 +900,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         if retrieved_data:
                             Sids_bad += [val[0] for val in retrieved_data]
                     except Exception as e:
-                        print e
+                        print(e)
                 for i, goodsta in enumerate(goodstas):
                     try:
                         cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
@@ -919,7 +909,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                         if retrieved_data:
                             Sids_good += [val[0] for val in retrieved_data]
                     except Exception as e:
-                        print e
+                        print(e)
                 if Sids_bad:
                     for Sid in Sids_bad:
                         cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE station_id = ? AND event_id = ?',
@@ -963,7 +953,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
 
     # Get event info
     evDict = findsta.getEventInfo(event_id, database=database)
-    print(('Now analysing Eid %s - %s') % (event_id, evDict['Name']))
+    print((('Now analysing Eid %s - %s') % (event_id, evDict['Name'])))
 
     # Find stations where detect_HF=1 for this event
     staDict = findsta.getStaInfo(event_id, database=database, detectHF=True, minradius=minradius, maxradius=maxradius)
@@ -1013,19 +1003,19 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                     # Get earliest start time from IRIS for AK and AV
                     url1 = ('http://service.iris.edu/fdsnws/station/1/query?network=AV&level=station&format=text&nodata=404')
                     url2 = ('http://service.iris.edu/fdsnws/station/1/query?network=AK&level=station&format=text&nodata=404')
-                    f = urllib2.urlopen(url1)
+                    f = urllib.request.urlopen(url1)
                     file1 = f.read()
                     lines1 = [line.split('|') for line in file1.split('\n')[1:]]
                     stdict = {}
                     f.close()
-                    f = urllib2.urlopen(url2)
+                    f = urllib.request.urlopen(url2)
                     file2 = f.read()
                     lines2 = [line.split('|') for line in file2.split('\n')[1:]]
                     f.close()
                     for line in lines1[:-1]:
                         stdict[line[1]] = (line[0], UTCDateTime(line[6]))
                     for line in lines2[:-1]:
-                        if line[1] in stdict.keys():
+                        if line[1] in list(stdict.keys()):
                             # Take the minimum if shows up for both network codes
                             stdict[line[1]] = (line[0], np.min([stdict[line[1]], UTCDateTime(line[6])]))
                         else:
@@ -1039,14 +1029,14 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                         if temp.stats.station in stdict:
                             temp.stats.network = stdict[temp.stats.station][0]
                         else:
-                            print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                            print('could not attach response info for %s, station correction will not work' % temp.stats.station)
                             continue
-                        if 'response' not in temp.stats.keys():
+                        if 'response' not in list(temp.stats.keys()):
                             # Change starttime of temp to earliest start time at IRIS for this station
                             try:
                                 temp.stats.starttime = stdict[temp.stats.station][1] + 86400.
                             except:
-                                print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                                print('could not attach response info for %s, station correction will not work' % temp.stats.station)
                     # Get responses from IRIS
                     client = FDSN_Client('IRIS')
                     akstas = ','.join([tr.stats.station for tr in stsac])
@@ -1065,7 +1055,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
                         trace.stats.location = ''
 
     # Delete any that are not in list
-    nets, stas, chans = zip(*[[staDict[k]['Network'], staDict[k]['Name'], staDict[k]['Channel']] for k in staDict])  # Exclude location code because inconsistencies here can cause data to not be found
+    nets, stas, chans = list(zip(*[[staDict[k]['Network'], staDict[k]['Name'], staDict[k]['Channel']] for k in staDict]))  # Exclude location code because inconsistencies here can cause data to not be found
     st = Stream()
     for n1, s1, c1 in zip(nets, stas, chans):
         st += sttemp.select(station=s1, network=n1, channel=c1)
@@ -1134,8 +1124,8 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
     meansqfreqSN, var = sigproc.meansqfreqSN(sliceorig, presliceorig, SNrat=2.0)
     #domfreq = sigproc.domfreq(sliceorig)
 
-    stations, networks, channels, locations, SRid = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel'],
-                                                        staDict[k]['LocationCode'], staDict[k]['SRid']] for k in staDict])
+    stations, networks, channels, locations, SRid = list(zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel'],
+                                                        staDict[k]['LocationCode'], staDict[k]['SRid']] for k in staDict]))
 
     # Put in the database
     connection = None
@@ -1150,12 +1140,12 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
             try:
                 if len(thisSRid) > 1:
                     station5 = '%s.%s.%s.%s' % (astas[i], achans[i], alocs[i], anets[i])
-                    print('Found multiple matches when excluding location code for %s, entering data into all of them' % station5)
+                    print(('Found multiple matches when excluding location code for %s, entering data into all of them' % station5))
                 for thisid in thisSRid:
                     cursor.execute('UPDATE sta_nearby SET starttimeHF = ?, endtimeHF = ?, peakfreqraw = ?, meansqfreqraw = ?, meansqfreqSNRraw = ?, duration_secHF = ?, absmaxampHF = ?, p2pmaxampHF = ? WHERE SRid = ?', (starttimes[i].strftime('%Y-%m-%d %H:%M:%S'), endtimes[i].strftime('%Y-%m-%d %H:%M:%S'), peakfreq[i], meansqfreq[i], meansqfreqSN[i], durations[i], aamps[i], p2pamp[i], thisid))
             except Exception as e:
                 print(e)
-                print('Could not put %s in database' % station5)
+                print(('Could not put %s in database' % station5))
 
     # Put duration measurements in the database too
     dstarttimes = []
@@ -1185,7 +1175,7 @@ def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VE
             try:
                 cursor.execute('UPDATE sta_nearby SET starttimeHF = ?, endtimeHF = ?, duration_secHF = ? WHERE SRid = ?', (dstarttimes[i].strftime('%Y-%m-%d %H:%M:%S'), dendtimes[i].strftime('%Y-%m-%d %H:%M:%S'), ddurations[i], thisSRid[0]))
             except Exception as e:
-                print e
+                print(e)
 
 
 def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='DISP', taper=0.05, detrend='linear',
@@ -1217,7 +1207,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
 
     # Get event info
     evDict = findsta.getEventInfo(event_id, database=database)
-    print(('Now analysing Eid %s - %s') % (event_id, evDict['Name']))
+    print((('Now analysing Eid %s - %s') % (event_id, evDict['Name'])))
 
     # Find stations where detect_HF=1 for this event
     staDict = findsta.getStaInfo(event_id, database=database, detectLP=True, minradius=minradius, maxradius=maxradius)
@@ -1267,19 +1257,19 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                     # Get earliest start time from IRIS for AK and AV
                     url1 = ('http://service.iris.edu/fdsnws/station/1/query?network=AV&level=station&format=text&nodata=404')
                     url2 = ('http://service.iris.edu/fdsnws/station/1/query?network=AK&level=station&format=text&nodata=404')
-                    f = urllib2.urlopen(url1)
+                    f = urllib.request.urlopen(url1)
                     file1 = f.read()
                     lines1 = [line.split('|') for line in file1.split('\n')[1:]]
                     stdict = {}
                     f.close()
-                    f = urllib2.urlopen(url2)
+                    f = urllib.request.urlopen(url2)
                     file2 = f.read()
                     lines2 = [line.split('|') for line in file2.split('\n')[1:]]
                     f.close()
                     for line in lines1[:-1]:
                         stdict[line[1]] = (line[0], UTCDateTime(line[6]))
                     for line in lines2[:-1]:
-                        if line[1] in stdict.keys():
+                        if line[1] in list(stdict.keys()):
                             # Take the minimum if shows up for both network codes
                             stdict[line[1]] = (line[0], np.min([stdict[line[1]], UTCDateTime(line[6])]))
                         else:
@@ -1293,14 +1283,14 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                         if temp.stats.station in stdict:
                             temp.stats.network = stdict[temp.stats.station][0]
                         else:
-                            print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                            print('could not attach response info for %s, station correction will not work' % temp.stats.station)
                             continue
-                        if 'response' not in temp.stats.keys():
+                        if 'response' not in list(temp.stats.keys()):
                             # Change starttime of temp to earliest start time at IRIS for this station
                             try:
                                 temp.stats.starttime = stdict[temp.stats.station][1] + 86400.
                             except:
-                                print 'could not attach response info for %s, station correction will not work' % temp.stats.station
+                                print('could not attach response info for %s, station correction will not work' % temp.stats.station)
                     # Get responses from IRIS
                     client = FDSN_Client('IRIS')
                     akstas = ','.join([tr.stats.station for tr in stsac])
@@ -1319,7 +1309,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
             trace.stats.location = ''
 
     # Delete any that are not in list
-    nets, stas, chans = zip(*[[staDict[k]['Network'], staDict[k]['Name'], staDict[k]['Channel']] for k in staDict])  # Exclude location code because inconsistencies here can cause data to not be found
+    nets, stas, chans = list(zip(*[[staDict[k]['Network'], staDict[k]['Name'], staDict[k]['Channel']] for k in staDict]))  # Exclude location code because inconsistencies here can cause data to not be found
     st = Stream()
     for n1, s1, c1 in zip(nets, stas, chans):
         st += sttemp.select(station=s1, network=n1, channel=c1)
@@ -1342,7 +1332,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
             trace.remove_response(output=LPoutput, pre_filt=cosfilt)
             temp = temp + trace
         except:
-            print 'Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,)
+            print('Failed to remove response for %s, deleting this station' % (trace.stats.station + trace.stats.channel,))
     st = temp
 
     # Interactive plotting to pick start and end time and make amplitude picks
@@ -1385,8 +1375,8 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
         sliceorig += st.select(id=str(code1)).copy().slice(amppick['picktime'][0], amppick['picktime'][1])
         presliceorig += st.select(id=str(code1)).copy().slice(st.select(id=str(code1))[0].stats.starttime, amppick['picktime'][0])
 
-    stations, networks, channels, locations, SRid = zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel'],
-                                                        staDict[k]['LocationCode'], staDict[k]['SRid']] for k in staDict])
+    stations, networks, channels, locations, SRid = list(zip(*[[staDict[k]['Name'], staDict[k]['Network'], staDict[k]['Channel'],
+                                                        staDict[k]['LocationCode'], staDict[k]['SRid']] for k in staDict]))
 
     # Put in the database
     connection = None
@@ -1401,9 +1391,9 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
             try:
                 if len(thisSRid) > 1:
                     station5 = '%s.%s.%s.%s' % (astas[i], achans[i], alocs[i], anets[i])
-                    print('Found multiple matches when excluding location code for %s, entering data into all of them' % station5)
+                    print(('Found multiple matches when excluding location code for %s, entering data into all of them' % station5))
                 for thisid in thisSRid:
                     cursor.execute('UPDATE sta_nearby SET starttimeLP = ?, endtimeLP = ?, duration_secLP = ?, absmaxampLP = ?, p2pmaxampLP = ? WHERE SRid = ?', (starttimes[i].strftime('%Y-%m-%d %H:%M:%S'), endtimes[i].strftime('%Y-%m-%d %H:%M:%S'), durations[i], aamps[i], p2pamp[i], thisid))
             except Exception as e:
                 print(e)
-                print('Could not put %s in database' % station5)
+                print(('Could not put %s in database' % station5))
