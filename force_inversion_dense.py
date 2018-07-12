@@ -12,6 +12,11 @@ import random as rnd
 import pickle
 
 
+"""
+NOTE THIS HASNT YET BEEN CHECKED FOR FUNCTIONALITY IN PYTHON 3
+"""
+
+
 def rotate(st, baz=None):
     """
     rotate all components of st that can be rotated, to radial and transverse

@@ -8,6 +8,10 @@ import subprocess
 from reviewData import reviewData
 
 
+"""
+NOTE THIS HASNT YET BEEN CHECKED FOR FUNCTIONALITY IN PYTHON 3
+"""
+
 def unique_list(seq):  # make a list only contain unique values and keep their order
     seen = set()
     seen_add = seen.add
