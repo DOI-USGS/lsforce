@@ -31,7 +31,7 @@ def get_exif(imgfilename):
         exif_data = {}
         info = image._getexif()
         if info:
-            for tag, value in info.items():
+            for tag, value in list(info.items()):
                 decoded = TAGS.get(tag, tag)
                 if decoded == "GPSInfo":
                     gps_data = {}
@@ -527,7 +527,7 @@ def clean_gis(eids, relpath, newdbname, newifname, shortfilen):
                                     writer.writerow([gis_id, type1, source, description, newfilenrel])
                                     cnt += 1
                                 except Exception as e:
-                                    print e
+                                    print(e)
                             else:
                                 # add new entry
                                 try:
@@ -536,7 +536,7 @@ def clean_gis(eids, relpath, newdbname, newifname, shortfilen):
                                                            (currentgid, e1, type1, source, description, newfilenrel, apply_also))
                                     writer.writerow([gis_id, type1, source, description, newfilenrel])
                                 except Exception as e:
-                                    print e
+                                    print(e)
                                 currentgid += 1
 
                             if apply_also is not None:
@@ -841,8 +841,8 @@ def clean_seismic(eids, newdbname, newifname, relpath, shortfilen):
 
         # get max distance examined -
         # searchdists = np.array([st['stasource_radius_km'] for junk, st in stad.items() if st['detect_HF'] is not None or st['detect_LP'] is not None])
-        numHF = len([st for junk, st in stad.items() if st['detect_HF'] == 1])
-        numLP = len([st for junk, st in stad.items() if st['detect_LP'] == 1])
+        numHF = len([st for junk, st in list(stad.items()) if st['detect_HF'] == 1])
+        numLP = len([st for junk, st in list(stad.items()) if st['detect_LP'] == 1])
         # don't include null, but do include nos
         # if len(searchdists) == 0:
         #     continue
@@ -941,7 +941,7 @@ def make_eventsummary(eids, newdbname, newifname, shortfilen):
             fulldir = os.path.join(shortfilen, '%s_%s_%s' % (Eid, evname, evdat))
             stad = findsta.getStaInfo(Eid, database=newdbname)
             # get max distance examined -
-            searchdists = np.array([st['stasource_radius_km'] for junk, st in stad.items() if st['detect_HF'] is not None or st['detect_LP'] is not None])
+            searchdists = np.array([st['stasource_radius_km'] for junk, st in list(stad.items()) if st['detect_HF'] is not None or st['detect_LP'] is not None])
             results = rg.search((Latitude, Longitude))
             State = results[0]['admin1']
             Country = results[0]['cc']
@@ -950,8 +950,8 @@ def make_eventsummary(eids, newdbname, newifname, shortfilen):
             else:
                 searchdists = 0.
 
-            numHF = len([st for junk, st in stad.items() if st['detect_HF'] == 1])
-            numLP = len([st for junk, st in stad.items() if st['detect_LP'] == 1])
+            numHF = len([st for junk, st in list(stad.items()) if st['detect_HF'] == 1])
+            numLP = len([st for junk, st in list(stad.items()) if st['detect_LP'] == 1])
             writer.writerow([Starttime, Endtime, Eid, Name, State, Country, Type, Latitude, Longitude, LocUncert_km, Crown_lat, Crown_lon, Tip_lat, Tip_lon, Area_total, Area_source, Area_source_low, Area_source_high, Volume, Volume_low, Volume_high, Mass, Mass_low, Mass_high, H, H_low, H_high, L, L_low, L_high, OtherDataQuality, LPpotential, maxdistHF_reached, maxdistHF_km, numHF, maxdistLP_km, maxdistLP_reached, numLP, searchdists, DatLocation, fulldir])
 
     connection.close()
