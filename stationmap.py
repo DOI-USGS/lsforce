@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def stationmap(event_id, chanshow='', maxradius=100):
+def stationmap(event_id, chanshow='', maxradius=100, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
     Plot all stations within a given radius for an event in the landslide database
     USAGE
@@ -19,10 +19,16 @@ def stationmap(event_id, chanshow='', maxradius=100):
     fig - figure handle
     """
     fig = plt.figure()
-    stations, networks, channels, locations, datsource, dist, starttime, endtime, lats, lons = findsta.get_event_datainfo(event_id, maxradius=maxradius)
-    event_lat, event_lon, event_time, endtime, datsource = findsta.get_event_info(event_id)
-    lats = np.array(lats)
-    lons = np.array(lons)
+    staDict = findsta.getStaInfo(event_id, maxradius=maxradius, database=database)
+    evDict = findsta.getEventInfo(event_id, database=database)
+    
+    lats = np.array([stdc['Latitude'] for stdc in staDict])
+    lons = np.array([stdc['Longitude'] for stdc in staDict])
+    stations = np.array([stdc['Name'] for stdc in staDict])
+    channels = np.array([stdc['Channel'] for stdc in staDict])
+    event_lon = evDict['Longitude']
+    event_lat = evDict['Latitude']
+
     alllats = np.hstack([lats, event_lat])
     alllons = np.hstack([lons, event_lon])
     difflat = max(alllats)-min(alllats)
@@ -66,7 +72,7 @@ def stationmap(event_id, chanshow='', maxradius=100):
     return fig
 
 
-def stationmap_specify(stationshow, event_id, chanshow=''):
+def stationmap_specify(stationshow, event_id, chanshow='', database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
     Plot specified station names for an event in the lsseis database
     USAGE
@@ -81,10 +87,16 @@ def stationmap_specify(stationshow, event_id, chanshow=''):
     fig - figure handle
     """
     fig = plt.figure()
-    stations, networks, channels, locations, datsource, dist, starttime, endtime, lats, lons = findsta.get_event_datainfo(event_id, maxradius=5000.)
-    event_lat, event_lon, event_time, endtime, datsource = findsta.get_event_info(event_id)
-    lats = np.array(lats)
-    lons = np.array(lons)
+    staDict = findsta.getStaInfo(event_id, database=database)
+    evDict = findsta.getEventInfo(event_id, database=database)
+    
+    lats = np.array([stdc['Latitude'] for stdc in staDict])
+    lons = np.array([stdc['Longitude'] for stdc in staDict])
+    stations = np.array([stdc['Name'] for stdc in staDict])
+    channels = np.array([stdc['Channel'] for stdc in staDict])
+    event_lon = evDict['Longitude']
+    event_lat = evDict['Latitude']
+
     alllats = np.hstack([lats, event_lat])
     alllons = np.hstack([lons, event_lon])
     difflat = max(alllats)-min(alllats)
