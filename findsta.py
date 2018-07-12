@@ -154,7 +154,7 @@ def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=N
     connection.text_factory = str
     if maxradius is None:
         maxradius = 2000000.
-    # Get all station dadta
+    # Get all station data
     with connection:
         cursor = connection.cursor()
         try:
