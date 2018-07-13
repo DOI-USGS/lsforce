@@ -33,8 +33,17 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
                    savedat=False, folderdat='data', reloadfile=False, Zonly=False, addtodb=False, loadfromfile=True,
                    minradius=0., maxradius=None, removeoutliers=False, raw=True, HF=True, LP=True, timeseries=True,
                    spectrograms=True, spectra=True, merge=True, pad=True, fill_value=0., detrend='demean'):
-    """
-    Make standard figures for each event and put them in the database
+    """Make standard figures for each event and put them in the database
+
+    Args:
+        eids: event_id (int) or list of event_ids to create figures for
+        numstas (int): Number of stations to include (not components, but stations)
+        bufferperc (float): percentage of the waveform duration to use as a buffer for before and after the signal
+            to make the signal easier to see in the plots
+        database (str): path to sqlite3 database
+        placefigs (str): location to place figures
+        relplacefigs (str): 
+
     """
 
     try:

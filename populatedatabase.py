@@ -11,7 +11,7 @@ import sqlite3 as lite
 from obspy import Stream, UTCDateTime
 from obspy.clients.fdsn import Client as FDSN_Client
 import glob
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
 import os
 from sigproc import sigproc
 import shutil
@@ -20,10 +20,13 @@ import datetime
 
 def initial_populate(event_ids, minradius=0., maxradius=500., clients=['IRIS'],
                      database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
-    """
-    :param event_ids: either single integer or list or numpy array of integers, eg np.arange(62,65)
-    :param maxradius: Maximum radius to go out to in searching for nearby stations in stasource_radius_km
-    :param clients: list of FDSN clients to search, see list here: https://docs.obspy.org/packages/obspy.clients.fdsn.html
+    """Performs initial population of stations and sta_nearby tables for a single event id or list of event ids.
+
+    Args:
+        event_ids: either single integer or list or numpy array of integers, eg np.arange(62,65)
+        maxradius (float): Maximum radius to go out to in searching for nearby stations
+        clients (list): list of FDSN clients to search, see options here: https://docs.obspy.org/packages/obspy.clients.fdsn.html
+        database (str): file path to sqlite3 database
     """
     if type(event_ids) is int:
         event_ids = [event_ids]
@@ -38,18 +41,21 @@ def initial_populate(event_ids, minradius=0., maxradius=500., clients=['IRIS'],
 
             inventory = reviewData.get_stations(evdict['Latitude'], evdict['Longitude'], stb4,
                                                 clients=[client], minradiuskm=minradius,
-                                                maxradiuskm=maxradius, includerestricted=False,
-                                                chan='BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?')
+                                                maxradiuskm=maxradius, chan='BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?')
 
-            print(len(inventory.get_contents()['channels']))
+            #print(len(inventory.get_contents()['channels']))
             populate_station_tables(inventory, client=client)
             populate_station_event_table(event_id, inventory)
 
 
-
 def populate_station_tables(inventory, client=None, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
-    """
-    Helper code used to put the station info into the stations table of database if it's not already there
+    """Helper code used to put the station info into the stations table of database if it's not already there
+
+    Args:
+        inventory: Obspy Inventory object containing stations to try to add to table.
+        client (str): FDSN client from which station information was obtained. Used to define source of station info
+            in table.
+        database (str): file path to sqlite3 database
     """
     if client is None:
         source = 'unknown'
@@ -87,8 +93,15 @@ def populate_station_tables(inventory, client=None, database='/Users/kallstadt/L
 
 def populate_station_event_table(event_id, inventory, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
                                  update=True):
-    """
-    Also, put the station in the sta_nearby table for this event and calculate distance, az, baz
+    """Helper code to put the station in the sta_nearby table for this event and calculate distance, az, baz
+
+    Args:
+        event_id (int): event id of landslide event
+        inventory: Obspy Inventory object containing stations to try to add to table.
+        database (str): file path to sqlite3 database
+        update (bool): if True, will recalculate distances and update all station-event pairs that were already
+            in the database.
+
     """
     #get event lat lon from database
     connection = None
@@ -130,7 +143,7 @@ def populate_station_event_table(event_id, inventory, database='/Users/kallstadt
                     retrieved_data = cursor_output.fetchall()
                     #except:
                     #    retrieved_data = []
-    
+
                     if len(retrieved_data) == 0:
                         #if it isn't already there, calculate stuff and save it in the table
                         backazimuth, azimuth, distance = reviewData.pyproj_distaz(sta_lat, sta_lon, event_lat, event_lon)
@@ -156,10 +169,17 @@ def populate_station_event_table(event_id, inventory, database='/Users/kallstadt
     print(('added %s entries to sta_nearby table, updated %s entries, %s left as is, %s not added because of error' % (val, val1, val2, valbad)))
 
 
-def remove_events(event_ids, savecopy=None, gisfiles=False, photos=False, information=False, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
-    """
-    Removes event_ids from event table and also removes any entries in sta_nearby table for this event. It also can remove entries in gisfiles, photos, or information tables if desired.
-    savecopy = full file name for a copy to save of database in case something goes wrong with .db extension
+def remove_events(event_ids, savecopy=None, gisfiles=False, photos=False, information=False,
+                  database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
+    """Removes event_ids from event table and also removes any entries in sta_nearby table for this event.
+
+    Args:
+        event_ids: either single integer or list or numpy array of integers, eg np.arange(62,65)
+        savecopy (str): full file name for a copy to save of database in case something goes wrong with .db extension
+        gisfiles (bool): if True, remove corresponding entries in gisfiles table
+        photos (bool): if True, remove corresponding entries in photos table
+        information (bool): if True, remove corresponding entries in information table
+        database (str): file path to sqlite3 database
     """
     if type(event_ids) is int:
         event_ids = [event_ids]
@@ -202,9 +222,11 @@ def remove_events(event_ids, savecopy=None, gisfiles=False, photos=False, inform
 
 
 def recalculate_distances(event_ids, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
-    """Recalculate source to station distances. Should be done if lat/lons were updated for either
-    source or stations in the table
-    :param event_ids: either single integer or list or numpy array of integers, eg np.arange(62,65)
+    """Recalculate source to station distances. Should be done if lat/lons were updated for either source or stations in the table
+
+    Args:
+        event_ids: either single integer or list or numpy array of integers, eg np.arange(62,65)
+        database (str): file path to sqlite3 database
     """
     if type(event_ids) is int:
         event_ids = [event_ids]
@@ -243,25 +265,27 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
     in each where the signal is not visible to the human eye, leaving only the ones that should
     be considered "detections" behind. Then quit interactive plotting by pressing q and follow
     prompts. Will populate database out to maxradius and maxradius + n*intincrkm.
-    Note: This must be done in ipython with pylab enabled for interactive plotting to work
+    Note: This must be done in ipython with pylab enabled for interactive plotting to work. May also require
+    that an interactive backend be used for matplotlib (Qt5Agg works).
 
-    :param event_id: Integer specifying which event to review
-    :param buffer_sec: Number of seconds to add on either end of start and end time (makes viewing easier)
-    :param minradius: minimum distance in km to search for stations (from source)
-    :param maxradius: maximum distance in km to search for stations (from source)
-    :param intincrkm: increment to increase by when expanding search outward past maxradius
-    :param maxreachedHF: Has the maximum extent of the high frequencies already been reached previously and saved in
-      database? (will skip analysis of high frequencies)
-    :param maxreachedLP: Has the maximum extent of the long periods already been reached previously and saved in
-      database? (will skip analysis of high frequencies)
-    :param HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
-    :param LPlims: tuple or list of lower and upper period limits in seconds for LP station correction (in DISP),
-      (20., 60.) standard
-    :param LPoutput: Output type for LP station correction (DISP standard)
-    :param maxtraces: Number of traces to view at a time
-    :param taper: percentage taper (or None for no tapering)
-    :param database: Full file path of database file location
-    :param path: Path to location of sac files (upstream from relative file paths listed in database)
+    Args:
+        event_id (int): id of event to review
+        buffer_sec (float): Number of seconds to add on either end of start and end time (makes viewing easier)
+        minradius (float): minimum distance in km to search for stations (from source)
+        maxradius (float): maximum distance in km to search for stations (from source)
+        intincrkm (float): increment to increase by when expanding search outward past maxradius
+        maxreachedHF (bool): Has the maximum extent of the high frequencies already been reached in a previous
+            run of review data and saved in database? (will skip analysis of high frequencies)
+        maxreachedLP (bool): Has the maximum extent of the long periods already been reached in a previous
+            run of review data and saved in database? (will skip analysis of high frequencies)
+        HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
+        LPlims: tuple or list of lower and upper period limits in seconds for LP station correction (in DISP),
+            (20., 60.) standard
+        LPoutput (str): Output type for LP station correction ('DISP' standard, could also be 'VEL' or 'ACC')
+        maxtraces (int): Number of traces to view at a time
+        taper (0.05): percentage taper (or None for no tapering)
+        database (str): Full file path of database file location
+        path (str): Path to location of sac files (upstream from relative file paths listed in database)
 
     """
     evDict = findsta.getEventInfo(event_id, database=database)
@@ -862,27 +886,31 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
 def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VEL',
                         minradius=0., maxradius=None, maxtraces=15, taper=None, detrend='demean',
-                        path='/Users/kallstadt/LSseis/landslideDatabase',
-                        database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
+                        database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
+                        path='/Users/kallstadt/LSseis/landslideDatabase'):
     """
-    Make measurements on confirmed high frequency detections, pulls data from IRIS and other sources
+    Make measurements on confirmed high frequency (HF) detections, pulls data from IRIS and other sources
     and links station correction info, then displays in Interactive Plot. User should then delete all traces
     that are clipped, then press C to perform station correction, Make amplitude picks at start and
     end of each signal (best guess), then quit interactive plotting
     by pressing q and and it will then use the time of the amplitude picks to
     populate database with several measurements about each signal. Do not make
     measurements on wonky signals.
-    Note: This must be done in ipython with pylab enabled for interactive plotting to work
+    Note: This must be done in ipython with pylab enabled for interactive plotting to work. May also require
+    that an interactive backend be used for matplotlib (Qt5Agg works).
 
-    :param event_id: Integer specifying which event to review
-    :param buffer_sec: Number of seconds to add on either end of start and end time (makes viewing easier)
-    :param HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
-    :param HFoutput: Output type for HF station correction (VEL standard)
-    :param minradius: minimum distance in km to search for HFdetections (from source)
-    :param maxradius: maximum distance in km to search for HFdetections (from source)
-    :param maxtraces: Number of traces to view at a time
-    :param database: Full file path of database file location
-    :param path: Path to location of sac files (upstream from relative file paths listed in database)
+    Args:
+        event_id (int): id of event to review
+        buffer_sec (float): Number of seconds to add on either end of start and end time (makes viewing easier)
+        HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
+        HFoutput (str): Output type for HF station correction ('VEL' standard, could also be 'DISP' or 'ACC')
+        minradius (float): minimum distance in km to search for stations (from source)
+        maxradius (float): maximum distance in km to search for stations (from source)
+        maxtraces (int): Number of traces to view at a time
+        taper (0.05): percentage taper (or None for no tapering)
+        detrend (str): type of detrending to use. 'demean' or 'linear' are common options
+        database (str): Full file path of database file location
+        path (str): Path to location of sac files (upstream from relative file paths listed in database)
 
     """
     # built cosine filter that will be used
@@ -1119,24 +1147,28 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
                         minradius=0., maxradius=None, maxtraces=15, path='/Users/kallstadt/LSseis/landslideDatabase',
                         database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
-    Make measurements on confirmed high frequency detections, pulls data from IRIS and other sources
+    Make measurements on confirmed long period detections, pulls data from IRIS and other sources
     and links station correction info, then displays in Interactive Plot. User should then delete all traces
     that are clipped, then press C to perform station correction, Make amplitude picks at start and
     end of each signal (best guess), then quit interactive plotting
     by pressing q and and it will then use the time of the amplitude picks to
     populate database with several measurements about each signal. Do not make
     measurements on wonky signals.
-    Note: This must be done in ipython with pylab enabled for interactive plotting to work
+    Note: This must be done in ipython with pylab enabled for interactive plotting to work. May also require
+    that an interactive backend be used for matplotlib (Qt5Agg works).
 
-    :param event_id: Integer specifying which event to review
-    :param buffer_sec: Number of seconds to add on either end of start and end time (makes viewing easier)
-    :param HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
-    :param HFoutput: Output type for HF station correction (VEL standard)
-    :param minradius: minimum distance in km to search for HFdetections (from source)
-    :param maxradius: maximum distance in km to search for HFdetections (from source)
-    :param maxtraces: Number of traces to view at a time
-    :param database: Full file path of database file location
-    :param path: Path to location of sac files (upstream from relative file paths listed in database)
+    Args:
+        event_id (int): id of event to review
+        buffer_sec (float): Number of seconds to add on either end of start and end time (makes viewing easier)
+        LPlims: tuple or list of lower and upper frequency limits in seconds for HF filtering (20-60 sec standard)
+        LPoutput (str): Output type for HF station correction ('DISP' standard, could also be 'VEL' or 'ACC')
+        taper (0.05): percentage taper (or None for no tapering)
+        detrend (str): type of detrending to use. 'demean' or 'linear' are common options
+        minradius (float): minimum distance in km to search for stations (from source)
+        maxradius (float): maximum distance in km to search for stations (from source)
+        maxtraces (int): Number of traces to view at a time
+        path (str): Path to location of sac files (upstream from relative file paths listed in database)
+        database (str): Full file path of database file location
 
     """
     # built cosine filter that will be used
@@ -1313,7 +1345,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
         presliceorig += st.select(id=str(code1)).copy().slice(st.select(id=str(code1))[0].stats.starttime, amppick['picktime'][0])
 
     stations, networks, channels, locations, SRid = list(zip(*[[sdct['Name'], sdct['Network'], sdct['Channel'],
-                                                        sdct['LocationCode'], sdct['SRid']] for sdct in staDict]))
+                                                         sdct['LocationCode'], sdct['SRid']] for sdct in staDict]))
 
     # Put in the database
     connection = None
@@ -1338,8 +1370,7 @@ def make_measurementsLP(event_id, buffer_sec=100., LPlims=(20., 60.), LPoutput='
 
 def populate_redoubt_stanearby(event_ids, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
                                update=True):
-    """
-    Also, put the station in the sta_nearby table for this event and calculate distance, az, baz
+    """This function is only for a specific set of lahar events that occurred during the Redoubt eruption
     """
     if type(event_ids) is int:
         event_ids = [event_ids]

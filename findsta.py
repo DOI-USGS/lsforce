@@ -12,13 +12,14 @@ from reviewData import reviewData
 
 def getEventInfo(event_id, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """This function pulls the entire entry from the events table into a dictionary (e.g. Lats/Lons, volumes, everything in row)
-    :param event_id: id number corresponding to the event of interest in the database
-    :type event_id: integer
-    :param database: Full file path to SQLite3 landslide database file
-    :type database: string
-    :returns eventDict: Dictionary containing all entries of all fields from event table
-     of database
-    :type eventDict: Dictionary
+
+    Args:
+
+        event_id (int): id number corresponding to the event of interest in the database
+        database (str): Full file path to SQLite3 landslide database file
+
+    Returns:
+       Dictionary containing all entries of all fields from event table of database
 
     Dictionary Fields:
     'Eid' - event id
@@ -93,60 +94,60 @@ def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=N
     """Get all the station detection information with or without constraints on radius,
     whether or not it was detected in HF or LP bands, and whether or not there
     are amplitude and duration measurements in HF or LP bands.
-    :param event_id: id number corresponding to the event of interest in the database
-    :type event_id: integer
-    :param maxradius: Maximum radius to search in km
-    :param minradius: Minimum radius to search in km
-    :param detectHF: Return HF detections? None, True, or False
-    :param detectLP: Return LP detections? None, True, or False
-    :param both: True if want both detectHF and detectLP, but don't need both to be true for a given station
-    :param ampdetectHF: Return stations with HF amplitude measurements? None, True, or False
-    :param ampdetectLP: Return stations with HF amplitude measurements? None, True, or False
-    :param durationHF: Return stations with HF duration measurements? None, True or False
-    :param durationLP: Return stations with LP duration measurements? None, True or False
-    :param chanuse: Single string of channel names, return only stations that match channels defined,
-     '*' for all channels
-    :para numstas: Number of detections meeting criteria to return, starting from closest distance,
-        if None, will return all. Channels from the same station count as one.
-    :param database: Full file path to SQLite3 landslide database file
-    :type database: string
-    :returns staDict: List of dictionaries containing all entries of all fields from event table
-     of database
-    :type staDict: Dictionary
 
-    Dictionary entries
-    'Sid' - Station id
-    'Name' - Station name
-    'Network' - Network code
-    'Channel' - Channel code
-    'LocationCode' - Location code
-    'Latitude' - Station latitude
-    'Longitude' - Station longitude
-    'Elevation_masl' - Station elevation, meters above sea level
-    'source' - Source of station data
-    'SRid' - Station_event table id
-    'event_id' - event id
-    'station_id' - Station id (same as Sid)
-    'stasource_radius_km' - Distance from event center location to station in km
-    'az' - Azimuth from source to station in degrees
-    'baz' - Backazimuth (station to source) in degrees
-    'detect_HF' - 1 if detected on this station in 1-5 Hz band (VEL), 0 if not, None if unknown
-    'detect_LP' - 1 if detected on this station in 20-60 sec band (DISP), 0 if not, None if unknown
-    'starttimeHF' - starttime of HF signal on this station in UTCDateTime
-    'endtimeHF' - endtime of HF signal on this station in UTCDateTime
-    'starttimeHF_kurtosis' - WILL BE DELETED
-    'starttimeLP - starttime of LP signal on this station in UTCDateTime
-    'endtimeLP' - endtime of LP signal on this station in UTCDateTime
-    'peakfreqraw' - Peak frequency of raw signal (highest fourier amplitude)
-    'meansqfreqraw' - Mean squared frequency of raw signals
-    'meansqfreqSNRraw' - Mean squared frequency of raw signal where SNR greater than 2.0
-      relative to before the signal
-    'duration_secHF' - Duration of HF signal on this station in seconds
-    'duration_secLP'- Duration of LP signal on this station in seconds
-    'absmaxampHF' - Maximum absolute value of HF signal in m/s
-    'p2pmaxampHF' - Maximum peak to peak value of HF signal in m/s
-    'absmaxampLP' - Maximum absolute value of LP signal in m at this station
-    'p2pmaxampLP' - Maximum peak to peak value of LP signal in m at this station
+    Args:
+        event_id (int): id number corresponding to the event of interest in the database
+        maxradius (float): Maximum radius to search in km
+        detectHF: Return HF detections? None, True, or False
+        detectLP: Return LP detections? None, True, or False
+        both (bool): True if want both detectHF and detectLP, but don't need both to be true for a given station
+        ampdetectHF: Return stations with HF amplitude measurements? None, True, or False
+        ampdetectLP: Return stations with HF amplitude measurements? None, True, or False
+        durationHF: Return stations with HF duration measurements? None, True or False
+        durationLP: Return stations with LP duration measurements? None, True or False
+        chanuse: Single string of channel names, return only stations that match channels defined,
+            '*' for all channels
+        numstas (float): Number of detections meeting criteria to return, starting from closest distance,
+            if None, will return all. Channels from the same station count as one.
+        database (str): Full file path to SQLite3 landslide database file
+
+    Returns:
+        List of dictionaries containing all entries of all fields from event table
+            of database
+
+        Dictionary entries
+        'Sid' - Station id
+        'Name' - Station name
+        'Network' - Network code
+        'Channel' - Channel code
+        'LocationCode' - Location code
+        'Latitude' - Station latitude
+        'Longitude' - Station longitude
+        'Elevation_masl' - Station elevation, meters above sea level
+        'source' - Source of station data
+        'SRid' - Station_event table id
+        'event_id' - event id
+        'station_id' - Station id (same as Sid)
+        'stasource_radius_km' - Distance from event center location to station in km
+        'az' - Azimuth from source to station in degrees
+        'baz' - Backazimuth (station to source) in degrees
+        'detect_HF' - 1 if detected on this station in 1-5 Hz band (VEL), 0 if not, None if unknown
+        'detect_LP' - 1 if detected on this station in 20-60 sec band (DISP), 0 if not, None if unknown
+        'starttimeHF' - starttime of HF signal on this station in UTCDateTime
+        'endtimeHF' - endtime of HF signal on this station in UTCDateTime
+        'starttimeHF_kurtosis' - WILL BE DELETED
+        'starttimeLP - starttime of LP signal on this station in UTCDateTime
+        'endtimeLP' - endtime of LP signal on this station in UTCDateTime
+        'peakfreqraw' - Peak frequency of raw signal (highest fourier amplitude)
+        'meansqfreqraw' - Mean squared frequency of raw signals
+        'meansqfreqSNRraw' - Mean squared frequency of raw signal where SNR greater than 2.0
+          relative to before the signal
+        'duration_secHF' - Duration of HF signal on this station in seconds
+        'duration_secLP'- Duration of LP signal on this station in seconds
+        'absmaxampHF' - Maximum absolute value of HF signal in m/s
+        'p2pmaxampHF' - Maximum peak to peak value of HF signal in m/s
+        'absmaxampLP' - Maximum absolute value of LP signal in m at this station
+        'p2pmaxampLP' - Maximum peak to peak value of LP signal in m at this station
 
     """
     connection = None
@@ -246,16 +247,15 @@ def getStaInfo(event_id, maxradius=None, minradius=0., detectHF=None, detectLP=N
 
 
 def attach_distaz(st, event_lat, event_lon, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
-    """
-    add distance, az, baz for a given event location to each trace in st from database
-    USAGE
-    st = attach_distaz(st, event_lat, event_lon, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db')
-    INPUTS
-    st - obspy Stream
-    event_lat - latitude in decimal degrees of event
-    event_lon - longitude in decimal degrees of event
-    OUTPUTS
-    st - same obspy Stream but with trace.stats.rdist, trace.stats.azimuth, and trace.stats.back_azimuth added for each trace. Events that were not in the database are deleted
+    """add distance, az, baz for a given event location to each trace in st from database
+
+    Args:
+        st: obspy Stream to attach distaz to
+        event_lat (float): latitude in decimal degrees of event
+        event_lon (float): longitude in decimal degrees of event
+
+    Returns:
+        same obspy Stream but with trace.stats.rdist, trace.stats.azimuth, and trace.stats.back_azimuth added for each trace. Events that were not in the database are deleted
 
     """
     #get station lat lon from database
@@ -292,8 +292,15 @@ def attach_distaz(st, event_lat, event_lon, database='/Users/kallstadt/LSseis/la
 
 
 def attach_coords(st, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
-    """
-    attach coordinates to stations in Stream st by getting info from IRIS
+    """attach coordinates to stations in Stream st by getting info from IRIS
+
+    Args:
+        st: obspy Stream to attach distaz to
+        database (str): file path to sqlite3 database to use as source of station coordinates
+
+    Returns:
+        same obspy Stream but with coordinates attached.
+
     """
     from obspy.core import AttribDict
     #get station lat lon from database

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Functions for cleaning up the database, renaming files and so on
+Functions for cleaning up the database, renaming files and so on in preparation for data release
 """
 import numpy as np
 import sqlite3 as lite
@@ -20,11 +20,16 @@ import reverse_geocoder as rg
 def get_exif(imgfilename):
     """Returns info from exif data of an Image, if it exists.
     Modified from https://gist.github.com/erans/983821#file-get_lat_lon_exif_pil-py-L4
-    :param imgfilename: path to image filenames
-    :returns:
-        latitude: latitude of where photo was taken from, in degrees, from GPSTAGS
-        longitude: longitude of where photo was taken from, in degrees, from GPSTAGS
-        date: formatted string of date and time image was taken
+
+    Args:
+        imgfilename (str): path to image filenames
+
+    Returns:
+        tuple: tuple (latitude, longitude, date) where,
+            * latitude: latitude of where photo was taken from, in degrees, from GPSTAGS
+            * longitude: longitude of where photo was taken from, in degrees, from GPSTAGS
+            * date: formatted string of date and time image was taken
+
     """
     try:
         image = Image.open(imgfilename)
@@ -92,19 +97,25 @@ def get_exif(imgfilename):
 
 def prepare_new(newdbname=None, newifname=None, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
                 infofiles='/Users/kallstadt/LSseis/landslideDatabase/InfoFiles', shortfilen=None):
-    """
-    Set up to make a cleaned copy of the database along with flat files for each event
-    :param newdbname: path and file name for new copy of database, if None, will use current name (database) with date appended
-    :param newifname: directory where new copies of info files should be placed, if None, will use current name (infofiles) with date appended
-    :param database: path to current database file
-    :param infofiles: directory where current info files are located
-    :param shortfilen: relative file path to append to new file locations when they are replaced in database, optional
-    :returns:
-        eids: list of event ids
-        relpath: directory where infofiles is located
-        newdbname: name of new database
-        newifname: name of new directory for info files
-        shortfilen: relative file path to append to new file locations when they are replaced in database
+    """Setup to make a cleaned copy of the database along with flat files for each event
+
+    Args:
+        newdbname (str): path and file name for new copy of database, if None, will use current name (database)
+            with date appended
+        newifname (dict): directory where new copies of info files should be placed, if None, will use current name
+            (infofiles) with date appended
+        database (str): path to current database file
+        infofiles (str): path to directory where current info files are located
+        shortfilen (str): relative file path to append to new file locations when they are replaced in database, optional
+
+    Returns:
+        tuple (eids, relpath, newdbname, newifname, shortfilen) where,
+            * eids: list of event ids
+            * relpath: directory where infofiles is located
+            * newdbname: name of new database
+            * newifname: name of new directory for info files
+            * shortfilen: relative file path to append to new file locations when they are replaced in database
+
     """
     relpath = os.path.dirname(infofiles)
     # Create new copy of database and new copy of InfoFiles
@@ -177,6 +188,15 @@ def prepare_new(newdbname=None, newifname=None, database='/Users/kallstadt/LSsei
 
 
 def get_eids(newdbname):
+    """Get all event ids in database
+
+    Args:
+        newdbname (str): full file extension to database to read
+
+    Returns:
+        list of event_ids
+
+    """
     # Connect to database
     connection = None
     connection = lite.connect(newdbname)
@@ -194,6 +214,11 @@ def get_eids(newdbname):
 
 def clean_stanearby(eids, database=None):
     """Set all stations beyond max detection limits to NULL and detect_LP to NULL for any short period stations
+
+    Args:
+        eids (list): list of event_ids
+        database (str): full file extension to sqlite3 database to clean
+
     """
     for e1 in eids:
         evinf = findsta.getEventInfo(e1, database=database)
@@ -224,13 +249,15 @@ def clean_stanearby(eids, database=None):
 
 
 def clean_photos(eids, relpath, newdbname, newifname, shortfilen):
-    """
-    Make clean copies of all photos/figures and give them uniform names, modify database to reflect changes, create flat file for each event summarizing
-    :param eids: list of event ids
-    :param relpath: directory where infofiles is located
-    :param newdbname: name of new database
-    :param newifname: name of new directory for info files
-    :param shortfilen: relative file path to append to new file locations when they are replaced in database
+    """Make clean copies of all photos/figures and give them uniform names, modify database to reflect changes,
+    create flat file for each event summarizing photos.
+
+    Args:
+        eids (list): list of event ids
+        relpath (str): directory where infofiles is located
+        newdbname (str): name of new database
+        newifname (str): name of new directory for info files
+        shortfilen (str): relative file path to append to new file locations when they are replaced in database
     """
 
     # Go through each event
@@ -434,13 +461,16 @@ def clean_photos(eids, relpath, newdbname, newifname, shortfilen):
 
 
 def clean_gis(eids, relpath, newdbname, newifname, shortfilen):
-    """
-    Make clean copies of all gis/map figures and give them uniform names, modify database to reflect changes, create flat file for each event summarizing
-    :param eids: list of event ids
-    :param relpath: directory where infofiles is located
-    :param newdbname: name of new database
-    :param newifname: name of new directory for info files
-    :param shortfilen: relative file path to append to new file locations when they are replaced in database
+    """Make clean copies of all gis/map figures and give them uniform names, modify database to reflect changes,
+        create flat file for each event summarizing the gis files.
+
+    Args:
+        eids (list): list of event ids
+        relpath (str): directory where infofiles is located
+        newdbname (str): name of new database
+        newifname (str): name of new directory for info files
+        shortfilen (str): relative file path to append to new file locations when they are replaced in database
+
     """
     # Go through each event
     for e1 in eids:
@@ -567,13 +597,16 @@ def clean_gis(eids, relpath, newdbname, newifname, shortfilen):
 
 
 def clean_information(eids, relpath, newdbname, newifname, shortfilen):
-    """
-    Make flat file of all information entries for each event and list of references, copy reference files to a top level references directory
-    :param eids: list of event ids
-    :param relpath: directory where infofiles is located
-    :param newdbname: name of new database
-    :param newifname: name of new directory for info files
-    :param shortfilen: relative file path to append to new file locations when they are replaced in database
+    """Make flat file of all information entries for each event and list of references, copy reference files to a top
+        level references directory.
+
+    Args:
+        eids (list): list of event ids
+        relpath (str): directory where infofiles is located
+        newdbname (str): name of new database
+        newifname (str): name of new directory for info files
+        shortfilen (str): relative file path to append to new file locations when they are replaced in database
+
     """
 
     # Connect to database
@@ -687,8 +720,14 @@ def clean_information(eids, relpath, newdbname, newifname, shortfilen):
 
 
 def clean_references(eids, newdbname, newifname, relpath):
-    """
-    Copy all references to one big file, and post to individual event files
+    """Copy all references to one big file, and post to individual event files
+
+    Args:
+        eids (list): list of event ids
+        newdbname (str): name of new database
+        newifname (str): name of new directory for info files
+        relpath (str): directory where infofiles is located
+
     """
     # Connect to database
     connection = None
@@ -817,11 +856,15 @@ def clean_references(eids, newdbname, newifname, relpath):
 
 
 def clean_seismic(eids, newdbname, newifname, relpath, shortfilen):
-    """
-    Make flat file summarizing seismic detection information for each event
-    :param eids: list of event ids
-    :param newdbname: name of new database
-    :param newifname: name of new directory for info files
+    """Make flat file summarizing seismic detection information for each event
+
+    Args:
+        eids (list): list of event ids
+        newdbname (str): name of new database
+        newifname (str): name of new directory for info files
+        relpath (str): directory where infofiles is located
+        shortfilen (str): relative file path to append to new file locations when they are replaced in database
+
     """
 
     # Connect to database
@@ -914,11 +957,14 @@ def clean_seismic(eids, newdbname, newifname, relpath, shortfilen):
 
 
 def make_eventsummary(eids, newdbname, newifname, shortfilen):
-    """
-    Make single event table summary flat file
-    :param eids: list of event ids
-    :param newdbname: name of new database
-    :param newifname: name of new directory for info files
+    """Make single event table summary flat file
+
+    Args:
+        eids (list): list of event ids
+        newdbname (str): name of new database
+        newifname (str): name of new directory for info files
+        shortfilen (str): relative file path to append to new file locations when they are replaced in database
+
     """
     # Connect to database
     connection = None
@@ -959,13 +1005,15 @@ def make_eventsummary(eids, newdbname, newifname, shortfilen):
 
 def main(newdbname=None, newifname=None, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
          infofiles='/Users/kallstadt/LSseis/landslideDatabase/InfoFiles', shortfilen=None):
-    """
-    Run all cleaning functions
-    :param newdbname: name of new database
-    :param newifname: name of new directory for info files
-    :param newdbname: name of new database
-    :param newifname: name of new directory for info files
-    :param shortfilen: relative file path to append to new file locations when they are replaced in database
+    """Run all cleaning functions
+
+    Args:
+        newdbname (str): name of new database
+        newifname (str): name of new directory for info files
+        database (str): full file path to sqlite3 database to clean
+        infofiles (str): full file path to InfoFiles location
+        shortfilen (str): relative file path to append to new file locations when they are replaced in database
+
     """
     eids, relpath, newdbname, newifname, shortfilen = prepare_new(newdbname=newdbname, newifname=newifname, database=database, infofiles=infofiles, shortfilen=shortfilen)
     clean_photos(eids, relpath, newdbname, newifname, shortfilen)
