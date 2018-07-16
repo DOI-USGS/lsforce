@@ -5,23 +5,23 @@ import numpy as np
 
 
 def stationmap(event_id, chanshow='', maxradius=100, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
-    """
-    Plot all stations within a given radius for an event in the landslide database
-    USAGE
-    fig = stationmap(event_id, chanshow='', maxradius=100)
+    """Create a map of all stations within a given radius for an event in the landslide database
 
-    INPUTS
-    event_id - event id from lsseis database
-    chanshow - the channels you want to show, '' or '*' plots all channels, form for restricting channels is chanshow = 'HHZ,BHZ'
-    maxradius - maximum distance from the event of stations to include
+    Args:
+        event_id: event id from lsseis database
+        chanshow: the channels you want to show, '' or '*' plots all channels, form for restricting channels is
+            chanshow = 'HHZ,BHZ'
+        maxradius: maximum distance from the event of stations to include, in km
+        database: sqlite3 database from which to pull information
 
-    OUPUTS
-    fig - figure handle
+    Returns:
+        figure handle
+
     """
     fig = plt.figure()
     staDict = findsta.getStaInfo(event_id, maxradius=maxradius, database=database)
     evDict = findsta.getEventInfo(event_id, database=database)
-    
+
     lats = np.array([stdc['Latitude'] for stdc in staDict])
     lons = np.array([stdc['Longitude'] for stdc in staDict])
     stations = np.array([stdc['Name'] for stdc in staDict])
@@ -73,23 +73,23 @@ def stationmap(event_id, chanshow='', maxradius=100, database='/Users/kallstadt/
 
 
 def stationmap_specify(stationshow, event_id, chanshow='', database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
-    """
-    Plot specified station names for an event in the lsseis database
-    USAGE
-    fig = stationmap_specify(stationshow, event_id, chanshow='')
+    """Plot specified station names for an event in the lsseis database
 
-    INPUTS
-    stationshow - single string of comma separated station names to show, e.g. 'STA1,STA1,STA3'
-    event_id - event id from lsseis database
-    chanshow - the channels you want to show, '' or '*' plots all channels, form for restricting channels is chanshow = 'HHZ,BHZ'
 
-    OUPUTS
-    fig - figure handle
+    Args:
+        stationshow: single string of comma separated station names to show, e.g. 'STA1,STA1,STA3'
+        event_id: event id from lsseis database
+        chanshow - the channels you want to show, '' or '*' plots all channels, form for restricting channels is
+            chanshow = 'HHZ,BHZ'
+        database: sqlite3 database from which to pull information
+
+    Returngs
+        figure handle
+
     """
     fig = plt.figure()
     staDict = findsta.getStaInfo(event_id, database=database)
     evDict = findsta.getEventInfo(event_id, database=database)
-    
     lats = np.array([stdc['Latitude'] for stdc in staDict])
     lons = np.array([stdc['Longitude'] for stdc in staDict])
     stations = np.array([stdc['Name'] for stdc in staDict])
@@ -141,19 +141,19 @@ def stationmap_specify(stationshow, event_id, chanshow='', database='/Users/kall
 
 
 def stationmap_coords(lats, lons, stations=None, channels=None, event_lat=None, event_lon=None, chanshow=''):
-    """
-    Plot stations specified
-    USAGE
-    fig = stationmap_coords(lats, lons, stations=None, channels=None, event_lat=None, event_lon=None, chanshow='')
+    """Plot stations specified without having to specify a source location or pull info from database
 
-    INPUTS
-    lats - np array of latitudes corresponding to stations
-    lons - np array of longitudes
-    stations - list of station names
-    channels - list of channel names corresponding to each station names
-    event_lat - latitude of event to plot relative to
-    event_lon - ditto
-    chanshow - channels to plot, '' or '*' plots all stations specified, else use form chanshow = 'ENZ,EHZ,HHZ'
+    Args:
+        lats: np array of latitudes corresponding to stations
+        lons: np array of longitudes
+        stations: list of station names
+        channels: list of channel names corresponding to each station names
+        event_lat: latitude of event to plot relative to
+        event_lon: ditto
+        chanshow - channels to plot, '' or '*' plots all stations specified, else use form chanshow = 'ENZ,EHZ,HHZ'
+
+    Returns:
+        figure handle
     """
     fig = plt.figure()
     lats = np.array(lats)

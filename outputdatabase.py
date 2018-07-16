@@ -42,7 +42,29 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
             to make the signal easier to see in the plots
         database (str): path to sqlite3 database
         placefigs (str): location to place figures
-        relplacefigs (str): 
+        relplacefigs (str): relative location of figure locations (will be used to reference fig locations in database)
+        savedat (bool): Whether to save the seismic data that is downloaded locally
+        folderdat (str): folder in which to save seismic data
+        reloadfile (bool): Even if saved data is found, will reload the data from original source anyway
+        Zonly (bool): Only plot vertical components
+        addtodb (bool): if True, will add figures to database
+        loadfromfile (bool): If saved data is found for the same time period, automatically load it in with out asking
+        minradius (float): Minimum source to station distance to consider, in km
+        maxradius (float): Maximum source to station distance to consider, in km
+        removeoutliers (bool): remove any signals with weird amplitudes (station correction info probably wrong)
+        raw (bool): Make figure showing raw seismic data
+        HF (bool): Make figure showing data corrected and filtered to high frequencies
+        LP (bool): Make figure showing data corrected and filtered to long periods
+        timeseries (bool): Make time series waveform figures
+        spectrograms (bool): Make spectrogram figures
+        spectra (bool): Make spectra figures
+        merge (bool): Merge seismic data if it's separated into separate files
+        pad (bool): whether to pad records when merging (required for many standard processing steps)
+        fill_value (float or int): value to fill in any gaps in data while merging
+        detrend: type of detrending to use on data before creating figures, None, 'demean', 'detrend'
+
+    Returns:
+        The figures requested for the list of event ids, saved as png files in the designated location
 
     """
 
@@ -236,13 +258,33 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
               loadfromfile=False, savedat=False, folderdat='data', merge=True, pad=True, fill_value=0., detrend='demean',
               database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
 
-    """
-    Pulls data from IRIS and other sources and links station correction info
-    :param event_id: Integer specifying which event to review
-    :param bufferperc: Buffer percentage of duration (end time - start time) (makes viewing signal easier)
-    :param numstas: Number of stations to show (shows numstas closest stations, all channels)
-    :param database: Full file path of database file location
-    :param path: Path to location of sac files (upstream from relative file paths listed in database)
+    """Pulls data from IRIS and other sources and links station correction info
+
+    Args:
+        event_id (int): to request data for
+        bufferperc (float): percentage of the waveform duration to use as a buffer for before and after the signal
+            to make the signal easier to see in the plots
+        numstas (int): Number of stations to include (not components, but stations)
+        path (str): Path to landslide database so code can find any local files linked to in database
+        ampdetectHF: None, True or False, only select station with HF amplitude measurements
+        detectHF: None, True or False, if True, only selects stations with HF detections, False excludes, None ignores
+        detectLP: None, True or False, if True, only selects stations with LP detections, False excludes, None ignores
+        both: if True, will find stations with either HF or LP detections
+        minradius (float): Minimum source to station distance to consider, in km
+        maxradius (float): Maximum source to station distance to consider, in km
+        Zonly (bool): Only plot vertical components
+        reloadfile (bool): Even if saved data is found, will reload the data from original source anyway
+        loadfromfile (bool): If saved data is found for the same time period, automatically load it in with out asking
+        savedat (bool): Whether to save the seismic data that is downloaded locally
+        folderdat (str): folder in which to save seismic data
+        merge (bool): Merge seismic data if it's separated into separate files
+        pad (bool): whether to pad records when merging (required for many standard processing steps)
+        fill_value (float or int): value to fill in any gaps in data while merging
+        detrend: type of detrending to use on data before creating figures, None, 'demean', 'detrend'
+        database (str): path to sqlite3 database
+
+    Returns:
+        an obspy stream of requested data
 
     """
     # Get event info
@@ -388,16 +430,34 @@ def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis
 
 def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=True, spectrograms=True, spectra=True,
                  HFlims=(1., 5.), HFoutput='VEL', LPlims=(20., 60.), LPoutput='DISP', taper=None, detrend='demean',
-                 startline=None, endline=None, speccorr=None, removeoutliers=False, displacementspec=False):
-    """
-    Make static figures for each event
-    :param HFlims: tuple or list of lower and upper frequency limits in Hz for HF filtering (1-5 Hz standard)
-    :param HFoutput: Output type for HF station correction (VEL standard)
-    :param taper: if None, no tapers, if 'bufferperc', will use bufferperc/2, if a float, will use that as the percent taper
-    :param startline: UTCDateTime for start time of the event in the database, will add vertical line here in time series
-    :param endline: UTCDateTime for end time of the event in the database, will add vertical line here in time series
-    UPDATE THESE:
-    spectra = multitaper, equiv to PSD
+                 startline=None, endline=None, speccorr=None, removeoutliers=False):
+    """Make static figures for a given data stream
+
+    Args:
+        st: obspy stream to plot
+        bufferperc (float): percentage of the waveform duration to use as a buffer for before and after the signal
+            to make the signal easier to see in the plots
+        raw (bool): Make figure showing raw seismic data
+        HF (bool): Make figure showing data corrected and filtered to high frequencies
+        LP (bool): Make figure showing data corrected and filtered to long periods
+        timeseries (bool): Make time series waveform figures
+        spectrograms (bool): Make spectrogram figures
+        spectra (bool): Make spectra figures
+        HFlims: tuple or list of low and high corners (in Hz) of high frequency bandpass filter
+        HFoutput (str): type of ground motion to correct to ('VEL', 'DISP', 'ACC')
+        LPlims: tuple or list of low and high corners (in sec) of low frequency bandpass filter
+        LPoutput (str): type of ground motion to correct to ('VEL', 'DISP', 'ACC')
+        taper: whether to taper edges or not. Suggested for long period plots, can be misleading for high freq plots
+        detrend: whether to detrend and if so, what type of detrending. 'demean' suggested for high freq plots,
+            'linear' suggested for long period plots
+        startline: UTCDateTime for start time of the event in the database, will add vertical line here in time series
+        endline: UTCDateTime for end time of the event in the database, will add vertical line here in time series
+        speccorr: If None, will not correct ground motion for spectral plots, if 'DISP', will correct to displacement
+            if 'VEL' will correct to velocity etc. Labels will be updated accordingly.
+        removeoutliers (bool): remove any signals with weird amplitudes (station correction info probably wrong)
+
+    TODO:
+        spectra = multitaper, equiv to PSD??
     """
     # build cosine filter that will be used
     cosfiltHF = (0.5*HFlims[0], HFlims[0], HFlims[1], 2*HFlims[1])
@@ -545,8 +605,9 @@ def make_figures(st, bufferperc=None, raw=True, HF=True, LP=True, timeseries=Tru
             for trace in stspec:
                 ind = stas.index(trace.stats.station)
                 colors1 += cycle[ind]
-            j1, j2, mt = reviewData.make_multitaper(stspec, number_of_tapers=None, time_bandwidth=4., sine=False, recsec=True, colors1=colors1,
-                                                    logx=True, logy=True, xunits='Hz', xlim=[0.001, 1000.], yunits='$m^2/s$', ylim=(10.**-22, 10.**-9),
+            j1, j2, mt = reviewData.make_multitaper(stspec, number_of_tapers=None, time_bandwidth=4., sine=False,
+                                                    recsec=True, colors1=colors1, logx=True, logy=True, xunits='Hz',
+                                                    xlim=[0.001, 1000.], yunits='$m^2/s$', ylim=(10.**-22, 10.**-9),
                                                     render=False, detrend=detrend)  # ylim=(10.**-3, 10.**9)
         else:
             if speccorr == 'DISP':
