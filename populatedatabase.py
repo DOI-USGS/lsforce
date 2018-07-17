@@ -407,7 +407,13 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
 
         if maxreachedHF is False:
             # Split into hf and lp streams and preprocess
-            st_hf = st.copy()
+            st_temp = st.copy()
+            # remove any channels with low sample rates
+            st_hf = Stream()
+            for tr in st_temp:
+                if tr.stats.sampling_rate >= 2*HFlims[1]:
+                    st_hf += tr
+
             # pre-filter to hf_range
             st_hf.filter('bandpass', freqmin=HFlims[0], freqmax=HFlims[1])
             # pre-correct to lp range, delete E* channels and any that won't station correct
