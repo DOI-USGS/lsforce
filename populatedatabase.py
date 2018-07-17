@@ -44,8 +44,8 @@ def initial_populate(event_ids, minradius=0., maxradius=500., clients=['IRIS'],
                                                 maxradiuskm=maxradius, chan='BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?')
 
             #print(len(inventory.get_contents()['channels']))
-            populate_station_tables(inventory, client=client)
-            populate_station_event_table(event_id, inventory)
+            populate_station_tables(inventory, client=client, database=database)
+            populate_station_event_table(event_id, inventory, database=database)
 
 
 def populate_station_tables(inventory, client=None, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
