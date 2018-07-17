@@ -256,7 +256,7 @@ def recalculate_distances(event_ids, database='/Users/kallstadt/LSseis/landslide
 
 def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intincrkm=100.,
                  maxreachedHF=False, maxreachedLP=False, HFlims=(1., 5.), LPlims=(20., 60.),
-                 LPoutput='DISP', maxtraces=15, taper=0.05,
+                 LPoutput='DISP', maxtraces=15, taper=0.05, clients=['IRIS'],
                  database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
                  path='/Users/kallstadt/LSseis/landslideDatabase'):
     """
@@ -295,7 +295,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
     dists = [sdct['stasource_radius_km'] for sdct in staDict]
     if np.max(dists) < maxradius:
         print ('database not fully populated to maxradius, populating now')
-        initial_populate(event_id, minradius=np.max(dists), maxradius=maxradius, IRIS=True, NCEDC=True,
+        initial_populate(event_id, minradius=np.max(dists), maxradius=maxradius, clients=clients,
                          database=database)
 
     # Load data from station list to maxradius
@@ -628,7 +628,8 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
         dists = [sdct['stasource_radius_km'] for sdct in staDict]
         if np.max(dists) < maxradius:
             print ('database not fully populated to maxradius, populating now')
-            initial_populate(event_id, minradius=newmin, maxradius=maxradius, IRIS=True, NCEDC=True, database=database)
+            initial_populate(event_id, minradius=newmin, maxradius=maxradius, clients=clients,
+                             database=database)
 
         # Load data from station list to maxradius
         if maxreachedHF is True and maxreachedLP is False:  # If only looking at LP, don't bother downloading other stuff
