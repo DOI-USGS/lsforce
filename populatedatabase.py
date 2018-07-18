@@ -41,7 +41,7 @@ def initial_populate(event_ids, minradius=0., maxradius=500., clients=['IRIS'],
 
             inventory = reviewData.get_stations(evdict['Latitude'], evdict['Longitude'], stb4,
                                                 clients=[client], minradiuskm=minradius,
-                                                maxradiuskm=maxradius, chan='BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,LH?,SL?')
+                                                maxradiuskm=maxradius, chan='BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,SL?')
 
             #print(len(inventory.get_contents()['channels']))
             populate_station_tables(inventory, client=client, database=database)
@@ -411,7 +411,7 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
             # remove any channels with low sample rates
             st_hf = Stream()
             for tr in st_temp:
-                if tr.stats.sampling_rate >= 2*HFlims[1]:
+                if tr.stats.sampling_rate >= 2*HFlims[0]:
                     st_hf += tr
 
             # pre-filter to hf_range
@@ -686,7 +686,12 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
             st.taper(max_percentage=taper, type='cosine')
 
         if maxreachedHF is False:
-            st_hf = st.copy()
+            st_temp = st.copy()
+            # remove any channels with low sample rates
+            st_hf = Stream()
+            for tr in st_temp:
+                if tr.stats.sampling_rate >= 2*HFlims[0]:
+                    st_hf += tr
             # pre-filter to hf_range
             st_hf.filter('bandpass', freqmin=HFlims[0], freqmax=HFlims[1])
             # pre-correct to lp range, delete E* channels and any that won't station correct
