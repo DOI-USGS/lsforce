@@ -93,7 +93,8 @@ def rotate(st, baz=None):
     return st_rotated
 
 
-def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, period_range=[30, 100], filter_order=2, zeroPhase=False, az=None):
+def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, period_range=[30, 100],
+                     filter_order=2, zeroPhase=False, az=None):
     """
     load in and set up matrices for time domain calculation
     st - stream object with horizontals rotated and az embedded
@@ -233,7 +234,8 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
     return G, d, W, weight
 
 
-def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, period_range=[30, 100], filter_order=2, zeroPhase=False, az=None):
+def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, period_range=[30, 100],
+                     filter_order=2, zeroPhase=False, az=None):
     """
     load in and set up matrices for frequency domain calculation
     st - stream object with horizontals rotated and az embedded
@@ -355,11 +357,55 @@ def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, per
     return G, d, W
 
 
-def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0.1], domain='time', alphaset=None, zeroTime=None, imposeZero=False, addtoZero=False):
-    #domain specifies whether calculations are in time domain (default) or freq domain
-    #L1 and L2 norms, include as % of each - NEED TO ADD THIS STILL
-    #if alpha is not set alphaset=None, will run a few times and find best one and output tradeoff curve - (but need a zeroTime)
-    #addtozero = make forces add to zero
+def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0.1], domain='time',
+           alphaset=None, zeroTime=None, imposeZero=False, addtoZero=False, alpha_method='Lcurve'):
+    """
+    Wrapper function to perform single force inversion of long-period landslide seismic signal
+
+    Args:
+        G (array): model matrix (m x n)
+        d (array): vector of concatenated data (m x 1)
+        samplerate (float): samplerate in Hz of seismic data and green's functions (the two must be equal)
+        numsta (int): number of channels used
+        datlenorig (int): length, in samples, or original data prior to zero padding etc.
+        W: optional weighting matrix, same size as G
+        T0 (float): Reference time T0 used in Green's function computation (usually 0.)
+        L0L2ratio (array): NOT FUNCTIONAL Proportion each regularization method contributes, must add to 1. 
+            NEED TO ADD THIS STILL
+        domain (str): specifies whether calculations are in time domain ('time', default) or
+            freq domain ('freq')
+        alphaset (float): Set regularization parameter, if None, will search for best alpha
+        zeroTime (float): Optional estimated start time of real part of signal, in seconds from
+            start time of seismic data. Useful for making figures showing selected start time
+            and also for imposeZero option
+        imposeZero (bool): Will add weighting matrix to suggest forces tend towards zero prior
+            to zeroTime (zeroTime must be defined)
+        addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
+            to zero.
+        alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
+            'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on 
+            discrepancy principle and noise calculated from data from before zeroTime.
+    
+    Returns: (model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas, curves)
+        model (array): model vector of concatated components (n x 1) of solution using
+            regularization parameter alpha
+        Zforce (array): vertical force time series extracted from model
+        Nforce (array): same as above for north force
+        Eforce (array): same as above for east force
+        tvec (array): Time vector, referenced using zeroTime (if specified) and corrected for T0
+            time shift
+        VR (float): Variance reduction (%), rule of thumb, this should be ~50%-80%, if 100%,
+            solution is fitting data exactly and results are suspect. If ~5%, model may be wrong or
+            something else may be wrong with setup.
+        dt (array): original data vector
+        dtnew (array): modeled data vector (Gm-d)
+        alpha (float): regularization parameter that was used
+        fit1 (array):
+        size1 (array):
+        curves (array):
+        
+        
+    """
     if W is not None:
         Ghat = W.dot(G)  # np.dot(W.tocsr(),G.tocsr())
         dhat = W.dot(d)  # np.dot(W.tocsr(),sparse.csr_matrix(d))
@@ -380,6 +426,8 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
         #import pdb; pdb.set_trace()
 
     if imposeZero is True:  # tell model when there should be no forces
+        if zeroTime is None:
+            raise Exception('imposeZero set to True but no zeroTime provided')
         scaler = 10**(np.round(np.log10(Ghatmax))+0.5)
         #print scaler
         #import pdb; pdb.set_trace()
@@ -403,13 +451,18 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
         Ghat = np.vstack((Ghat, A))
         dhat = np.hstack((dhat, np.zeros(len(vals)*3)))
 
-    if alphaset:
+    if alphaset is not None:
         alpha = alphaset
     dhat = dhat.T
     I = np.eye(np.shape(Ghat)[1], np.shape(Ghat)[1])  # sparse.eye(np.shape(G)[1],np.shape(G)[1])
     #I = I.tocsr()
     if alphaset is None:
-        alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=0.5)
+        if alpha_method == 'Lcurve':
+            alpha, fit1, size1, alphas, curves = findalpha(Ghat, dhat, I)
+        else:
+            alpha, fit1, size1, alphas = findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta,
+                                                    datlenorig)#, tolerance=0.5)
+            curves = None
         print('best alpha is %6.1E' % alpha, end=' ')
     else:
         fit1 = None
@@ -432,7 +485,7 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
     else:  # domain is time
         model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+alpha**2*I, np.dot(Ghat.T, dhat))
         #model,residuals,rank,s = sp.linalg.lstsq(Ghat,dhat,cond=alpha)
-        div = len(model)/3
+        div = int(len(model)/3)
         Zforce = - model[0:div]/10**5  # convert from dynes to netwons, flip so up is positive
         Nforce = model[div:2*div]/10**5
         Eforce = model[2*div:]/10**5
@@ -450,7 +503,9 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
     return model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas, curves
 
 
-def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.5, W=None, T0=0, L0L2ratio=[0.9, 0.1], domain='time', alphaset=None, zeroTime=None, imposeZero=False, addtoZero=False):
+def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.5, W=None, T0=0,
+              L0L2ratio=[0.9, 0.1], domain='time', alphaset=None, zeroTime=None, imposeZero=False,
+              addtoZero=False):
     #inversion with jackknife to estimate uncertainties due to data selection
     #NEED TO SET ALPHA
     #First iteration is full inversion - POP IT OUT AT THE END
@@ -613,15 +668,19 @@ def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.
     return model_full, Zforce_full, ZforceL, ZforceU, Nforce_full, NforceL, NforceU, Eforce_full, EforceL, EforceU, tvec, VR_full, dt, dtnew_full  # , alpha , fit1, size1, alphas, curves
 
 
-def findalphaOLD(Ghat, dhat, I):
-    templ1 = np.floor(np.log10(np.real(Ghat.max())))  # maybe this isnt' appropriate rule of thumb in the freq domain?
-    templ2 = np.arange(templ1-2, templ1+3)
+def findalpha(Ghat, dhat, I):
+    """
+    Note that should not use alpha larger than expected largest singular value
+    """
+    templ1 = np.ceil(np.log10(np.linalg.norm(Ghat)))  # Roughly estimate largest singular value
+    templ2 = np.arange(templ1-8, templ1-4, 0.5)
     alphas = 10**templ2
     fit1 = []
     size1 = []
     #rough iteration
     for alpha in alphas:
-        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(alpha**2, I), np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(alpha**2, I),
+                                                    np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
         size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
@@ -631,15 +690,17 @@ def findalphaOLD(Ghat, dhat, I):
     alpha = [alpha for i, alpha in enumerate(alphas) if curves[i] == curves.min()]
     if 1:
         #hone in
-        templ2 = np.arange(np.round(np.log10(alpha))-1, np.round(np.log10(alpha))+1)
-        templ3 = np.arange(1, 10)
+        templ2 = np.arange(np.round(np.log10(alpha))-2, np.round(np.log10(alpha))+1)
+        templ3 = np.arange(1, 10, 2)
         alphas = []
         fit1 = []
         size1 = []
         for exp in templ2:
             for sub in templ3:
-                alphas.append(sub*10**exp)
-                model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(alpha**2, I), np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+                newalpha = sub*10**exp
+                alphas.append(newalpha)
+                model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(newalpha**2, I),
+                                                            np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
                 temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
                 fit1.append(sp.linalg.norm(temp1))
                 size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
@@ -650,93 +711,9 @@ def findalphaOLD(Ghat, dhat, I):
     else:
         bestalpha = alpha
     Lcurve(fit1, size1, alphas)
+    #import pdb; pdb.set_trace()
+    #assert False
     return bestalpha, fit1, size1, alphas, curves
-
-
-def findalpha(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=None):
-    """
-    Uses Mozorokov discrepancy principle (and bisection method in log-log space?) to find an appropriate value of alpha that results in a solution with a fit that is slightly larger than the estimated noise level
-    DOESNT WORK RIGHT - HAD TO DOUBLE NOISE LEVEL TO EVER GET OPPOSITE SIGNS AND FIT LEVELS OFF ONCE REACHING A CERTAIN LEVEL AND NEVER GETS BIGGER OR SMALLER...
-    DOES THIS MEAN IT IS IMPOSSIBLE TO FIT THE DATA AT A LEVEL BETTER THAN THE NOISE?
-    #Tolerance is in log units log10(fit)-log10(noise)
-    #IS LOG UNITS RIGHT OR SHOULD I USE LINEAR UNITS? DOES ALPHA^2 VS. LAMBDA MAKE A DIFFERENCE?
-    """
-    # Estimate the noise level (use signal before zeroTime)
-    dtemp = dhat.copy()[:numsta*datlenorig]  # Trim off any extra zeros
-    lenall = len(dtemp)
-    dtemp = np.reshape(dtemp, (numsta, datlenorig))
-    samps = int(zeroTime*samplerate)
-    temp = dtemp[:, :samps]
-    temp1 = np.reshape(temp, (1, samps*numsta))
-    noise = 2*sp.linalg.norm(np.tile(temp1[0], lenall/len(temp1[0])))  # Needs to be same size as dhat (without added zeros ok)
-
-    # Set tolerance based on data amplitudes
-    tolerance = noise/10.
-
-    # Find ak and bk that yield f(alpha) = ||Gm-d|| - ||noise|| that have f(alpha) values with opposite signs
-    templ1 = np.floor(np.log10(np.real(Ghat.max())))
-    templ2 = np.arange(templ1-4, templ1+2)
-    ak = 10**templ2[0]
-    bk = 10**templ2[-1]
-    opposite = False
-    fit1 = []
-    size1 = []
-    alphas = []
-    while opposite is False:
-        print(('ak = %s' % (ak,)))
-        print(('bk = %s' % (bk,)))
-        modelak, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ak**2, I), np.dot(Ghat.T, dhat))
-        modelbk, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(bk**2, I), np.dot(Ghat.T, dhat))
-        fitak = sp.linalg.norm(np.dot(Ghat, modelak.T)-dhat)
-        fitbk = sp.linalg.norm(np.dot(Ghat, modelbk.T)-dhat)
-        # Save info on these runs for Lcurve later if desired
-        fit1.append(fitak)
-        alphas.append(ak)
-        size1.append(sp.linalg.norm(modelak))
-        fit1.append(fitbk)
-        alphas.append(bk)
-        size1.append(sp.linalg.norm(modelbk))
-        fak = fitak - noise  # should be negative
-        fbk = fitbk - noise  # should be positive
-        print(('fak = %s' % (fak,)))
-        print(('fbk = %s' % (fbk,)))
-        if fak*fbk < 0:
-            opposite = True
-        if fak > 0:
-            ak = 10**(np.log10(ak)-1)
-        if fbk < 0:
-            bk = 10**(np.log10(bk)+1)
-
-    # Now use bisection method to find the best alpha value within tolerance
-    tol = tolerance + 100
-    while tol > tolerance:
-        # Figure out whether to change ak or bk
-        # Compute midpoint (in log units)
-        ck = 10**(0.5*(np.log10(ak)+np.log10(bk)))
-        modelck, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ck**2, I), np.dot(Ghat.T, dhat))
-        fitck = sp.linalg.norm(np.dot(Ghat, modelck.T)-dhat)
-        fit1.append(fitck)
-        alphas.append(ck)
-        size1.append(sp.linalg.norm(modelck))
-        fck = fitck - noise
-        print(('ck = %s' % (ck,)))
-        print(('fitck = %s' % (fitck,)))
-        print(('fck = %s' % (fck,)))
-        tol = np.abs(np.log10(fck))
-        if fck*fak < 0:
-            bk = ck
-        else:
-            ak = ck
-        print(('ak = %s' % (ak,)))
-        print(('bk = %s' % (bk,)))
-        import pdb;pdb.set_trace()
-
-    bestalpha = ck
-    print(('best alpha = %s' % (bestalpha,)))
-    fit1 = np.array(fit1)
-    size1 = np.array(size1)
-    Lcurve(fit1, size1, alphas)
-    return bestalpha, fit1, size1, alphas
 
 
 def Lcurve(fit1, size1, alphas):
@@ -751,6 +728,7 @@ def Lcurve(fit1, size1, alphas):
         ax.text(fit1[i], size1[i], text1)
     ax.set_xlabel('Residual norm ||Gm-d||2')
     ax.set_ylabel('Solution norm ||m||2')
+    plt.show()
     plt.draw()
 
 
@@ -797,7 +775,8 @@ def forward_model(G, model):
 def makeconvmat(c, size=None):
     """
     Build matrix that can be used for convolution as implemented by matrix multiplication
-    size is optional input for desired size as (rows,cols), this will just shift cflip until it reaches the right size
+    size is optional input for desired size as (rows,cols), this will just shift cflip until it
+    reaches the right size
     """
     cflip = c[::-1]  # flip order
     if size is None:
@@ -867,7 +846,8 @@ def nextpow2(val):
     pass
 
 
-def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None, ylim=None, sameY=True, Zupper=None, Zlower=None, Eupper=None, Elower=None, Nupper=None, Nlower=None):
+def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None, ylim=None,
+            sameY=True, Zupper=None, Zlower=None, Eupper=None, Elower=None, Nupper=None, Nlower=None):
     """
     plot inversion result
     USAGE plotinv(Zforce,Nforce,Eforce,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
@@ -885,24 +865,26 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None
     """
     tvec = tvec - zerotime
     if ylim is None and Zupper is None:
-        ylim1 = (np.amin([Zforce.min(), Eforce.min(), Nforce.min()]), np.amax([Zforce.max(), Eforce.max(), Nforce.max()]))
+        ylim1 = (np.amin([Zforce.min(), Eforce.min(), Nforce.min()]), np.amax([Zforce.max(),
+                         Eforce.max(), Nforce.max()]))
         ylim = (ylim1[0]+0.1*ylim1[0], ylim1[1]+0.1*ylim1[1])  # add 10% on each side to make it look nicer
     elif ylim is None and Zupper is not None:
-        ylim1 = (np.amin([Zlower.min(), Elower.min(), Nlower.min()]), np.amax([Zupper.max(), Eupper.max(), Nupper.max()]))
+        ylim1 = (np.amin([Zlower.min(), Elower.min(), Nlower.min()]), np.amax([Zupper.max(),
+                         Eupper.max(), Nupper.max()]))
         ylim = (ylim1[0]+0.1*ylim1[0], ylim1[1]+0.1*ylim1[1])  # add 10% on each side to make it look nicer
     if subplots:
         fig = plt.figure(figsize=(14, 9))
         ax1 = fig.add_subplot(311)
         ax1.plot(tvec, Zforce, 'b')
-        ax1.grid('on')
+        ax1.grid(True)
         ax1.set_title('Up')
         ax2 = fig.add_subplot(312)  # ,sharex=ax1)
         ax2.plot(tvec, Nforce, 'r')
-        ax2.grid('on')
+        ax2.grid(True)
         ax2.set_title('North')
         ax3 = fig.add_subplot(313)  # ,sharex=ax1)
         ax3.plot(tvec, Eforce, 'g')
-        ax3.grid('on')
+        ax3.grid(True)
         ax3.set_title('East')
         if sameY or ylim is not None:
             ax1.set_ylim(ylim)
@@ -948,7 +930,7 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None
         if xlim:
             ax.set_xlim(xlim)
         ax.legend(loc='upper right')
-        ax.grid('on')
+        ax.grid(True)
         ax.set_ylabel('Force (N)')
         ax.set_ylim(ylim)
     plt.xlabel('Time (sec')
@@ -956,7 +938,9 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None
     return fig
 
 
-def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None, ylim=None, sameY=True, Zupper=None, Zlower=None, Eupper=None, Elower=None, Nupper=None, Nlower=None):
+def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None, ylim=None,
+               sameY=True, Zupper=None, Zlower=None, Eupper=None, Elower=None, Nupper=None,
+               Nlower=None):
     """
     plot angles and magnitudes of inversion result
     USAGE plotinv(Zforce,Nforce,Eforce,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
@@ -1002,20 +986,24 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
     if xlim:
         ax.set_xlim(xlim)
     ax.legend(loc='upper right')
-    ax.grid('on')
+    ax.grid(True)
     ax.set_ylabel('Force (N)')
     ax.set_ylim(ylim)
 
     # Plot the magnitudes in second one
     ax1 = fig.add_subplot(412)
     Mag = np.linalg.norm(list(zip(Zforce, Eforce, Nforce)), axis=1)
-    MagU = np.linalg.norm(list(zip(np.maximum(np.abs(Zupper), np.abs(Zlower)), np.maximum(np.abs(Eupper), np.abs(Elower)), np.maximum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
-    MagL = np.linalg.norm(list(zip(np.minimum(np.abs(Zupper), np.abs(Zlower)), np.minimum(np.abs(Eupper), np.abs(Elower)), np.minimum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
+    MagU = np.linalg.norm(list(zip(np.maximum(np.abs(Zupper), np.abs(Zlower)),
+                                   np.maximum(np.abs(Eupper), np.abs(Elower)),
+                                   np.maximum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
+    MagL = np.linalg.norm(list(zip(np.minimum(np.abs(Zupper), np.abs(Zlower)),
+                                   np.minimum(np.abs(Eupper), np.abs(Elower)),
+                                   np.minimum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
     ax1.plot(tvec, Mag, 'k', label='best')
     ax1.plot(tvec, MagL, 'r', label='lower')
     ax1.plot(tvec, MagU, 'r', label='upper')
     #ax1.legend(loc='upper right')
-    ax1.grid('on')
+    ax1.grid(True)
     ax1.set_ylabel('Force (N)')
     if xlim:
         ax1.set_xlim(xlim)
@@ -1042,7 +1030,7 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
     ax2.plot(tvec, Haz)
     #ax2.plot(tvec, HazU, 'r')
     #ax2.plot(tvec, HazL, 'r')
-    ax2.grid('on')
+    ax2.grid(True)
     ax2.set_ylabel('Azimuth (deg CW from N)')
     if xlim:
         ax2.set_xlim(xlim)
@@ -1053,7 +1041,7 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
     #VangU = (180/np.pi)*np.arctan(Zlower/np.sqrt(Nupper**2+Elower**2))
     #VangL = (180/np.pi)*np.arctan(Zupper/np.sqrt(Nlower**2+Eupper**2))
     ax3.plot(tvec, Vang)
-    ax3.grid('on')
+    ax3.grid(True)
     ax3.set_ylabel('Vertical angle (deg)')
     #ax3.plot(tvec, VangU, 'r')
     #ax3.plot(tvec, VangL, 'r')
@@ -1172,15 +1160,20 @@ def _dip_azimuth2ZSE_base_vector(dip, azimuth):
     return np.array(np.dot(dip_rotation_matrix, temp)).ravel()
 
 
-def saverun(filename, model, Zforce, Eforce, Nforce, tvec, dt, dtnew, stproc, zeroTime, ZforceU=None, ZforceL=None, EforceU=None, EforceL=None, NforceU=None, NforceL=None):
+def saverun(filename, model, Zforce, Eforce, Nforce, tvec, dt, dtnew, stproc, zeroTime,
+            ZforceU=None, ZforceL=None, EforceU=None, EforceL=None, NforceU=None, NforceL=None):
     """
     Save the results of an inversion, regular or jackknife
     Makes a dictionary and saves that as a pickle
-    USAGE: saverun(filename, model, Zforce, Eforce, Nforce, tvec, dt, dtnew, stproc, zeroTime, ZforceU=None, ZforceL=None, EforceU=None, EforceL=None, NforceU=None, NforceL=None)
+    USAGE: saverun(filename, model, Zforce, Eforce, Nforce, tvec, dt, dtnew, stproc, zeroTime,
+                   ZforceU=None, ZforceL=None, EforceU=None, EforceL=None, NforceU=None, NforceL=None)
     RETURN nothing but saves file as filename
     """
-    f = open(filename, 'w')
-    result = {'model': model, 'tvec': tvec, 'Zforce': Zforce, 'Eforce': Eforce, 'Nforce': Nforce, 'ZforceU': ZforceU, 'ZforceL': ZforceL, 'EforceU': EforceU, 'EforceL': EforceL, 'NforceU': NforceU, 'NforceL': NforceL, 'dt': dt, 'dtnew': dtnew, 'stproc': stproc, 'zeroTime': zeroTime, }
+    f = open(filename, 'wb')
+    result = {'model': model, 'tvec': tvec, 'Zforce': Zforce, 'Eforce': Eforce, 'Nforce': Nforce,
+              'ZforceU': ZforceU, 'ZforceL': ZforceL, 'EforceU': EforceU, 'EforceL': EforceL,
+              'NforceU': NforceU, 'NforceL': NforceL, 'dt': dt, 'dtnew': dtnew, 'stproc': stproc,
+              'zeroTime': zeroTime, }
     pickle.dump(result, f)
     f.close()
     return
@@ -1188,9 +1181,11 @@ def saverun(filename, model, Zforce, Eforce, Nforce, tvec, dt, dtnew, stproc, ze
 
 def readrun(filename):
     """
-    Read the results of an inversion, regular or jackknife, and outputs them as original variable names instead of in dictionary
+    Read the results of an inversion, regular or jackknife, and outputs them as original variable 
+        names instead of in dictionary
     USAGE: readrun(filename)
-    RETURN: model, tvec, Zforce, Eforce, Nforce, ZforceU, ZforceL, EforceU, EforceL, NforceU, NforceL, dt, dtnew, stproc, zeroTime
+    RETURN: model, tvec, Zforce, Eforce, Nforce, ZforceU, ZforceL, EforceU, EforceL, NforceU,
+        NforceL, dt, dtnew, stproc, zeroTime
     """
     f = open(filename, 'r')
     result = pickle.load(f)
@@ -1210,7 +1205,8 @@ def readrun(filename):
     dtnew = result['dtnew']
     stproc = result['stproc']
     zeroTime = result['zeroTime']
-    return model, tvec, Zforce, Eforce, Nforce, ZforceU, ZforceL, EforceU, EforceL, NforceU, NforceL, dt, dtnew, stproc, zeroTime
+    return(model, tvec, Zforce, Eforce, Nforce, ZforceU, ZforceL, EforceU, EforceL, NforceU,
+           NforceL, dt, dtnew, stproc, zeroTime)
 
 #def symmetric(data):
 #    """
@@ -1226,3 +1222,99 @@ def readrun(filename):
 #        return
 #    else:
 #        return data
+
+
+def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=None):
+    """
+    Use discrepancy principle and noise window to find best alpha
+
+    Uses Mozorokov discrepancy principle (and bisection method in log-log space?) to find an
+    appropriate value of alpha that results in a solution with a fit that is slightly larger than
+    the estimated noise level
+
+    Args:
+        tolerance (float): how close you want to get to the noise level with the solution
+    """
+    # Estimate the noise level (use signal before zeroTime)
+    dtemp = dhat.copy()[:numsta*datlenorig]  # Trim off any extra zeros
+    #lenall = len(dtemp)
+    dtemp = np.reshape(dtemp, (numsta, datlenorig))
+    if zeroTime is None:
+        print('zeroTime not defined, noise estimated from first 100 samples')
+        samps = 100
+    else:
+        samps = int(zeroTime*samplerate)
+    temp = dtemp[:, :samps]
+    noise = np.sum(np.sqrt(datlenorig * np.std(temp, axis=1)**2))
+
+    # Find ak and bk that yield f(alpha) = ||Gm-d|| - ||noise|| that have f(alpha) values with
+    # opposite signs
+    templ1 = np.floor(np.log10(np.real(Ghat.max())))
+    templ2 = np.arange(templ1-3, templ1+1)
+    ak = 10**templ2[0]
+    bk = 10**templ2[-1]
+    opposite = False
+    fit1 = []
+    size1 = []
+    alphas = []
+    while opposite is False:
+        print(('ak = %s' % (ak,)))
+        print(('bk = %s' % (bk,)))
+        modelak, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ak**2, I),
+                                                      np.dot(Ghat.T, dhat))
+        modelbk, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(bk**2, I),
+                                                      np.dot(Ghat.T, dhat))
+        fitak = sp.linalg.norm(np.dot(Ghat, modelak.T)-dhat)
+        fitbk = sp.linalg.norm(np.dot(Ghat, modelbk.T)-dhat)
+        # Save info on these runs for Lcurve later if desired
+        fit1.append(fitak)
+        alphas.append(ak)
+        size1.append(sp.linalg.norm(modelak))
+        fit1.append(fitbk)
+        alphas.append(bk)
+        size1.append(sp.linalg.norm(modelbk))
+        fak = fitak - noise  # should be negative
+        fbk = fitbk - noise  # should be positive
+        print(('fak = %s' % (fak,)))
+        print(('fbk = %s' % (fbk,)))
+        if fak*fbk < 0:
+            opposite = True
+        if fak > 0:
+            ak = 10**(np.log10(ak)-1)
+        if fbk < 0:
+            bk = 10**(np.log10(bk)+1)
+
+    if tolerance is None:
+        tolerance = noise/10.
+
+    # Now use bisection method to find the best alpha value within tolerance
+    tol = noise + 100.
+    while tol > tolerance:
+        # Figure out whether to change ak or bk
+        # Compute midpoint (in log units)
+        ck = 10**(0.5*(np.log10(ak)+np.log10(bk)))
+        modelck, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ck**2, I),
+                                                      np.dot(Ghat.T, dhat))
+        fitck = sp.linalg.norm(np.dot(Ghat, modelck.T)-dhat)
+        fit1.append(fitck)
+        alphas.append(ck)
+        size1.append(sp.linalg.norm(modelck))
+        fck = fitck - noise
+        print(('ck = %s' % (ck,)))
+        print(('fitck = %s' % (fitck,)))
+        print(('fck = %s' % (fck,)))
+        tol = np.abs(fck)
+        if fck*fak < 0:
+            bk = ck
+        else:
+            ak = ck
+        print(('ak = %s' % (ak,)))
+        print(('bk = %s' % (bk,)))
+        import pdb;pdb.set_trace()
+
+    bestalpha = ck
+    print(('best alpha = %s' % (bestalpha,)))
+    fit1 = np.array(fit1)
+    size1 = np.array(size1)
+    Lcurve(fit1, size1, alphas)
+    return bestalpha, fit1, size1, alphas
