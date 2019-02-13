@@ -5,7 +5,7 @@ import glob
 import shutil
 import numpy as np
 import subprocess
-from reviewData import reviewData
+#from reviewData import reviewData
 
 
 """
@@ -60,22 +60,16 @@ def setup(event_id, modelfile, stacodes, samplerate, duration, T0, stfilename=No
     moddir = ('%s/%s') % (evdir, stfilename+modelfile.split('/')[-1].split('.')[0],)
     sacodir = ('%s/%s') % (moddir, 'sacorig')
     sacdir = ('%s/%s') % (moddir, 'sacdata')
-    try:
+    if not os.path.exists(evdir):
         os.mkdir(evdir)
-    except Exception as e:
-        print(e)
-    try:
+    #except Exception as e:
+    #    print(e)
+    if not os.path.exists(moddir):
         os.mkdir(moddir)
-    except Exception as e:
-        print(e)
-    try:
+    if not os.path.exists(sacdir):
         os.mkdir(sacdir)  # folder for renamed sac files to go into
-    except Exception as e:
-        print(e)
-    try:
+    if not os.path.exists(sacodir):
         os.mkdir(sacodir)  # folder to keep original sac files
-    except Exception as e:
-        print(e)
 
     #write T0 file
     f = open(moddir+'/T0.txt', 'w')
@@ -257,7 +251,18 @@ def compute_greens(event_id, filepath, shellscript='CPScommands.sh'):
     """
     currentdir = os.getcwd()
     os.chdir(filepath)
-    subprocess.call([filepath+'/'+shellscript])
+    cmd = os.path.join(filepath, shellscript)
+    proc = subprocess.Popen(cmd,
+                            shell=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE
+                            )
+    stdout, stderr = proc.communicate()
+    retcode = proc.returncode
+    if retcode == 0:
+        retcode = True
+    else:
+        retcode = False
 
     #load in stadistlist
     f = open(filepath+'/stadistlist.txt', 'r')
@@ -277,3 +282,4 @@ def compute_greens(event_id, filepath, shellscript='CPScommands.sh'):
         newname = ('GF_ev%i_%s_%1.0fkm_%s.sac') % (event_id, sta[indx], dist[indx], GFt)
         os.rename(filepath+'/sacdata/'+file1, filepath+'/sacdata/'+newname)
     os.chdir(currentdir)
+    return (retcode, stdout, str(stderr))

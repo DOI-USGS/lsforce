@@ -33,6 +33,9 @@ def initial_populate(event_ids, minradius=0., maxradius=500., clients=['IRIS'],
     for event_id in event_ids:
         event_id = int(event_id)
         evdict = findsta.getEventInfo(event_id, database=database)
+        if evdict is None:
+            print('No event dictionary found for event_id %i. Skipping to next event_id' % event_id)
+            continue
         if 'AlaskaData' in evdict['DatLocation']:  # Need to trick the system because IRIS doesn't have the actual install dates for these stations
             stb4 = UTCDateTime(2009, 9, 1, 0, 0, 0)
         else:
@@ -894,6 +897,407 @@ def review_event(event_id, buffer_sec=100., minradius=0., maxradius=200., intinc
                 if maxreachedLP is True:
                     cursor.execute('UPDATE sta_nearby SET detect_LP = ? WHERE stasource_radius_km > ? AND event_id = ?',
                                    (0, float(maxdist), event_id))
+
+
+def review_eventVHF(event_id, buffer_sec=100., minradius=0., maxradius=10., intincrkm=10.,
+                    VHFlim=15., maxtraces=15, taper=0.05, clients=['IRIS'],
+                    database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
+                    path='/Users/kallstadt/LSseis/landslideDatabase'):
+    """
+    Very high frequency (VHF) version of initial review of seismic data for a given event, pulls data from IRIS and other sources and
+    displays in VHF highpass band, user should then delete all traces
+    in each where the signal is not visible to the human eye, leaving only the ones that should
+    be considered "detections" behind. Then quit interactive plotting by pressing q and follow
+    prompts. Will populate database out to maxradius and maxradius + n*intincrkm.
+    Note: This must be done in ipython with pylab enabled for interactive plotting to work. May also require
+    that an interactive backend be used for matplotlib (Qt5Agg works).
+
+    Args:
+        event_id (int): id of event to review
+        buffer_sec (float): Number of seconds to add on either end of start and end time (makes viewing easier)
+        minradius (float): minimum distance in km to search for stations (from source)
+        maxradius (float): maximum distance in km to search for stations (from source)
+        intincrkm (float): increment to increase by when expanding search outward past maxradius
+        VHFlim: tuple or list of highpass for very high frequency filtering (>15 Hz standard)
+        maxtraces (int): Number of traces to view at a time
+        taper (0.05): percentage taper (or None for no tapering)
+        database (str): Full file path of database file location
+        path (str): Path to location of sac files (upstream from relative file paths listed in database)
+
+    """
+    maxreachedVHF = False
+    evDict = findsta.getEventInfo(event_id, database=database)
+    print((('Now analysing Eid %s - %s') % (event_id, evDict['Name'])))
+    # Populate database with stations, if it isn't already populated, out to maxradius
+    staDict = findsta.getStaInfo(event_id, database=database)
+    dists = [sdct['stasource_radius_km'] for sdct in staDict]
+    if np.max(dists) < maxradius:
+        print ('database not fully populated to maxradius, populating now')
+        initial_populate(event_id, minradius=np.max(dists), maxradius=maxradius, clients=clients,
+                         database=database)
+
+    # Load data from station list to maxradius
+    staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=minradius, database=database)
+    datlocs = reviewData.unique_list([sdct['source'] for sdct in staDict])
+
+    if len(staDict) > 0:
+        # Download data from their respective sources
+        st = Stream()
+        if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
+            try:
+                stalist, netlist, chanlist = list(zip(*[[sdct['Name'], sdct['Network'],
+                                                  sdct['Channel']] for sdct in staDict if 'IRIS' in sdct['source']]))
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
+                                         '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
+                                         evDict['EndTime']+buffer_sec, savedat=False, detrend='demean')
+            except Exception as e:
+                print(e)
+        if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
+            try:
+                stalist, netlist, chanlist = list(zip(*[[sdct['Name'], sdct['Network'],
+                                                  sdct['Channel']] for sdct in staDict if 'NCEDC' in sdct['source']]))
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
+                                         '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
+                                         evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC', detrend='demean')
+            except Exception as e:
+                print(e)
+        if evDict['DatLocation'] is None:
+            print('You need to populate the DatLocation field for this event, no sac files loaded')
+        if 'sac' in evDict['DatLocation']:
+            datloc1 = evDict['DatLocation'].split(',')
+            datloc1 = [x.strip() for x in datloc1 if 'sac' in x]
+            for datl in datloc1:
+                fullpath = os.path.join(path, datl.split(':')[1])
+                filenames = glob.glob(fullpath)
+                if len(filenames) > 0:
+                    if 'AlaskaData' in datl:  # Need to do some cheating to attach response info if Iliamna sac data - attach oldest response info available at IRIS for each station
+                        # Only keep filenames of stations we want to read in
+                        newfilenames = []
+                        namelist = [sdct['Name'] for sdct in staDict]
+                        for filen in filenames:
+                            nam = filen.split('/')[-1].split('.')[0]
+                            if nam in namelist:
+                                newfilenames.append(filen)
+                        stsac = reviewData.getdata_sac(newfilenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
+                                                       endtime=evDict['EndTime']+buffer_sec, detrend='demean')
+                        stsac = Stream([trace for trace in stsac if trace.max() != 0.0])  # Get rid of any empty ones
+                        originalstt = []
+                        # Get earliest start time from IRIS for AK and AV
+                        url1 = ('http://service.iris.edu/fdsnws/station/1/query?network=AV&level=station&format=text&nodata=404')
+                        url2 = ('http://service.iris.edu/fdsnws/station/1/query?network=AK&level=station&format=text&nodata=404')
+                        f = urllib.request.urlopen(url1)
+                        file1 = f.read()
+                        lines1 = [line.split('|') for line in file1.split('\n')[1:]]
+                        stdict = {}
+                        f.close()
+                        f = urllib.request.urlopen(url2)
+                        file2 = f.read()
+                        lines2 = [line.split('|') for line in file2.split('\n')[1:]]
+                        f.close()
+                        for line in lines1[:-1]:
+                            stdict[line[1]] = (line[0], UTCDateTime(line[6]))
+                        for line in lines2[:-1]:
+                            if line[1] in list(stdict.keys()):
+                                # Take the minimum if shows up for both network codes
+                                stdict[line[1]] = (line[0], np.min([stdict[line[1]], UTCDateTime(line[6])]))
+                            else:
+                                stdict[line[1]] = (line[0], UTCDateTime(line[6]))
+                        for temp in stsac:
+                            originalstt.append(temp.stats.starttime)
+                            if temp.stats.channel[0] == 'S':
+                                temp.stats.channel = 'E'+temp.stats.channel[1:]
+                            # Make sure network code is consistent with IRIS and delete events with nothing returned from IRIS
+                            if temp.stats.station in stdict:
+                                temp.stats.network = stdict[temp.stats.station][0]
+                            else:
+                                print('could not attach response info for %s, station correction will not work' % temp.stats.station)
+                                continue
+                            if 'response' not in list(temp.stats.keys()):
+                                # Change starttime of temp to earliest start time at IRIS for this station
+                                try:
+                                    temp.stats.starttime = stdict[temp.stats.station][1] + 86400.
+                                except:
+                                    print('could not attach response info for %s, station correction will not work' % temp.stats.station)
+                        # Get responses from IRIS
+                        client = FDSN_Client('IRIS')
+                        akstas = ','.join([tr.stats.station for tr in stsac])
+                        inv1 = client.get_stations(network='AK,AV', station=akstas, level="response")
+                        stsac.attach_response(inv1)
+                        # Change back start times
+                        for i, trace in enumerate(stsac):
+                            trace.stats.starttime = originalstt[i]
+                    else:
+                        stsac = reviewData.getdata_sac(filenames, attach_response=True, starttime=evDict['StartTime']-buffer_sec,
+                                                       endtime=evDict['EndTime']+buffer_sec, detrend='demean')
+                    st += stsac
+
+        # Add distances
+        st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
+        st = st.sort(keys=['rdist', 'channel'])
+        # Get rid of sac files etc. that are outside current range
+        st = Stream([trace for trace in st if trace.stats.rdist < maxradius and trace.stats.rdist > minradius])
+        if taper is not None:
+            st.taper(max_percentage=taper, type='cosine')
+
+            st_temp = st.copy()
+            # remove any channels with low sample rates
+            st_hf = Stream()
+            for tr in st_temp:
+                if tr.stats.sampling_rate >= 2*VHFlim:
+                    st_hf += tr
+
+            # pre-filter to Vhf_range
+            st_hf.filter('highpass', freq=VHFlim)
+            print ('Interactive review of very high frequencies starting\n')
+            # Interactive review of high frequencies
+            zp = reviewData.InteractivePlot(st_hf, maxtraces=maxtraces, textline=['VHF filtered data for your review',
+                                            'Delete bad traces and take note of distance when you reach maximum observation',
+                                            'hit Q to exit when ready to continue'])
+            # Get info about what was kept and what wasn't
+            st_hfgood = zp.st_current
+            hfbad = zp.deleted
+
+            connection = None
+            connection = lite.connect(database)
+
+            # See if maxradiusVHF was reached
+            maxdist = np.max([trace.stats.rdist for trace in st_hfgood])
+            feedback = input(('is %4.1f km the maximum distance observed for VHF? Y or N\n') % (maxdist,))
+            if feedback.lower() != 'n' and feedback.lower() != 'y':
+                feedback = input(('Try again, is %4.1f km the maximum distance observed for VHF? Y or N\n') % (maxdist,))
+            if feedback.lower() == 'n':
+                feedback = input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
+                if feedback.lower() == 'y':
+                    maxdist = float(input('Enter the maximum distance observed in km (round up to nearest km)\n'))
+                    # delete all stations that were greater than maximum distance and that are in st_hfbad, and put good stations in database
+                    goodstas = [str(trace.stats.station) for trace in st_hfgood if trace.stats.rdist <= maxdist]
+                    goodchans = [str(trace.stats.channel) for trace in st_hfgood if trace.stats.rdist <= maxdist]
+                    goodnets = [str(trace.stats.network) for trace in st_hfgood if trace.stats.rdist <= maxdist]
+                    badstas = [str(trace.stats.station) for trace in st_hfgood if trace.stats.rdist > maxdist] + [str(g.split('.')[0]) for g in hfbad]
+                    badchans = [str(trace.stats.channel) for trace in st_hfgood if trace.stats.rdist > maxdist] + [str(g.split('.')[1]) for g in hfbad]
+                    badnets = [str(trace.stats.network) for trace in st_hfgood if trace.stats.rdist > maxdist] + [str(g.split('.')[3].split(' - ')[0]) for g in hfbad]
+                    maxreachedVHF = True
+                    # Insert maxdistVhf into database
+                    with connection:
+                        cursor = connection.cursor()
+                        try:
+                            cursor.execute('UPDATE events SET maxdistVHF_km = ? WHERE Eid = ?', (maxdist, event_id))
+                        except Exception as e:
+                            print(e)
+                if feedback.lower() == 'n':
+                    print('Filling current info into database, then will load more distant data for further analysis\n')
+                    badstas = [str(g.split('.')[0]) for g in hfbad]
+                    badchans = [str(g.split('.')[1]) for g in hfbad]
+                    badnets = [str(g.split('.')[3].split(' - ')[0]) for g in hfbad]
+                    goodstas = [str(trace.stats.station) for trace in st_hfgood]
+                    goodchans = [str(trace.stats.channel) for trace in st_hfgood]
+                    goodnets = [str(trace.stats.network) for trace in st_hfgood]
+            elif feedback.lower() == 'y':
+                # put info in database
+                badstas = [str(g.split('.')[0]) for g in hfbad]
+                badchans = [str(g.split('.')[1]) for g in hfbad]
+                badnets = [str(g.split('.')[3].split(' - ')[0]) for g in hfbad]
+                goodstas = [str(trace.stats.station) for trace in st_hfgood]
+                goodchans = [str(trace.stats.channel) for trace in st_hfgood]
+                goodnets = [str(trace.stats.network) for trace in st_hfgood]
+                maxreachedVHF = True
+                # Insert maxdistVhf into database
+                with connection:
+                    cursor = connection.cursor()
+                    try:
+                        cursor.execute('UPDATE events SET maxdistVHF_km = ? WHERE Eid = ?', (maxdist, event_id))
+                    except Exception as e:
+                        print(e)
+            # Fill info into database
+            Sids_bad = []
+            Sids_good = []
+            with connection:
+                cursor = connection.cursor()
+                for i, badsta in enumerate(badstas):
+                    try:
+                        cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
+                                                       (badstas[i], badnets[i], badchans[i]))
+                        retrieved_data = cursor_output.fetchall()
+                        if retrieved_data:
+                            Sids_bad += [val[0] for val in retrieved_data]
+                    except Exception as e:
+                        print(e)
+                for i, goodsta in enumerate(goodstas):
+                    try:
+                        cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
+                                                       (goodstas[i], goodnets[i], goodchans[i]))
+                        retrieved_data = cursor_output.fetchall()
+                        if retrieved_data:
+                            Sids_good += [val[0] for val in retrieved_data]
+                    except Exception as e:
+                        print(e)
+                if Sids_bad:
+                    for Sid in Sids_bad:
+                        cursor.execute('UPDATE sta_nearby SET detect_VHF = ? WHERE station_id = ? AND event_id = ?',
+                                       (0, Sid, event_id))
+                if Sids_good:
+                    for Sid in Sids_good:
+                        cursor.execute('UPDATE sta_nearby SET detect_VHF = ? WHERE station_id = ? AND event_id = ?',
+                                       (1, Sid, event_id))
+
+    # Continue searching for maximum distance
+    while maxreachedVHF is False:
+        print('Going out another %3.0f km' % (intincrkm,))
+        newmin = maxradius
+        maxradius = maxradius + intincrkm
+
+        # Populate database with stations, if it isn't already populated, out to maxradius
+        staDict = findsta.getStaInfo(event_id, database=database)
+        dists = [sdct['stasource_radius_km'] for sdct in staDict]
+        if np.max(dists) < maxradius:
+            print ('database not fully populated to maxradius, populating now')
+            initial_populate(event_id, minradius=newmin, maxradius=maxradius, clients=clients,
+                             database=database)
+
+        staDict = findsta.getStaInfo(event_id, maxradius=maxradius, minradius=newmin, database=database)
+        datlocs = reviewData.unique_list([sdct['source'] for sdct in staDict])
+
+        if len(staDict) == 0:
+            print ('no stations in given radius')
+            continue
+
+        # Load and preprocess data - TO DO: ONLY LOAD STATIONS THAT HAVENT BEEN REVIEWED YET?
+        st = Stream()
+
+        if 'IRIS' in evDict['DatLocation'] or 'IRIS' in datlocs:
+            try:
+                stalist, netlist, chanlist = list(zip(*[[sdct['Name'], sdct['Network'], sdct['Channel']] for sdct in staDict if 'IRIS' in sdct['source']]))
+                # Remove any BDF's
+                #stalist, netlist, chanlist = zip(*[[stalist[k], netlist[k], chanlist[k]] for k in range(len(chanlist)) if 'BDF' not in chanlist[k]])
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
+                                         '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
+                                         evDict['EndTime']+buffer_sec, savedat=False)
+            except:
+                print('No data from IRIS found in current distance interval')
+        if 'NCEDC' in evDict['DatLocation'] or 'NCEDC' in datlocs:
+            try:
+                stalist, netlist, chanlist = list(zip(*[[sdct['Name'], sdct['Network'], sdct['Channel']] for sdct in staDict if 'NCEDC' in sdct['source']]))
+                st += reviewData.getdata(','.join(reviewData.unique_list(netlist)), ','.join(reviewData.unique_list(stalist)),
+                                         '*', ','.join(reviewData.unique_list(chanlist)), evDict['StartTime']-buffer_sec,
+                                         evDict['EndTime']+buffer_sec, savedat=False, clientname='NCEDC')
+            except:
+                print('No data from NCEDC found in current distance interval')
+        if evDict['DatLocation'] is None:
+            print('You need to populate the DatLocation field for this event, no sac files loaded')
+        elif 'sac' in evDict['DatLocation']:
+            st += stsac  # already loaded in above
+        if len(st) == 0:
+            continue
+
+        # Add distances
+        st = findsta.attach_distaz(st, evDict['Latitude'], evDict['Longitude'], database=database)
+        st = st.sort(keys=['rdist', 'channel'])
+        # Get rid of sac files etc. that are outside current range
+        st = Stream([trace for trace in st if trace.stats.rdist < maxradius and trace.stats.rdist > newmin])
+        if taper is not None:
+            st.taper(max_percentage=taper, type='cosine')
+
+        st_temp = st.copy()
+        # remove any channels with low sample rates
+        st_hf = Stream()
+        for tr in st_temp:
+            if tr.stats.sampling_rate >= 2*VHFlim:
+                st_hf += tr
+        # pre-filter to hf_range
+        st_hf.filter('highpass', freq=VHFlim)
+        print ('Interactive review of very high frequencies starting\n')
+        # Interactive review of high frequencies
+        zp = reviewData.InteractivePlot(st_hf, maxtraces=maxtraces, textline=['VHF filtered data for your review',
+                                        'Delete bad traces and take note of distance when you reach maximum observation',
+                                        'hit Q to exit when ready to continue'])
+        #zp.connect()
+        # Get info about what was kept and what wasn't
+        st_hfgood = zp.st_current
+        hfbad = zp.deleted
+
+        connection = None
+        connection = lite.connect(database)
+        maxdist = np.max([trace.stats.rdist for trace in st_hfgood])
+        feedback = input(('is %4.1f km the maximum distance observed for VHF? Y or N\n') % (maxdist,))
+        if feedback.lower() != 'n' and feedback.lower != 'y':
+            feedback = input(('Try again, is %4.1f km the maximum distance observed for VHF? Y or N\n') % (maxdist,))
+        if feedback.lower() == 'n':
+            feedback = input('was the maximum distance less than %4.1f km?\n' % (maxdist,))
+            if feedback.lower() == 'y':
+                maxdist = float(input('Enter the maximum distance observed in km (round up to nearest km)\n'))
+                # delete all stations that were greater than maximum distance and that are in st_hfbad, and put good stations in database
+                goodstas = [str(trace.stats.station) for trace in st_hfgood if trace.stats.rdist <= maxdist]
+                goodchans = [str(trace.stats.channel) for trace in st_hfgood if trace.stats.rdist <= maxdist]
+                goodnets = [str(trace.stats.network) for trace in st_hfgood if trace.stats.rdist <= maxdist]
+                badstas = [str(trace.stats.station) for trace in st_hfgood if trace.stats.rdist > maxdist] + [str(g.split('.')[0]) for g in hfbad]
+                badchans = [str(trace.stats.channel) for trace in st_hfgood if trace.stats.rdist > maxdist] + [str(g.split('.')[1]) for g in hfbad]
+                badnets = [str(trace.stats.network) for trace in st_hfgood if trace.stats.rdist > maxdist] + [str(g.split('.')[3].split(' - ')[0]) for g in hfbad]
+                maxreachedVHF = True
+                # Insert maxdistvhf into database
+                with connection:
+                    cursor = connection.cursor()
+                    try:
+                        cursor.execute('UPDATE events SET maxdistVHF_km = ? WHERE Eid = ?', (maxdist, event_id))
+                    except Exception as e:
+                        print(e)
+            if feedback.lower() == 'n':
+                print('Filling current info into database, then will load more distant data for further analysis\n')
+                badstas = [str(g.split('.')[0]) for g in hfbad]
+                badchans = [str(g.split('.')[1]) for g in hfbad]
+                badnets = [str(g.split('.')[3].split(' - ')[0]) for g in hfbad]
+                goodstas = [str(trace.stats.station) for trace in st_hfgood]
+                goodchans = [str(trace.stats.channel) for trace in st_hfgood]
+                goodnets = [str(trace.stats.network) for trace in st_hfgood]
+        elif feedback.lower() == 'y':
+            # put info in database
+            badstas = [str(g.split('.')[0]) for g in hfbad]
+            badchans = [str(g.split('.')[1]) for g in hfbad]
+            badnets = [str(g.split('.')[3].split(' - ')[0]) for g in hfbad]
+            goodstas = [str(trace.stats.station) for trace in st_hfgood]
+            goodchans = [str(trace.stats.channel) for trace in st_hfgood]
+            goodnets = [str(trace.stats.network) for trace in st_hfgood]
+            maxreachedVHF = True
+            # Insert maxdistVhf into database
+            with connection:
+                cursor = connection.cursor()
+                try:
+                    cursor.execute('UPDATE events SET maxdistVHF_km = ? WHERE Eid = ?', (maxdist, event_id))
+                except Exception as e:
+                    print(e)
+        # Fill info into database
+        Sids_bad = []
+        Sids_good = []
+        with connection:
+            cursor = connection.cursor()
+            for i, badsta in enumerate(badstas):
+                try:
+                    cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
+                                                   (badstas[i], badnets[i], badchans[i]))
+                    retrieved_data = cursor_output.fetchall()
+                    if retrieved_data:
+                        Sids_bad += [val[0] for val in retrieved_data]
+                except Exception as e:
+                    print(e)
+            for i, goodsta in enumerate(goodstas):
+                try:
+                    cursor_output = cursor.execute('SELECT Sid FROM stations WHERE Name=? AND Network=? AND Channel=?',
+                                                   (goodstas[i], goodnets[i], goodchans[i]))
+                    retrieved_data = cursor_output.fetchall()
+                    if retrieved_data:
+                        Sids_good += [val[0] for val in retrieved_data]
+                except Exception as e:
+                    print(e)
+            if Sids_bad:
+                for Sid in Sids_bad:
+                    cursor.execute('UPDATE sta_nearby SET detect_VHF = ? WHERE station_id = ? AND event_id = ?',
+                                   (0, Sid, event_id))
+            if Sids_good:
+                for Sid in Sids_good:
+                    cursor.execute('UPDATE sta_nearby SET detect_VHF = ? WHERE station_id = ? AND event_id = ?',
+                                   (1, Sid, event_id))
+            if maxreachedVHF is True:
+                cursor.execute('UPDATE sta_nearby SET detect_VHF = ? WHERE stasource_radius_km > ? AND event_id = ?',
+                               (0, float(maxdist), event_id))
 
 
 def make_measurementsHF(event_id, buffer_sec=100., HFlims=(1., 5.), HFoutput='VEL',
