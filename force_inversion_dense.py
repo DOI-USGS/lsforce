@@ -96,10 +96,25 @@ def rotate(st, baz=None):
 def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, period_range=[30, 100],
                      filter_order=2, zeroPhase=False, az=None):
     """
-    load in and set up matrices for time domain calculation
-    st - stream object with horizontals rotated and az embedded
-    samplerate = sampling rate for processed data in Hz
-    weightpre = length of prenoise in seconds
+    Load in and set up matrices for time domain calculation
+
+    Args:
+        st (Stream): stream object of data to use trimmed to desired time period with horizontals
+            rotated to transverse and radial and azimuths embedded
+        greendir (str):
+        samplerate (float): sampling rate at which to do the inversion in Hz (all data and Green's
+                   functions will be resampled to this rate without filtering but after filter 
+                   specified by period_range is applied)
+        weights (array): array of weights to apply to each station, should be an array the same
+            length as st
+        weightpre (float): length of pre-noise window in seconds (if not None, noise will be used to 
+                  determine weights)
+        period_range (list): Range of periods to consider in inversion, in seconds
+        filter_order (int): Order of filter applied over period_range
+        zeroPhase (bool): If True, zeroPhase filtering will be used
+        
+    Returns:
+        
     """
     #check if sampling rate specified is compatible with period_range
     if 1/period_range[0] > samplerate/2:
@@ -237,9 +252,25 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
 def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, period_range=[30, 100],
                      filter_order=2, zeroPhase=False, az=None):
     """
-    load in and set up matrices for frequency domain calculation
-    st - stream object with horizontals rotated and az embedded
-    samplerate = sampling rate for processed data in Hz
+    Load in and set up matrices for long-period landslide inversion in the frequency domain
+    
+    Args:
+        st (Stream): stream object of data to use trimmed to desired time period with horizontals
+            rotated to transverse and radial and azimuths embedded
+        greendir (str):
+        samplerate (float): sampling rate at which to do the inversion in Hz (all data and Green's
+                   functions will be resampled to this rate without filtering but after filter 
+                   specified by period_range is applied)
+        weights (array): array of weights to apply to each station, should be an array the same
+            length as st
+        weightpre (float): length of pre-noise window in seconds (if not None, noise will be used to 
+                  determine weights)
+        period_range (list): Range of periods to consider in inversion, in seconds
+        filter_order (int): Order of filter applied over period_range
+        zeroPhase (bool): If True, zeroPhase filtering will be used
+        
+    Returns:
+        
     """
     #check if sampling rate specified is compatible with period_range
     if 1/period_range[0] > samplerate/2:
@@ -353,7 +384,7 @@ def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, per
         W = np.diag(Wvec)  # sparse.diags(Wvec,0)
     else:
         W = None
-    #import pdb; pdb.set_trace()
+
     return G, d, W
 
 
@@ -463,7 +494,7 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
             alpha, fit1, size1, alphas = findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta,
                                                     datlenorig)#, tolerance=0.5)
             curves = None
-        print('best alpha is %6.1E' % alpha, end=' ')
+        print('best alpha is %6.1e' % alpha)
     else:
         fit1 = None
         size1 = None
@@ -670,14 +701,23 @@ def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.
 
 def findalpha(Ghat, dhat, I):
     """
-    Note that should not use alpha larger than expected largest singular value
+    Find best regularization (trade-off) parameter, alpha, by computing model with many values of
+    alpha, plotting Lcurve, and finding point of steepest curvature where slope is negative.
+    
+    Args:
+        Ghat (array):
+        dhat (array):
+        I (array):
+    
+    Returns:
+        
     """
-    templ1 = np.ceil(np.log10(np.linalg.norm(Ghat)))  # Roughly estimate largest singular value
-    templ2 = np.arange(templ1-8, templ1-4, 0.5)
+    templ1 = np.ceil(np.log10(np.linalg.norm(Ghat)))  # Roughly estimate largest singular value (should not use alpha larger than expected largest singular value)
+    templ2 = np.arange(templ1-8, templ1-4)
     alphas = 10**templ2
     fit1 = []
     size1 = []
-    #rough iteration
+    #rough first iteration
     for alpha in alphas:
         model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(alpha**2, I),
                                                     np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
@@ -686,34 +726,142 @@ def findalpha(Ghat, dhat, I):
         size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
     fit1 = np.array(fit1)
     size1 = np.array(size1)
-    curves = curvature(fit1, size1)  # differs = np.sqrt((fit1/fit1.max())**2+(size1/size1.max())**2)
-    alpha = [alpha for i, alpha in enumerate(alphas) if curves[i] == curves.min()]
-    if 1:
-        #hone in
-        templ2 = np.arange(np.round(np.log10(alpha))-2, np.round(np.log10(alpha))+1)
-        templ3 = np.arange(1, 10, 2)
-        alphas = []
-        fit1 = []
-        size1 = []
-        for exp in templ2:
-            for sub in templ3:
-                newalpha = sub*10**exp
-                alphas.append(newalpha)
-                model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(newalpha**2, I),
-                                                            np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
-                temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
-                fit1.append(sp.linalg.norm(temp1))
-                size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
-        fit1 = np.array(fit1)
-        size1 = np.array(size1)
-        curves = curvature(fit1, size1)
-        bestalpha = [alpha1 for i, alpha1 in enumerate(alphas) if curves[i] == curves.min()]
-    else:
-        bestalpha = alpha
+    curves = curvature(np.log10(fit1), np.log10(size1))
+    # Zero out any points where function is concave so avoid picking points form dropoff at end
+    slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
+    alphas = np.array(alphas)
+    tempcurve = curves.copy()
+    tempcurve[slp2 < 0] = np.max(curves)
+    idx = np.argmin(tempcurve)
+    alpha = alphas[idx] #[alpha for i, alpha in enumerate(alphas) if curves[i] == curves.min()]
+
+    # Then hone in
+    alphas = np.logspace(np.round(np.log10(alpha))-1, np.round(np.log10(alpha))+1, 20)
+    fit1 = []
+    size1 = []
+    for newalpha in alphas:
+        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(newalpha**2, I),
+                                                    np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
+        fit1.append(sp.linalg.norm(temp1))
+        size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
+    fit1 = np.array(fit1)
+    size1 = np.array(size1)
+    curves = curvature(np.log10(fit1), np.log10(size1))
+    # Zero out any points where function is concave so avoid picking points form dropoff at end
+    slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
+    alphas = np.array(alphas)
+    tempcurve = curves.copy()
+    tempcurve[slp2 < 0] = np.max(curves)
+    #import pdb; pdb.set_trace()
+    #curves[curves < 1]
+    idx = np.argmin(tempcurve)
+    bestalpha = alphas[idx]#[alpha1 for i, alpha1 in enumerate(alphas) if tempcurves[i] == curves.min()]
+
     Lcurve(fit1, size1, alphas)
+    if type(bestalpha) == list:
+        if len(bestalpha) > 1:
+            raise Exception('Returned more than one alpha value, check codes')
+        bestalpha = bestalpha[0]
     #import pdb; pdb.set_trace()
     #assert False
     return bestalpha, fit1, size1, alphas, curves
+
+
+def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=None):
+    """
+    Use discrepancy principle and noise window to find best alpha (tends to find value that
+    is too large such that amplitudes are damped)
+
+    Uses Mozorokov discrepancy principle (and bisection method in log-log space?) to find an
+    appropriate value of alpha that results in a solution with a fit that is slightly larger than
+    the estimated noise level
+
+    Args:
+        tolerance (float): how close you want to get to the noise level with the solution
+    """
+    # Estimate the noise level (use signal before zeroTime)
+    dtemp = dhat.copy()[:numsta*datlenorig]  # Trim off any extra zeros
+    #lenall = len(dtemp)
+    dtemp = np.reshape(dtemp, (numsta, datlenorig))
+    if zeroTime is None:
+        print('zeroTime not defined, noise estimated from first 100 samples')
+        samps = 100
+    else:
+        samps = int(zeroTime*samplerate)
+    temp = dtemp[:, :samps]
+    noise = np.sum(np.sqrt(datlenorig * np.std(temp, axis=1)**2))
+
+    # Find ak and bk that yield f(alpha) = ||Gm-d|| - ||noise|| that have f(alpha) values with
+    # opposite signs
+    templ1 = np.floor(np.log10(np.linalg.norm(Ghat)))
+    templ2 = np.arange(templ1-5, templ1)
+    ak = 10**templ2[0]
+    bk = 10**templ2[-1]
+    opposite = False
+    fit1 = []
+    size1 = []
+    alphas = []
+    while opposite is False:
+        print(('ak = %s' % (ak,)))
+        print(('bk = %s' % (bk,)))
+        modelak, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ak**2, I),
+                                                      np.dot(Ghat.T, dhat))
+        modelbk, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(bk**2, I),
+                                                      np.dot(Ghat.T, dhat))
+        fitak = sp.linalg.norm(np.dot(Ghat, modelak.T)-dhat)
+        fitbk = sp.linalg.norm(np.dot(Ghat, modelbk.T)-dhat)
+        # Save info on these runs for Lcurve later if desired
+        fit1.append(fitak)
+        alphas.append(ak)
+        size1.append(sp.linalg.norm(modelak))
+        fit1.append(fitbk)
+        alphas.append(bk)
+        size1.append(sp.linalg.norm(modelbk))
+        fak = fitak - noise  # should be negative
+        fbk = fitbk - noise  # should be positive
+        print(('fak = %s' % (fak,)))
+        print(('fbk = %s' % (fbk,)))
+        if fak*fbk < 0:
+            opposite = True
+        if fak > 0:
+            ak = 10**(np.log10(ak)-1)
+        if fbk < 0:
+            bk = 10**(np.log10(bk)+1)
+
+    if tolerance is None:
+        tolerance = noise/10.
+
+    # Now use bisection method to find the best alpha value within tolerance
+    tol = noise + 100.
+    while tol > tolerance:
+        # Figure out whether to change ak or bk
+        # Compute midpoint (in log units)
+        ck = 10**(0.5*(np.log10(ak)+np.log10(bk)))
+        modelck, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ck**2, I),
+                                                      np.dot(Ghat.T, dhat))
+        fitck = sp.linalg.norm(np.dot(Ghat, modelck.T)-dhat)
+        fit1.append(fitck)
+        alphas.append(ck)
+        size1.append(sp.linalg.norm(modelck))
+        fck = fitck - noise
+        print(('ck = %s' % (ck,)))
+        print(('fitck = %s' % (fitck,)))
+        print(('fck = %s' % (fck,)))
+        tol = np.abs(fck)
+        if fck*fak < 0:
+            bk = ck
+        else:
+            ak = ck
+        print(('ak = %s' % (ak,)))
+        print(('bk = %s' % (bk,)))
+
+    bestalpha = ck
+    print(('best alpha = %s' % (bestalpha,)))
+    fit1 = np.array(fit1)
+    size1 = np.array(size1)
+    Lcurve(fit1, size1, alphas)
+    return bestalpha, fit1, size1, alphas
 
 
 def Lcurve(fit1, size1, alphas):
@@ -1053,10 +1201,16 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
     return fig, Mag, MagU, MagL, Vang, Haz
 
 
-def curvature(x, y):
+def curvature(x, y, negslope=True):
     """
     Estimate the radius of curvature for each point on line to find corner of L-curve
-    IN PROGRESS - NOT SURE IF THIS WORKS RIGHT
+    
+    Args:
+        x (array): x points
+        y (array): y points
+
+    Returns:
+        radius of curvature for each point (ends will be nan)
     """
 
     #FOR EACH SET OF THREE POINTS, FIND RADIUS OF CIRCLE THAT FITS THEM - IGNORE ENDS
@@ -1073,6 +1227,7 @@ def curvature(x, y):
         Yc = b2 + m2*Xc
 
         R_2[i] = np.sqrt((xsub[0]-Xc)**2 + (ysub[0]-Yc)**2)  # get distance from any point to intercept of bisectors to get radius
+
     return R_2
 
 
@@ -1222,99 +1377,3 @@ def readrun(filename):
 #        return
 #    else:
 #        return data
-
-
-def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=None):
-    """
-    Use discrepancy principle and noise window to find best alpha
-
-    Uses Mozorokov discrepancy principle (and bisection method in log-log space?) to find an
-    appropriate value of alpha that results in a solution with a fit that is slightly larger than
-    the estimated noise level
-
-    Args:
-        tolerance (float): how close you want to get to the noise level with the solution
-    """
-    # Estimate the noise level (use signal before zeroTime)
-    dtemp = dhat.copy()[:numsta*datlenorig]  # Trim off any extra zeros
-    #lenall = len(dtemp)
-    dtemp = np.reshape(dtemp, (numsta, datlenorig))
-    if zeroTime is None:
-        print('zeroTime not defined, noise estimated from first 100 samples')
-        samps = 100
-    else:
-        samps = int(zeroTime*samplerate)
-    temp = dtemp[:, :samps]
-    noise = np.sum(np.sqrt(datlenorig * np.std(temp, axis=1)**2))
-
-    # Find ak and bk that yield f(alpha) = ||Gm-d|| - ||noise|| that have f(alpha) values with
-    # opposite signs
-    templ1 = np.floor(np.log10(np.real(Ghat.max())))
-    templ2 = np.arange(templ1-3, templ1+1)
-    ak = 10**templ2[0]
-    bk = 10**templ2[-1]
-    opposite = False
-    fit1 = []
-    size1 = []
-    alphas = []
-    while opposite is False:
-        print(('ak = %s' % (ak,)))
-        print(('bk = %s' % (bk,)))
-        modelak, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ak**2, I),
-                                                      np.dot(Ghat.T, dhat))
-        modelbk, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(bk**2, I),
-                                                      np.dot(Ghat.T, dhat))
-        fitak = sp.linalg.norm(np.dot(Ghat, modelak.T)-dhat)
-        fitbk = sp.linalg.norm(np.dot(Ghat, modelbk.T)-dhat)
-        # Save info on these runs for Lcurve later if desired
-        fit1.append(fitak)
-        alphas.append(ak)
-        size1.append(sp.linalg.norm(modelak))
-        fit1.append(fitbk)
-        alphas.append(bk)
-        size1.append(sp.linalg.norm(modelbk))
-        fak = fitak - noise  # should be negative
-        fbk = fitbk - noise  # should be positive
-        print(('fak = %s' % (fak,)))
-        print(('fbk = %s' % (fbk,)))
-        if fak*fbk < 0:
-            opposite = True
-        if fak > 0:
-            ak = 10**(np.log10(ak)-1)
-        if fbk < 0:
-            bk = 10**(np.log10(bk)+1)
-
-    if tolerance is None:
-        tolerance = noise/10.
-
-    # Now use bisection method to find the best alpha value within tolerance
-    tol = noise + 100.
-    while tol > tolerance:
-        # Figure out whether to change ak or bk
-        # Compute midpoint (in log units)
-        ck = 10**(0.5*(np.log10(ak)+np.log10(bk)))
-        modelck, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ck**2, I),
-                                                      np.dot(Ghat.T, dhat))
-        fitck = sp.linalg.norm(np.dot(Ghat, modelck.T)-dhat)
-        fit1.append(fitck)
-        alphas.append(ck)
-        size1.append(sp.linalg.norm(modelck))
-        fck = fitck - noise
-        print(('ck = %s' % (ck,)))
-        print(('fitck = %s' % (fitck,)))
-        print(('fck = %s' % (fck,)))
-        tol = np.abs(fck)
-        if fck*fak < 0:
-            bk = ck
-        else:
-            ak = ck
-        print(('ak = %s' % (ak,)))
-        print(('bk = %s' % (bk,)))
-        import pdb;pdb.set_trace()
-
-    bestalpha = ck
-    print(('best alpha = %s' % (bestalpha,)))
-    fit1 = np.array(fit1)
-    size1 = np.array(size1)
-    Lcurve(fit1, size1, alphas)
-    return bestalpha, fit1, size1, alphas
