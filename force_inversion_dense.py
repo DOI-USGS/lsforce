@@ -489,20 +489,20 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
     #I = I.tocsr()
     if alphaset is None:
         if alpha_method == 'Lcurve':
-            alpha, fit1, size1, alphas, curves = findalpha(Ghat, dhat, I)
+            alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I)
         else:
             alpha, fit1, size1, alphas = findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta,
                                                     datlenorig)#, tolerance=0.5)
-            curves = None
         print('best alpha is %6.1e' % alpha)
     else:
         fit1 = None
         size1 = None
         alphas = None
-        curves = None
 
     if domain is 'freq':
-        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+alpha**2*I, np.dot(Ghat.T, dhat))  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
+        Ghat = np.matrix(Ghat)
+        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+alpha**2*I,
+                                                    np.squeeze(np.asarray(np.dot(Ghat.H, dhat))))  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
         #import pdb;pdb.set_trace()
         div = len(model)/3
         Zforce = - np.real(np.fft.ifft(model[0:div])/10**5)  # convert from dynes to newtons, flip so up is positive
@@ -531,7 +531,7 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
     #np.linspace(0,(len(Zforce)-1)*1/samplerate,len(Zforce))-T0
     if zeroTime is not None:
         tvec = tvec - zeroTime
-    return model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas, curves
+    return model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas
 
 
 def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.5, W=None, T0=0,
@@ -717,10 +717,14 @@ def findalpha(Ghat, dhat, I):
     alphas = 10**templ2
     fit1 = []
     size1 = []
+    
+    # Convert to matrix so can use complex conjugate .H (so this code will work for both time and freq domains)
+    Ghat = np.matrix(Ghat)  
+    
     #rough first iteration
     for alpha in alphas:
-        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(alpha**2, I),
-                                                    np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(alpha**2, I),
+                                                    np.dot(Ghat.H, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
         size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
@@ -740,8 +744,8 @@ def findalpha(Ghat, dhat, I):
     fit1 = []
     size1 = []
     for newalpha in alphas:
-        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(newalpha**2, I),
-                                                    np.dot(Ghat.T, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(newalpha**2, I),
+                                                    np.dot(Ghat.H, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
         size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
@@ -765,7 +769,7 @@ def findalpha(Ghat, dhat, I):
         bestalpha = bestalpha[0]
     #import pdb; pdb.set_trace()
     #assert False
-    return bestalpha, fit1, size1, alphas, curves
+    return bestalpha, fit1, size1, alphas
 
 
 def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=None):
@@ -802,13 +806,16 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
     fit1 = []
     size1 = []
     alphas = []
+    
+    Ghat = np.matrix(Ghat)
+    
     while opposite is False:
         print(('ak = %s' % (ak,)))
         print(('bk = %s' % (bk,)))
-        modelak, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ak**2, I),
-                                                      np.dot(Ghat.T, dhat))
-        modelbk, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(bk**2, I),
-                                                      np.dot(Ghat.T, dhat))
+        modelak, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(ak**2, I),
+                                                      np.dot(Ghat.H, dhat))
+        modelbk, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(bk**2, I),
+                                                      np.dot(Ghat.H, dhat))
         fitak = sp.linalg.norm(np.dot(Ghat, modelak.T)-dhat)
         fitbk = sp.linalg.norm(np.dot(Ghat, modelbk.T)-dhat)
         # Save info on these runs for Lcurve later if desired
@@ -838,8 +845,8 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
         # Figure out whether to change ak or bk
         # Compute midpoint (in log units)
         ck = 10**(0.5*(np.log10(ak)+np.log10(bk)))
-        modelck, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+np.dot(ck**2, I),
-                                                      np.dot(Ghat.T, dhat))
+        modelck, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(ck**2, I),
+                                                      np.dot(Ghat.H, dhat))
         fitck = sp.linalg.norm(np.dot(Ghat, modelck.T)-dhat)
         fit1.append(fitck)
         alphas.append(ck)
