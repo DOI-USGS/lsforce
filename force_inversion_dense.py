@@ -228,7 +228,7 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
             G = np.vstack((G, newline.copy()))  # sparse.vstack((G,newline))
             d = np.hstack((d, datline.copy()))
         if weights is not None:
-            if weights is 'prenoise':
+            if weights is 'prenoise':  #CHANGE THIS TO USE STD?
                 weight[i] = 10**-7*(1./np.mean(np.abs(trace.data[0:int(weightpre*trace.stats.sampling_rate)])))
             elif weights is 'distance':
                 weight[i] = trace.stats.rdist
