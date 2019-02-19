@@ -10,6 +10,7 @@ import scipy as sp
 import urllib.request, urllib.error, urllib.parse
 import random as rnd
 import pickle
+from sklearn import linear_model as lm
 
 
 """
@@ -388,7 +389,7 @@ def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, per
     return G, d, W
 
 
-def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0.1], domain='time',
+def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0., 0.], domain='time',
            alphaset=None, zeroTime=None, imposeZero=False, addtoZero=False, alpha_method='Lcurve'):
     """
     Wrapper function to perform single force inversion of long-period landslide seismic signal
@@ -401,8 +402,8 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
         datlenorig (int): length, in samples, or original data prior to zero padding etc.
         W: optional weighting matrix, same size as G
         T0 (float): Reference time T0 used in Green's function computation (usually 0.)
-        L0L2ratio (array): NOT FUNCTIONAL Proportion each regularization method contributes, must add to 1. 
-            NEED TO ADD THIS STILL
+        Tikhratio (array): Proportion each regularization method contributes, where values correspond
+            to [zeroth, first order, second order]. Must add to 1. 
         domain (str): specifies whether calculations are in time domain ('time', default) or
             freq domain ('freq')
         alphaset (float): Set regularization parameter, if None, will search for best alpha
@@ -437,12 +438,18 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
         
         
     """
+
+    if np.sum(Tikhratio) != 1.:
+        raise Exception('Tikhonov ratios must add to 1')
+
     if W is not None:
         Ghat = W.dot(G)  # np.dot(W.tocsr(),G.tocsr())
         dhat = W.dot(d)  # np.dot(W.tocsr(),sparse.csr_matrix(d))
     else:
         Ghat = G  # G.tocsr()
         dhat = d  # sparse.csr_matrix(d)
+
+    m, n = np.shape(Ghat)
 
     Ghatmax = np.abs(Ghat).max()
 
@@ -485,24 +492,45 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
     if alphaset is not None:
         alpha = alphaset
     dhat = dhat.T
-    I = np.eye(np.shape(Ghat)[1], np.shape(Ghat)[1])  # sparse.eye(np.shape(G)[1],np.shape(G)[1])
-    #I = I.tocsr()
+    
+    # Build roughening matrix
+    I = np.eye(n, n) # sparse.eye(np.shape(G)[1],np.shape(G)[1])
+    if Tikhratio[1] != 0.:
+        # Build L1 (first order) roughening matrix
+        L1 = np.diag(-1 * np.ones(n)) + np.diag(np.ones(n-1), k=1)
+        L1part = np.dot(L1.T, L1)
+    else:
+        L1part = 0.
+        L1 = 0.
+    if Tikhratio[2] != 0.:
+        # Build L2 (second order) roughening matrix
+        L2 = np.diag(np.ones(n)) + np.diag(-2*np.ones(n-1), k=1) + np.diag(np.ones(n-2), k=2)
+        L2part = np.dot(L2.T, L2)
+    else:
+        L2 = 0.
+        L2part = 0.
+
     if alphaset is None:
         if alpha_method == 'Lcurve':
-            alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I)
+            alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I, L1, L2, Tikhratio)
         else:
-            alpha, fit1, size1, alphas = findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta,
-                                                    datlenorig)#, tolerance=0.5)
+            alpha, fit1, size1, alphas = findalphaD(Ghat, dhat, I, zeroTime,
+                                                    samplerate, numsta, datlenorig, L1=L1, L2=L2,
+                                                    Tikhratio=Tikhratio)#, tolerance=0.5)
         print('best alpha is %6.1e' % alpha)
     else:
         fit1 = None
         size1 = None
         alphas = None
 
+    Ghat = np.matrix(Ghat)
+    Apart = np.dot(Ghat.H, Ghat)
+    
+    A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things (if any are zero they won't matter)    
+    x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
+
     if domain is 'freq':
-        Ghat = np.matrix(Ghat)
-        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+alpha**2*I,
-                                                    np.squeeze(np.asarray(np.dot(Ghat.H, dhat))))  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
+        model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
         #import pdb;pdb.set_trace()
         div = len(model)/3
         Zforce = - np.real(np.fft.ifft(model[0:div])/10**5)  # convert from dynes to newtons, flip so up is positive
@@ -514,7 +542,7 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
         dt, dtnew = back2time(d, df_new, numsta, datlenorig)
 
     else:  # domain is time
-        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+alpha**2*I, np.dot(Ghat.T, dhat))
+        model, residuals, rank, s = sp.linalg.lstsq(A, x)
         #model,residuals,rank,s = sp.linalg.lstsq(Ghat,dhat,cond=alpha)
         div = int(len(model)/3)
         Zforce = - model[0:div]/10**5  # convert from dynes to netwons, flip so up is positive
@@ -534,9 +562,170 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, L0L2ratio=[0.9, 0
     return model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas
 
 
+#def invert_sklearn(G, d, samplerate, numsta, datlenorig, method='Ridge', W=None, T0=0,
+#                   L0L2ratio=[0.9, 0.1], domain='time', alphaset=None, zeroTime=None,
+#                   imposeZero=False, addtoZero=False, alpha_method='Lcurve'):
+#    """
+#    Wrapper function to perform single force inversion of long-period landslide seismic signal
+#
+#    Args:
+#        G (array): model matrix (m x n)
+#        d (array): vector of concatenated data (m x 1)
+#        samplerate (float): samplerate in Hz of seismic data and green's functions (the two must be equal)
+#        numsta (int): number of channels used
+#        datlenorig (int): length, in samples, or original data prior to zero padding etc.
+#        W: optional weighting matrix, same size as G
+#        T0 (float): Reference time T0 used in Green's function computation (usually 0.)
+#        L0L2ratio (array): NOT FUNCTIONAL Proportion each regularization method contributes, must add to 1. 
+#            NEED TO ADD THIS STILL
+#        domain (str): specifies whether calculations are in time domain ('time', default) or
+#            freq domain ('freq')
+#        alphaset (float): Set regularization parameter, if None, will search for best alpha
+#        zeroTime (float): Optional estimated start time of real part of signal, in seconds from
+#            start time of seismic data. Useful for making figures showing selected start time
+#            and also for imposeZero option
+#        imposeZero (bool): Will add weighting matrix to suggest forces tend towards zero prior
+#            to zeroTime (zeroTime must be defined)
+#        addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
+#            to zero.
+#        alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
+#            'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on 
+#            discrepancy principle and noise calculated from data from before zeroTime.
+#    
+#    Returns: (model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas, curves)
+#        model (array): model vector of concatated components (n x 1) of solution using
+#            regularization parameter alpha
+#        Zforce (array): vertical force time series extracted from model
+#        Nforce (array): same as above for north force
+#        Eforce (array): same as above for east force
+#        tvec (array): Time vector, referenced using zeroTime (if specified) and corrected for T0
+#            time shift
+#        VR (float): Variance reduction (%), rule of thumb, this should be ~50%-80%, if 100%,
+#            solution is fitting data exactly and results are suspect. If ~5%, model may be wrong or
+#            something else may be wrong with setup.
+#        dt (array): original data vector
+#        dtnew (array): modeled data vector (Gm-d)
+#        alpha (float): regularization parameter that was used
+#        fit1 (array):
+#        size1 (array):
+#        curves (array):
+#        
+#        
+#    """
+#    if W is not None:
+#        Ghat = W.dot(G)  # np.dot(W.tocsr(),G.tocsr())
+#        dhat = W.dot(d)  # np.dot(W.tocsr(),sparse.csr_matrix(d))
+#    else:
+#        Ghat = G  # G.tocsr()
+#        dhat = d  # sparse.csr_matrix(d)
+#
+#    Ghatmax = np.abs(Ghat).max()
+#
+#    if addtoZero is True:  # constrain forces to add to zero
+#        scaler = 10**(np.round(np.log10(Ghatmax)+4.))
+#        first1 = np.hstack((np.ones(datlenorig), np.zeros(2*datlenorig)))
+#        second1 = np.hstack((np.zeros(datlenorig), np.ones(datlenorig), np.zeros(datlenorig)))
+#        third1 = np.hstack((np.zeros(2*datlenorig), np.ones(datlenorig)))
+#        A = np.vstack((first1, second1, third1))*scaler
+#        Ghat = np.vstack((Ghat, A))
+#        dhat = np.hstack((dhat, np.zeros(3)))
+#        #import pdb; pdb.set_trace()
+#
+#    if imposeZero is True:  # tell model when there should be no forces
+#        if zeroTime is None:
+#            raise Exception('imposeZero set to True but no zeroTime provided')
+#        scaler = 10**(np.round(np.log10(Ghatmax))+0.5)
+#        #print scaler
+#        #import pdb; pdb.set_trace()
+#        len2 = int(np.round((zeroTime)*samplerate))
+#        len3 = int(np.round(0.2*len2))  # 20% taper overlapping into main event by x seconds
+#        temp = np.hanning(2*len3)
+#        temp = temp[len3:]
+#        vals = np.hstack((np.ones(len2-len3), temp))
+#        for i, val in enumerate(vals):
+#            first1 = np.zeros(3*datlenorig)
+#            second1 = first1.copy()
+#            third1 = first1.copy()
+#            first1[i] = val
+#            second1[i+datlenorig] = val
+#            third1[i+2*datlenorig] = val
+#            if i == 0:
+#                A = np.vstack((first1, second1, third1))
+#            else:
+#                A = np.vstack((A, first1, second1, third1))
+#        A = A*scaler
+#        Ghat = np.vstack((Ghat, A))
+#        dhat = np.hstack((dhat, np.zeros(len(vals)*3)))
+#
+#    if alphaset is not None:
+#        results = lm.Ridge(alpha=alphaset, tol=0.001)  # Should set tolerance based on data noise?
+#        results.fit(Ghat, dhat)
+#    else: # Get list of alphas to try
+#        templ = np.ceil(np.log10(np.linalg.norm(Ghat)))
+#        alphas = np.logspace(templ-7, templ+1, 15)
+#        
+#        
+#    dhat = dhat.T
+#    
+#    if method == 'Ridge':
+#        # initialize
+#        lm.Ridge(alpha=1)
+#        pass
+#    
+#    
+#    I = np.eye(np.shape(Ghat)[1], np.shape(Ghat)[1])  # sparse.eye(np.shape(G)[1],np.shape(G)[1])
+#    #I = I.tocsr()
+#    if alphaset is None:
+#        if alpha_method == 'Lcurve':
+#            alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I)
+#        else:
+#            alpha, fit1, size1, alphas = findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta,
+#                                                    datlenorig)#, tolerance=0.5)
+#        print('best alpha is %6.1e' % alpha)
+#    else:
+#        fit1 = None
+#        size1 = None
+#        alphas = None
+#
+#    if domain is 'freq':
+#        Ghat = np.matrix(Ghat)
+#        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+alpha**2*I,
+#                                                    np.squeeze(np.asarray(np.dot(Ghat.H, dhat))))  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
+#        #import pdb;pdb.set_trace()
+#        div = len(model)/3
+#        Zforce = - np.real(np.fft.ifft(model[0:div])/10**5)  # convert from dynes to newtons, flip so up is positive
+#        Nforce = np.real(np.fft.ifft(model[div:2*div])/10**5)
+#        Eforce = np.real(np.fft.ifft(model[2*div:])/10**5)
+#        #run forward model
+#        df_new = np.dot(G, model.T)  # forward_model(G,model)
+#        #convert d and df_new back to time domain
+#        dt, dtnew = back2time(d, df_new, numsta, datlenorig)
+#
+#    else:  # domain is time
+#        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.T, Ghat)+alpha**2*I, np.dot(Ghat.T, dhat))
+#        #model,residuals,rank,s = sp.linalg.lstsq(Ghat,dhat,cond=alpha)
+#        div = int(len(model)/3)
+#        Zforce = - model[0:div]/10**5  # convert from dynes to netwons, flip so up is positive
+#        Nforce = model[div:2*div]/10**5
+#        Eforce = model[2*div:]/10**5
+#        dtnew = G.dot(model)  # forward_model(G,model)
+#        dtnew = np.reshape(dtnew, (numsta, datlenorig))
+#        dt = np.reshape(d, (numsta, datlenorig))
+#
+#    #compute variance reduction
+#    VR = varred(dt, dtnew)
+#    print(('variance reduction %f percent') % (VR,))
+#    tvec = np.arange(0, len(Zforce)*1/samplerate, 1/samplerate)-T0
+#    #np.linspace(0,(len(Zforce)-1)*1/samplerate,len(Zforce))-T0
+#    if zeroTime is not None:
+#        tvec = tvec - zeroTime
+#    return model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas
+
+
 def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.5, W=None, T0=0,
               L0L2ratio=[0.9, 0.1], domain='time', alphaset=None, zeroTime=None, imposeZero=False,
               addtoZero=False):
+    # NEED TO UPDATE FOR CONSISTENCY WITH invert
     #inversion with jackknife to estimate uncertainties due to data selection
     #NEED TO SET ALPHA
     #First iteration is full inversion - POP IT OUT AT THE END
@@ -699,16 +888,19 @@ def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.
     return model_full, Zforce_full, ZforceL, ZforceU, Nforce_full, NforceL, NforceU, Eforce_full, EforceL, EforceU, tvec, VR_full, dt, dtnew_full  # , alpha , fit1, size1, alphas, curves
 
 
-def findalpha(Ghat, dhat, I):
+def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
     """
     Find best regularization (trade-off) parameter, alpha, by computing model with many values of
     alpha, plotting Lcurve, and finding point of steepest curvature where slope is negative.
     
     Args:
-        Ghat (array):
-        dhat (array):
-        I (array):
-    
+        Ghat (array): m x n matrix of 
+        dhat (array): 1 x n array of weighted data
+        I (array): Identity matrix
+        L1 (array): First order roughening matrix, if 0., will use only zeroth order Tikhonov reg.
+        L2 (array): Second order roughening matrix, if 0., will use only zeroth order Tikhonov reg.
+        Tikhratio (list): Proportion each regularization method contributes, where values correspond
+            to [zeroth, first order, second order]. Must add to 1.
     Returns:
         
     """
@@ -719,12 +911,24 @@ def findalpha(Ghat, dhat, I):
     size1 = []
     
     # Convert to matrix so can use complex conjugate .H (so this code will work for both time and freq domains)
-    Ghat = np.matrix(Ghat)  
+    Ghat = np.matrix(Ghat)
+
+    Apart = np.dot(Ghat.H, Ghat)
+    if type(L2) == float or type(L2) == int:
+        L2part = 0.
+    else:
+        L2part = np.dot(L2.T, L2)
+    if type(L1) == float or type(L1) == int:
+        L1part = 0.
+    else:
+        L1part = np.dot(L1.T, L1)
+
+    x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
     
     #rough first iteration
     for alpha in alphas:
-        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(alpha**2, I),
-                                                    np.dot(Ghat.H, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things
+        model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
         size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
@@ -744,8 +948,8 @@ def findalpha(Ghat, dhat, I):
     fit1 = []
     size1 = []
     for newalpha in alphas:
-        model, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(newalpha**2, I),
-                                                    np.dot(Ghat.H, dhat))  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things
+        model, residuals, rank, s = sp.linalg.lstsq(A, x) # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
         size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
@@ -772,7 +976,8 @@ def findalpha(Ghat, dhat, I):
     return bestalpha, fit1, size1, alphas
 
 
-def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=None):
+def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, tolerance=None,
+               L1=0., L2=0., Tikhratio=[1., 0., 0.]):
     """
     Use discrepancy principle and noise window to find best alpha (tends to find value that
     is too large such that amplitudes are damped)
@@ -808,14 +1013,26 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
     alphas = []
     
     Ghat = np.matrix(Ghat)
+
+    Apart = np.dot(Ghat.H, Ghat)
+    if type(L2) == float or type(L2) == int:
+        L2part = 0.
+    else:
+        L2part = np.dot(L2.T, L2)
+    if type(L1) == float or type(L2) == int:
+        L1part = 0.
+    else:
+        L1part = np.dot(L1.T, L1)
+
+    x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
     
     while opposite is False:
         print(('ak = %s' % (ak,)))
         print(('bk = %s' % (bk,)))
-        modelak, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(ak**2, I),
-                                                      np.dot(Ghat.H, dhat))
-        modelbk, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(bk**2, I),
-                                                      np.dot(Ghat.H, dhat))
+        Aa = Apart+ak**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)
+        modelak, residuals, rank, s = sp.linalg.lstsq(Aa, x)
+        Ab = Apart+bk**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)
+        modelbk, residuals, rank, s = sp.linalg.lstsq(Ab, x)
         fitak = sp.linalg.norm(np.dot(Ghat, modelak.T)-dhat)
         fitbk = sp.linalg.norm(np.dot(Ghat, modelbk.T)-dhat)
         # Save info on these runs for Lcurve later if desired
@@ -845,8 +1062,8 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
         # Figure out whether to change ak or bk
         # Compute midpoint (in log units)
         ck = 10**(0.5*(np.log10(ak)+np.log10(bk)))
-        modelck, residuals, rank, s = sp.linalg.lstsq(np.dot(Ghat.H, Ghat)+np.dot(ck**2, I),
-                                                      np.dot(Ghat.H, dhat))
+        Ac = Apart+ck**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)
+        modelck, residuals, rank, s = sp.linalg.lstsq(Ac, x)
         fitck = sp.linalg.norm(np.dot(Ghat, modelck.T)-dhat)
         fit1.append(fitck)
         alphas.append(ck)
@@ -1349,7 +1566,7 @@ def readrun(filename):
     RETURN: model, tvec, Zforce, Eforce, Nforce, ZforceU, ZforceL, EforceU, EforceL, NforceU,
         NforceL, dt, dtnew, stproc, zeroTime
     """
-    f = open(filename, 'r')
+    f = open(filename, 'rb')
     result = pickle.load(f)
     f.close()
     model = result['model']
