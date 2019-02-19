@@ -451,10 +451,11 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0
 
     m, n = np.shape(Ghat)
 
-    Ghatmax = np.abs(Ghat).max()
-
+    Ghatnorm = np.linalg.norm(Ghat)
+    #Ghatmax = np.abs(Ghat).max()
+    
     if addtoZero is True:  # constrain forces to add to zero
-        scaler = 10**(np.round(np.log10(Ghatmax)+4.))
+        scaler = Ghatnorm #10**(np.round(np.log10(Ghatmax)+4))#10**(np.round(np.log10(Ghatnorm))) # 10**(np.round(np.log10(Ghatmax)+4))
         first1 = np.hstack((np.ones(datlenorig), np.zeros(2*datlenorig)))
         second1 = np.hstack((np.zeros(datlenorig), np.ones(datlenorig), np.zeros(datlenorig)))
         third1 = np.hstack((np.zeros(2*datlenorig), np.ones(datlenorig)))
@@ -466,11 +467,12 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0
     if imposeZero is True:  # tell model when there should be no forces
         if zeroTime is None:
             raise Exception('imposeZero set to True but no zeroTime provided')
-        scaler = 10**(np.round(np.log10(Ghatmax))+0.5)
+        scaler = Ghatnorm/15.#10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
         #print scaler
         #import pdb; pdb.set_trace()
         len2 = int(np.round((zeroTime)*samplerate))
         len3 = int(np.round(0.2*len2))  # 20% taper overlapping into main event by x seconds
+        #halflen3 = int(len3/2)
         temp = np.hanning(2*len3)
         temp = temp[len3:]
         vals = np.hstack((np.ones(len2-len3), temp))
@@ -562,11 +564,12 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0
     return model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas
 
 
-#def invert_sklearn(G, d, samplerate, numsta, datlenorig, method='Ridge', W=None, T0=0,
+#def invert_elastic(G, d, samplerate, numsta, datlenorig, method='Ridge', W=None, T0=0,
 #                   L0L2ratio=[0.9, 0.1], domain='time', alphaset=None, zeroTime=None,
 #                   imposeZero=False, addtoZero=False, alpha_method='Lcurve'):
 #    """
-#    Wrapper function to perform single force inversion of long-period landslide seismic signal
+#   Use scikit learn elastic net method?    
+#   Wrapper function to perform single force inversion of long-period landslide seismic signal
 #
 #    Args:
 #        G (array): model matrix (m x n)
@@ -931,7 +934,7 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
         model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
-        size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
+        size1.append(sp.linalg.norm(Tikhratio[0]*model + Tikhratio[1]*L1part*model + Tikhratio[2]*L2part*model))  # size1.append(sp.linalg.norm(model.todense()))
     fit1 = np.array(fit1)
     size1 = np.array(size1)
     curves = curvature(np.log10(fit1), np.log10(size1))
@@ -948,11 +951,11 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
     fit1 = []
     size1 = []
     for newalpha in alphas:
-        A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things
+        A = Apart+newalpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things
         model, residuals, rank, s = sp.linalg.lstsq(A, x) # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
-        size1.append(sp.linalg.norm(model))  # size1.append(sp.linalg.norm(model.todense()))
+        size1.append(sp.linalg.norm(Tikhratio[0]*model + Tikhratio[1]*L1part*model + Tikhratio[2]*L2part*model))  # size1.append(sp.linalg.norm(model.todense()))
     fit1 = np.array(fit1)
     size1 = np.array(size1)
     curves = curvature(np.log10(fit1), np.log10(size1))
@@ -1038,10 +1041,10 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
         # Save info on these runs for Lcurve later if desired
         fit1.append(fitak)
         alphas.append(ak)
-        size1.append(sp.linalg.norm(modelak))
+        size1.append(sp.linalg.norm(Tikhratio[0]*modelak + Tikhratio[1]*L1part*modelak + Tikhratio[2]*L2part*modelak))#sp.linalg.norm(modelak))
         fit1.append(fitbk)
         alphas.append(bk)
-        size1.append(sp.linalg.norm(modelbk))
+        size1.append(sp.linalg.norm(Tikhratio[0]*modelbk + Tikhratio[1]*L1part*modelbk + Tikhratio[2]*L2part*modelbk))
         fak = fitak - noise  # should be negative
         fbk = fitbk - noise  # should be positive
         print(('fak = %s' % (fak,)))
@@ -1067,7 +1070,7 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
         fitck = sp.linalg.norm(np.dot(Ghat, modelck.T)-dhat)
         fit1.append(fitck)
         alphas.append(ck)
-        size1.append(sp.linalg.norm(modelck))
+        size1.append(sp.linalg.norm(Tikhratio[0]*modelck + Tikhratio[1]*L1part*modelck + Tikhratio[2]*L2part*modelck))#(sp.linalg.norm(modelck))
         fck = fitck - noise
         print(('ck = %s' % (ck,)))
         print(('fitck = %s' % (fitck,)))
