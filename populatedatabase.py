@@ -19,7 +19,8 @@ import datetime
 
 
 def initial_populate(event_ids, minradius=0., maxradius=500., clients=['IRIS'],
-                     database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
+                     database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db',
+                     chan='BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,SL?'):
     """Performs initial population of stations and sta_nearby tables for a single event id or list of event ids.
 
     Args:
@@ -47,8 +48,9 @@ def initial_populate(event_ids, minradius=0., maxradius=500., clients=['IRIS'],
                                                 maxradiuskm=maxradius, chan='BH?,EH?,HH?,EL?,HN?,EN?,CH?,DH?,SL?')
 
             #print(len(inventory.get_contents()['channels']))
-            populate_station_tables(inventory, client=client, database=database)
-            populate_station_event_table(event_id, inventory, database=database)
+            if inventory is not None:
+                populate_station_tables(inventory, client=client, database=database)
+                populate_station_event_table(event_id, inventory, database=database)
 
 
 def populate_station_tables(inventory, client=None, database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):

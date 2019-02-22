@@ -142,8 +142,6 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
     greenlength = len(temp.data)
     if greenlength > datalength:
         print('greenlength is greater than datalength so everything is messed up')
-        import pdb
-        pdb.set_trace()
         return
     #ADD WAY TO ACCOUNT FOR WHEN GREENLENGTH IS LONGER THAN DATALENGTH - ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
     lenUall = datalength*len(st)
@@ -731,9 +729,12 @@ def invert_lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, alpharatio=
     if alphaset is None:
         if alpharatio is None:
             # Use just LassoCV
-            lasso = lm.LassoCV(normalize=True)
+            lasso = lm.LassoCV(normalize=False)
             lasso.fit(Ghat, dhat)
             alpha = lasso.alpha_
+            fit1 = None
+            size1 = None
+            alphas = None
             print('best alpha is %6.1e' % alpha)
         else:
             # INSERT STUFF HERE TO FIND ALPHA
@@ -749,7 +750,6 @@ def invert_lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, alpharatio=
             alpharatio = 1.
         lasso = lm.Lasso(alpha=(alphaset*alpharatio)**2)
         lasso.fit(Ghat2, dhat2)
-        
         fit1 = None
         size1 = None
         alphas = None
