@@ -591,11 +591,12 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0
     return model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas
 
 
-def invert_lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0., 0.], domain='time',
+def invert_lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, alpharatio=10., domain='time',
                  alphaset=None, zeroTime=None, imposeZero=False, addtoZero=False, alpha_method='Lcurve',
                  maxduration=None):
     """
     Wrapper function to perform single force inversion of long-period landslide seismic signal
+    using scikit learn's Lasso function (L1 norm minimization) with smoothing added on top
 
     Args:
         G (array): model matrix (m x n)
@@ -605,11 +606,12 @@ def invert_lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[
         datlenorig (int): length, in samples, or original data prior to zero padding etc.
         W: optional weighting matrix, same size as G
         T0 (float): Reference time T0 used in Green's function computation (usually 0.)
-        Tikhratio (array): Proportion each regularization method contributes, where values correspond
-            to [zeroth, first order, second order]. Must add to 1. 
+        alpharatio (float): Alpha for Lasso will be larger than the alpha for smoothing by a factor
+            of alphadiv. If None, only Lasso regularization will be done.
         domain (str): specifies whether calculations are in time domain ('time', default) or
             freq domain ('freq')
         alphaset (float): Set regularization parameter, if None, will search for best alpha
+            NOTE ABOUT HOW LASSO HANDLES REG FOR L1 and L2
         zeroTime (float): Optional estimated start time of real part of signal, in seconds from
             start time of seismic data. Useful for making figures showing selected start time
             and also for imposeZero option
@@ -644,9 +646,6 @@ def invert_lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[
         
         
     """
-
-    if np.sum(Tikhratio) != 1.:
-        raise Exception('Tikhonov ratios must add to 1')
 
     if W is not None:
         Ghat = W.dot(G)  # np.dot(W.tocsr(),G.tocsr())
@@ -725,45 +724,40 @@ def invert_lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[
     dhat = dhat.T
     
     # Build roughening matrix
-    I = np.eye(n, n) # sparse.eye(np.shape(G)[1],np.shape(G)[1])
-    if Tikhratio[1] != 0.:
-        # Build L1 (first order) roughening matrix
-        L1 = np.diag(-1 * np.ones(n)) + np.diag(np.ones(n-1), k=1)
-        L1part = np.dot(L1.T, L1)
-    else:
-        L1part = 0.
-        L1 = 0.
-    if Tikhratio[2] != 0.:
+    if alpharatio is not None:
         # Build L2 (second order) roughening matrix
         L2 = np.diag(np.ones(n)) + np.diag(-2*np.ones(n-1), k=1) + np.diag(np.ones(n-2), k=2)
-        L2part = np.dot(L2.T, L2)
-    else:
-        L2 = 0.
-        L2part = 0.
 
     if alphaset is None:
-        if alpha_method == 'Lcurve':
-            alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I, L1, L2, Tikhratio)
+        if alpharatio is None:
+            # Use just LassoCV
+            lasso = lm.LassoCV(normalize=True)
+            lasso.fit(Ghat, dhat)
+            alpha = lasso.alpha_
+            print('best alpha is %6.1e' % alpha)
         else:
-            alpha, fit1, size1, alphas = findalphaD(Ghat, dhat, I, zeroTime,
-                                                    samplerate, numsta, datlenorig, L1=L1, L2=L2,
-                                                    Tikhratio=Tikhratio)#, tolerance=0.5)
-        print('best alpha is %6.1e' % alpha)
+            # INSERT STUFF HERE TO FIND ALPHA
+            raise Exception('alphaset=None not implemented yet for smoothed Lasso. Must assign alpha')
+            #print('best alpha is %6.1e' % alpha)
     else:
+        if alpharatio is not None:
+            Ghat2 = np.vstack((Ghat, alphaset*L2))
+            dhat2 = np.hstack((dhat, np.zeros(np.shape(L2[0]))))
+        else:
+            Ghat2 = Ghat
+            dhat2 = dhat
+            alpharatio = 1.
+        lasso = lm.Lasso(alpha=(alphaset*alpharatio)**2)
+        lasso.fit(Ghat2, dhat2)
+        
         fit1 = None
         size1 = None
         alphas = None
 
-    Ghat = np.matrix(Ghat)
-    Apart = np.dot(Ghat.H, Ghat)
-    
-    A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things (if any are zero they won't matter)    
-    x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
+    model = lasso.coef_
+    div = int(len(model)/3)
 
     if domain is 'freq':
-        model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
-        #import pdb;pdb.set_trace()
-        div = len(model)/3
         Zforce = - np.real(np.fft.ifft(model[0:div])/10**5)  # convert from dynes to newtons, flip so up is positive
         Nforce = np.real(np.fft.ifft(model[div:2*div])/10**5)
         Eforce = np.real(np.fft.ifft(model[2*div:])/10**5)
@@ -773,9 +767,6 @@ def invert_lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[
         dt, dtnew = back2time(d, df_new, numsta, datlenorig)
 
     else:  # domain is time
-        model, residuals, rank, s = sp.linalg.lstsq(A, x)
-        #model,residuals,rank,s = sp.linalg.lstsq(Ghat,dhat,cond=alpha)
-        div = int(len(model)/3)
         Zforce = - model[0:div]/10**5  # convert from dynes to netwons, flip so up is positive
         Nforce = model[div:2*div]/10**5
         Eforce = model[2*div:]/10**5
