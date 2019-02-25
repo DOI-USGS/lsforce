@@ -107,7 +107,8 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
                    functions will be resampled to this rate without filtering but after filter 
                    specified by period_range is applied)
         weights (array): array of weights to apply to each station, should be an array the same
-            length as st
+            length as st, or 'prenoise' to use std of noise window before event (weightpre must
+            be defined) or 'distance' to weight by reverse distance
         weightpre (float): length of pre-noise window in seconds (if not None, noise will be used to 
                   determine weights)
         period_range (list): Range of periods to consider in inversion, in seconds
@@ -117,6 +118,9 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
     Returns:
         
     """
+    if weights == 'prenoise' and weightpre is None:
+        raise Exception('weightpre must be defined if prenoise weighting is used')
+    
     #check if sampling rate specified is compatible with period_range
     if 1/period_range[0] > samplerate/2:
         print('samplerate and period_range are not compatible, violates Nyquist')
@@ -217,8 +221,8 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
             datline = trace.data
         else:
             print('st not rotated to T and R, abort!')
-            import pdb
-            pdb.set_trace()
+            #import pdb
+            #pdb.set_trace()
             return
         if i == 0:
             G = newline.copy()
@@ -227,14 +231,19 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
             G = np.vstack((G, newline.copy()))  # sparse.vstack((G,newline))
             d = np.hstack((d, datline.copy()))
         if weights is not None:
-            if weights is 'prenoise':  #CHANGE THIS TO USE STD?
-                weight[i] = 10**-7*(1./np.mean(np.abs(trace.data[0:int(weightpre*trace.stats.sampling_rate)])))
-            elif weights is 'distance':
+            if weights == 'prenoise':
+                weight[i] = 1./np.std(trace.data[0:int(weightpre*trace.stats.sampling_rate)])
+                #weight[i] = 1./np.mean(np.abs(trace.data[0:int(weightpre*trace.stats.sampling_rate)])) # RMS, old way
+            elif weights == 'distance':
                 weight[i] = trace.stats.rdist
             elif len(weights) > 1:
                 weight[i] = weights[i]
             Wvec[indx:indx+datalength] = Wvec[indx:indx+datalength]*weight[i]
             indx += datalength
+    # Normalize Wvec so largest weight is 1.
+    Wvec = Wvec/np.max(np.abs(Wvec))
+    weight = weight/np.max(np.abs(weight))
+
 
     if np.shape(G)[0] != len(d):
         print('G and d sizes are not compatible, fix something somewhere')
@@ -244,7 +253,7 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
         W = np.diag(Wvec)  # sparse.diags(Wvec,0)
     else:
         W = None
-    #import pdb; pdb.set_trace()
+
     return G, d, W, weight
 
 
@@ -389,7 +398,7 @@ def setup_freqdomain(st, greendir, samplerate, weights=None, weightpre=None, per
 
 def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0., 0.], domain='time',
            alphaset=None, zeroTime=None, imposeZero=False, addtoZero=False, alpha_method='Lcurve',
-           maxduration=None):
+           maxduration=None, zeroScaler=15.):
     """
     Wrapper function to perform single force inversion of long-period landslide seismic signal
 
@@ -419,6 +428,9 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0
         maxduration (float): Maximum duration allowed for the event, starting at zeroTime if defined,
             otherwise starting from beginning of seismic data. Points after this will tend towards
             zero. This helps tamp down artifacts due to edge effects.
+        zeroScaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
+            The lower the number, teh stronger the constraint, but the higher the risk of high freq.
+            oscillations due to a sudden release of the constraint
     
     Returns: (model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas, curves)
         model (array): model vector of concatated components (n x 1) of solution using
@@ -466,8 +478,8 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0
         dhat = np.hstack((dhat, np.zeros(3)))
         #import pdb; pdb.set_trace()
 
-    scaler = Ghatnorm/15.#10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
-    if imposeZero is True:  # tell model when there should be no forces
+    scaler = Ghatnorm/zeroScaler #10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
+    if imposeZero is True and zeroTime !=0.:  # tell model when there should be no forces
         if zeroTime is None:
             raise Exception('imposeZero set to True but no zeroTime provided')
         len2 = int(np.round((zeroTime)*samplerate))
@@ -487,10 +499,10 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0
                 A = np.vstack((first1, second1, third1))
             else:
                 A = np.vstack((A, first1, second1, third1))
-        A = A*scaler
+        A *= scaler
         Ghat = np.vstack((Ghat, A))
         dhat = np.hstack((dhat, np.zeros(len(vals)*3)))
-        
+
     if maxduration is not None:
         if zeroTime is None:
             zeroTime = 0.
@@ -512,10 +524,10 @@ def invert(G, d, samplerate, numsta, datlenorig, W=None, T0=0, Tikhratio=[1.0, 0
                 A = np.vstack((first1, second1, third1))
             else:
                 A = np.vstack((A, first1, second1, third1))
-        A = A*scaler
+        A *= scaler
         Ghat = np.vstack((Ghat, A))
         dhat = np.hstack((dhat, np.zeros(len(vals)*3)))
-
+    
     if alphaset is not None:
         alpha = alphaset
     dhat = dhat.T
@@ -852,7 +864,6 @@ def jackknife(G, d, samplerate, numsta, datlenorig, num_iter=200, frac_delete=0.
 
         if imposeZero is True:  # tell model when there should be no forces
             scaler = 10**(np.round(np.log10(Ghatmax))+0.5)
-            #import pdb; pdb.set_trace()
             len2 = int(np.round((zeroTime)*samplerate))
             len3 = int(np.round(0.2*len2))  # 20% taper overlapping into main event by x(0) seconds
             temp = np.hanning(2*len3)
@@ -1287,24 +1298,34 @@ def nextpow2(val):
     pass
 
 
-def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None, ylim=None,
-            sameY=True, Zupper=None, Zlower=None, Eupper=None, Elower=None, Nupper=None, Nlower=None):
+def plotinv(Zforce, Nforce, Eforce, tvec, zeroTime=0., imposeZero=False, maxduration=None, 
+            subplots=False, xlim=None, ylim=None, sameY=True, Zupper=None, Zlower=None,
+            Eupper=None, Elower=None, Nupper=None, Nlower=None):
     """
-    plot inversion result
-    USAGE plotinv(Zforce,Nforce,Eforce,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
-    INPUTS
-    [ZEN]force
-    tvec =
-    T0 = T0 (time delay) used in Green's functions (usually negative)
-    zerotime = designated time for event start
-    subplots = True, make subplots, False, plot all one one plot
-    vline = plot vertical line at t=vline
-    [ZEN]upper = upper limit of uncertainties (None if none)
-    [ZEN]lower = ditto for lower limit
-    OUPUTS
-    fig - figure handle
+    Plot inversion result
+    
+    Args:
+        [ZEN]force
+        tvec (array): time vector for forces, in seconds, don't set zeroTime if tvec already 
+            accounts for it
+        T0 = T0 (time delay) used in Green's functions (usually negative)
+        zeroTime (float): zeroTime used for imposeZero (guess at event start time). Will set this
+            time to zero on the time vector
+        imposeZero (bool): if True, will indicate that zero was imposed at zeroTime
+        maxduration (float): Maximum duration allowed for the event, starting at zeroTime if defined,
+            otherwise starting from beginning of seismic data. Points after this will tend towards
+            zero. This helps tamp down artifacts due to edge effects. If defined, will show where
+            this was defined in the inversion
+        subplots (bool): True, make subplots, False, plot all one one plot
+        vline (array): plot vertical line at t=vline
+        [ZEN]upper = upper limit of uncertainties (None if none)
+        [ZEN]lower = ditto for lower limit
+        
+    Returns
+        figure handle
+
     """
-    tvec = tvec - zerotime
+    tvec = tvec - zeroTime
     if ylim is None and Zupper is None:
         ylim1 = (np.amin([Zforce.min(), Eforce.min(), Nforce.min()]), np.amax([Zforce.max(),
                          Eforce.max(), Nforce.max()]))
@@ -1349,6 +1370,12 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None
             ax2.set_xlim(xlim)
             ax3.set_xlim(xlim)
         ax2.set_ylabel('Force (N)')
+        axes = fig.get_axes()
+        if imposeZero:
+            [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
+        if maxduration is not None:
+            [axe.axvline(maxduration, color='gray', linestyle='solid', lw=3) for axe in axes]
+            
     else:
         fig = plt.figure(figsize=(14, 4))
         ax = fig.add_subplot(111)
@@ -1374,6 +1401,13 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=None
         ax.grid(True)
         ax.set_ylabel('Force (N)')
         ax.set_ylim(ylim)
+        ax = fig.gca()
+        if imposeZero:
+            ax.axvline(0, color='gray', linestyle='solid', lw=3)
+        if maxduration is not None:
+            ax.axvline(maxduration, color='gray', linestyle='solid', lw=3)
+        
+
     plt.xlabel('Time (sec')
     plt.show()
     return fig
@@ -1404,7 +1438,7 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
     elif ylim is None and Zupper is not None:
         ylim1 = (np.amin([Zlower.min(), Elower.min(), Nlower.min()]), np.amax([Zupper.max(), Eupper.max(), Nupper.max()]))
         ylim = (ylim1[0]+0.1*ylim1[0], ylim1[1]+0.1*ylim1[1])  # add 10% on each side to make it look nicer
-        fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(10, 10))
 
     # Plot the inversion result in the first one
     ax = fig.add_subplot(411)
@@ -1434,15 +1468,17 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
     # Plot the magnitudes in second one
     ax1 = fig.add_subplot(412)
     Mag = np.linalg.norm(list(zip(Zforce, Eforce, Nforce)), axis=1)
-    MagU = np.linalg.norm(list(zip(np.maximum(np.abs(Zupper), np.abs(Zlower)),
-                                   np.maximum(np.abs(Eupper), np.abs(Elower)),
-                                   np.maximum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
-    MagL = np.linalg.norm(list(zip(np.minimum(np.abs(Zupper), np.abs(Zlower)),
-                                   np.minimum(np.abs(Eupper), np.abs(Elower)),
-                                   np.minimum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
+    if Zupper is not None:
+        MagU = np.linalg.norm(list(zip(np.maximum(np.abs(Zupper), np.abs(Zlower)),
+                                       np.maximum(np.abs(Eupper), np.abs(Elower)),
+                                       np.maximum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
+        MagL = np.linalg.norm(list(zip(np.minimum(np.abs(Zupper), np.abs(Zlower)),
+                                       np.minimum(np.abs(Eupper), np.abs(Elower)),
+                                       np.minimum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
     ax1.plot(tvec, Mag, 'k', label='best')
-    ax1.plot(tvec, MagL, 'r', label='lower')
-    ax1.plot(tvec, MagU, 'r', label='upper')
+    if Zupper is not None:
+        ax1.plot(tvec, MagL, 'r', label='lower')
+        ax1.plot(tvec, MagU, 'r', label='upper')
     #ax1.legend(loc='upper right')
     ax1.grid(True)
     ax1.set_ylabel('Force (N)')
@@ -1456,14 +1492,15 @@ def plotangmag(Zforce, Nforce, Eforce, tvec, zerotime=0., subplots=False, xlim=N
     for i, temp in enumerate(tempang):
         if temp < 0:
             tempang[i] = temp+360
-    tempangU = (180/np.pi)*np.arctan2(Nupper, Eupper)-90
-    for i, temp in enumerate(tempangU):
-        if temp < 0:
-            tempangU[i] = temp+360
-    tempangL = (180/np.pi)*np.arctan2(Nlower, Elower)-90
-    for i, temp in enumerate(tempangL):
-        if temp < 0:
-            tempangL[i] = temp+360
+    if Zupper is not None:
+        tempangU = (180/np.pi)*np.arctan2(Nupper, Eupper)-90
+        for i, temp in enumerate(tempangU):
+            if temp < 0:
+                tempangU[i] = temp+360
+        tempangL = (180/np.pi)*np.arctan2(Nlower, Elower)-90
+        for i, temp in enumerate(tempangL):
+            if temp < 0:
+                tempangL[i] = temp+360
     # now flip to clockwise to get azimuth
     Haz = 360-tempang
     #HazU = 360-tempangU
@@ -1609,7 +1646,8 @@ def _dip_azimuth2ZSE_base_vector(dip, azimuth):
 
 
 def saverun(filename, model, Zforce, Eforce, Nforce, tvec, dt, dtnew, stproc, zeroTime,
-            ZforceU=None, ZforceL=None, EforceU=None, EforceL=None, NforceU=None, NforceL=None):
+            ZforceU=None, ZforceL=None, EforceU=None, EforceL=None, NforceU=None, NforceL=None,
+            Tikhratio=None, zeroScaler=None):
     """
     Save the results of an inversion, regular or jackknife
     Makes a dictionary and saves that as a pickle
@@ -1621,7 +1659,7 @@ def saverun(filename, model, Zforce, Eforce, Nforce, tvec, dt, dtnew, stproc, ze
     result = {'model': model, 'tvec': tvec, 'Zforce': Zforce, 'Eforce': Eforce, 'Nforce': Nforce,
               'ZforceU': ZforceU, 'ZforceL': ZforceL, 'EforceU': EforceU, 'EforceL': EforceL,
               'NforceU': NforceU, 'NforceL': NforceL, 'dt': dt, 'dtnew': dtnew, 'stproc': stproc,
-              'zeroTime': zeroTime, }
+              'zeroTime': zeroTime, 'Tikhratio': Tikhratio, 'zeroScaler': zeroScaler}
     pickle.dump(result, f)
     f.close()
     return
@@ -1653,8 +1691,10 @@ def readrun(filename):
     dtnew = result['dtnew']
     stproc = result['stproc']
     zeroTime = result['zeroTime']
+    Tikhratio = result['Tikhratio']
+    zeroScaler = result['zeroScaler']
     return(model, tvec, Zforce, Eforce, Nforce, ZforceU, ZforceL, EforceU, EforceL, NforceU,
-           NforceL, dt, dtnew, stproc, zeroTime)
+           NforceL, dt, dtnew, stproc, zeroTime, Tikhratio, zeroScaler)
 
 #def symmetric(data):
 #    """
