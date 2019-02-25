@@ -8,17 +8,15 @@ import subprocess
 #from reviewData import reviewData
 
 
-"""
-NOTE THIS HASNT YET BEEN CHECKED FOR FUNCTIONALITY IN PYTHON 3
-"""
-
 def unique_list(seq):  # make a list only contain unique values and keep their order
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
 
 
-def setup(event_id, modelfile, stacodes, samplerate, duration, T0, stfilename=None, mainfolder='/Users/kallstadt/LSseis/LSPy/INVERSION_FILES', database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
+def setup(event_id, modelfile, stacodes, samplerate, duration, T0, stfilename=None,
+          mainfolder='/Users/kallstadt/LSseis/LSPy/INVERSION_FILES',
+          database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
     """
     This function sets up the folder structure and creates some files
     needed for computing Green's functions using CPS
@@ -137,7 +135,8 @@ mv *.sac %s/.
     return moddir
 
 
-def setup_orphan(event_id, modelfile, stacodes, dists, samplerate, duration, T0, stfilename=None, mainfolder='/Users/kallstadt/LSseis/LSPy/INVERSION_FILES'):
+def setup_orphan(event_id, modelfile, stacodes, dists, samplerate, duration, T0, stfilename=None,
+                 mainfolder='/Users/kallstadt/LSseis/LSPy/INVERSION_FILES'):
     """
     This function sets up the folder structure and creates some files
     needed for computing Green's functions using CPS for events without event_id's (not in database)
