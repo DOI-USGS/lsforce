@@ -136,10 +136,13 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
     #make sure st data are all the same length
     lens = [len(trace.data) for trace in st]
     if len(set(lens)) != 1:
-        print('traces in st are not all the same length')
-        return
+        #raise Exception('traces in st are not all the same length')
+        print('Resampled records are of differing lengths, interpolating all records to same start time and sampling rate')
+        stts = [tr.stats.starttime for tr in st]
+        lens = [tr.stats.npts for tr in st]
+        st.interpolate(samplerate, starttime=np.max(stts), npts=np.min(lens)-1)
 
-    K = 1e-15
+    K = 1.e-15
     datalength = len(st[0].data)
     temp = read(glob.glob(greendir+'/*.sac')[0])[0]
     temp.resample(samplerate)
@@ -246,7 +249,7 @@ def setup_timedomain(st, greendir, samplerate, weights=None, weightpre=None, per
 
 
     if np.shape(G)[0] != len(d):
-        print('G and d sizes are not compatible, fix something somewhere')
+        raise Exception('G and d sizes are not compatible, fix something somewhere')
     G = G * 1/samplerate  # multiply by sample interval (sec) since convolution is an integral
     d = d * 100  # convert data from m to cm
     if weights is not None:
@@ -1300,7 +1303,8 @@ def nextpow2(val):
 
 def plotinv(Zforce, Nforce, Eforce, tvec, zeroTime=0., imposeZero=False, maxduration=None, 
             subplots=False, xlim=None, ylim=None, sameY=True, Zupper=None, Zlower=None,
-            Eupper=None, Elower=None, Nupper=None, Nlower=None):
+            Eupper=None, Elower=None, Nupper=None, Nlower=None, highf_tr=None,
+            hfylabel=None, hfshift=0.):
     """
     Plot inversion result
     
@@ -1320,6 +1324,8 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zeroTime=0., imposeZero=False, maxdura
         vline (array): plot vertical line at t=vline
         [ZEN]upper = upper limit of uncertainties (None if none)
         [ZEN]lower = ditto for lower limit
+        highf_tr: obspy trace with a start time identical to the start time of the data used in the
+            inversion (otherwise won't line up)
         
     Returns
         figure handle
@@ -1335,23 +1341,25 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zeroTime=0., imposeZero=False, maxdura
                          Eupper.max(), Nupper.max()]))
         ylim = (ylim1[0]+0.1*ylim1[0], ylim1[1]+0.1*ylim1[1])  # add 10% on each side to make it look nicer
     if subplots:
-        fig = plt.figure(figsize=(14, 9))
-        ax1 = fig.add_subplot(311)
+        if highf_tr is None:
+            fig = plt.figure(figsize=(14, 9))
+            ax1 = fig.add_subplot(311)
+            ax2 = fig.add_subplot(312)  # ,sharex=ax1)
+            ax3 = fig.add_subplot(313)  # ,sharex=ax1)
+        else:
+            fig = plt.figure(figsize=(14, 12))
+            ax1 = fig.add_subplot(411)
+            ax2 = fig.add_subplot(412)  # ,sharex=ax1)
+            ax3 = fig.add_subplot(413)  # ,sharex=ax1)
+            ax4 = fig.add_subplot(414)
         ax1.plot(tvec, Zforce, 'b')
-        ax1.grid(True)
         ax1.set_title('Up')
-        ax2 = fig.add_subplot(312)  # ,sharex=ax1)
         ax2.plot(tvec, Nforce, 'r')
-        ax2.grid(True)
         ax2.set_title('North')
-        ax3 = fig.add_subplot(313)  # ,sharex=ax1)
         ax3.plot(tvec, Eforce, 'g')
-        ax3.grid(True)
+        
         ax3.set_title('East')
-        if sameY or ylim is not None:
-            ax1.set_ylim(ylim)
-            ax2.set_ylim(ylim)
-            ax3.set_ylim(ylim)
+
         x = np.concatenate((tvec, tvec[::-1]))
         if Zupper is not None and Zlower is not None:
             y = np.concatenate((Zlower, Zupper[::-1]))
@@ -1365,23 +1373,61 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zeroTime=0., imposeZero=False, maxdura
             y = np.concatenate((Elower, Eupper[::-1]))
             poly = plt.Polygon(list(zip(x, y)), facecolor='g', edgecolor='none', alpha=0.2)
             ax3.add_patch(poly)
-        if xlim:
-            ax1.set_xlim(xlim)
-            ax2.set_xlim(xlim)
-            ax3.set_xlim(xlim)
         ax2.set_ylabel('Force (N)')
+        
+        if highf_tr is not None:
+            if type(highf_tr) != Trace:
+                raise Exception('highf_tr is not an obspy trace')
+            tvec2 = np.linspace(0, (len(highf_tr.data)-1)*1/highf_tr.stats.sampling_rate, num=len(highf_tr.data))
+            # Temporary fix, adjust for same zerotime
+            adjust = np.min(tvec)
+            tvec2 += adjust
+            tvec2 -= hfshift
+            ax4.plot(tvec2, highf_tr.data)
+        
         axes = fig.get_axes()
+        if xlim:
+            axes = fig.get_axes()
+            [axe.set_xlim(xlim) for axe in axes]
+            [axe.grid(True) for axe in axes]
+        if sameY or ylim is not None:
+            ax1.set_ylim(ylim)
+            ax2.set_ylim(ylim)
+            ax3.set_ylim(ylim)
+
         if imposeZero:
             [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
         if maxduration is not None:
             [axe.axvline(maxduration, color='gray', linestyle='solid', lw=3) for axe in axes]
+        if highf_tr is not None:
+            ax4.set_ylabel(hfylabel)
             
     else:
-        fig = plt.figure(figsize=(14, 4))
-        ax = fig.add_subplot(111)
+        if highf_tr is None:
+            fig = plt.figure(figsize=(14, 4))
+            ax = fig.add_subplot(111)
+        else:
+            fig = plt.figure(figsize=(14, 7))
+            ax = fig.add_subplot(211)
+            ax4 = fig.add_subplot(212)
+            if type(highf_tr) != Trace:
+                raise Exception('highf_tr is not an obspy trace')
+            tvec2 = np.linspace(0, (len(highf_tr.data)-1)*1/highf_tr.stats.sampling_rate, num=len(highf_tr.data))
+            # Temporary fix, adjust for same zerotime
+            adjust = np.min(tvec)
+            tvec2 += adjust
+            tvec2 -= hfshift
+            ax4.plot(tvec2, highf_tr.data)
+            if hfshift != 0:
+                ax4.annotate('%s - shifted -%1.0f s' % (highf_tr.id, hfshift), (0.8, 0.1), xycoords='axes fraction')
+            else:
+                ax4.annotate('%s' % highf_tr.id, (0.9, 0.1), xycoords='axes fraction')
+            
+        
         ax.plot(tvec, Zforce, 'b', label='Up')
         ax.plot(tvec, Nforce, 'r', label='North')
-        ax.plot(tvec, Eforce, 'g', label='East')
+        ax.plot(tvec, Eforce, 'g', label='East')   
+
         x = np.concatenate((tvec, tvec[::-1]))
         if Zupper is not None and Zlower is not None:
             y = np.concatenate((Zlower, Zupper[::-1]))
@@ -1397,16 +1443,19 @@ def plotinv(Zforce, Nforce, Eforce, tvec, zeroTime=0., imposeZero=False, maxdura
             ax.add_patch(poly)
         if xlim:
             ax.set_xlim(xlim)
+        
+        if highf_tr is not None:
+            ax4.set_xlim(ax.get_xlim())
+            ax4.grid(True)
+            
         ax.legend(loc='upper right')
         ax.grid(True)
         ax.set_ylabel('Force (N)')
         ax.set_ylim(ylim)
-        ax = fig.gca()
         if imposeZero:
             ax.axvline(0, color='gray', linestyle='solid', lw=3)
         if maxduration is not None:
             ax.axvline(maxduration, color='gray', linestyle='solid', lw=3)
-        
 
     plt.xlabel('Time (sec')
     plt.show()

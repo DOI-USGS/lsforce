@@ -7,12 +7,10 @@ import numpy as np
 import subprocess
 #from reviewData import reviewData
 
-
 def unique_list(seq):  # make a list only contain unique values and keep their order
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
-
 
 def setup(event_id, modelfile, stacodes, samplerate, duration, T0, stfilename=None,
           mainfolder='/Users/kallstadt/LSseis/LSPy/INVERSION_FILES',
@@ -30,7 +28,8 @@ def setup(event_id, modelfile, stacodes, samplerate, duration, T0, stfilename=No
     (will be converted to number of samples, nearest power of 2)
     T0 = start time of records (negative number recommended) in seconds before impulse time
     mainfolder = full path to main folder (INVERSION_FILES suggested)
-    stfilename = name given to a particular run to save these greens functions separately from other greens functions
+    stfilename = name given to a particular run to save these greens functions separately from other
+        greens functions
 
     OUTPUTS
     T0.txt - tiny text file that says what T0 was (in seconds)
@@ -145,6 +144,7 @@ def setup_orphan(event_id, modelfile, stacodes, dists, samplerate, duration, T0,
     event_id = short name of event
     modelfile = full path to model file (CPS format) to use
     stacodes = list of station ids (from tr.id - NET.STA.LOC.CHAN)
+    dists = list of source to station distances, same length as stacodes
     samplerate = samplerate to use in Green's functions in samples per second
     duration = desired duration in seconds
     (will be converted to number of samples, nearest power of 2)
