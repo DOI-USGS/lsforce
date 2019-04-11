@@ -29,18 +29,20 @@ def unique_list(seq):  # make a list only contain unique values and keep their o
 class LSforce:
     """
     Class for single force inversions
-    
+
 
     """
-    
+
     def __init__(self, st, samplerate, domain='time', nickname=None,
-                 event_id=None, mainfolder=None, source_lat=None, source_lon=None):
+                 event_id=None, mainfolder=None, source_lat=None,
+                 source_lon=None, method='tik'):
         """
         Args:
             st (Stream): obspy stream with event data , source to station
                 distance and azimuth must be attached in stats as tr.stats.rdist,
-                tr.stats.baz, tr.stats.az
-            samplerate (float): Number of samples per second to use in inversion.
+                tr.stats.baz, tr.stats.az. Should be corrected for station
+                response but otherwise unfiltered
+            samplerate (float): Number of samples per second (Hz) to use in inversion.
                 All data will be resampled to this rate and Greens functions
                 will be created with this sample rate.
             domain (str): domain in which to do inversion, 'time' (default) or
@@ -49,10 +51,19 @@ class LSforce:
                 naming files
             event_id (int): event id, if event id exists, used just for naming
             mainfolder (str): if None, will use current folder
-            source_lat (float): Latitude in decimal degrees of centroid of 
+            source_lat (float): Latitude in decimal degrees of centroid of
                 landslide location, only required if event_id is not defined
-            source_lon (float): Longitude in decimal degrees of centroid of 
+            source_lon (float): Longitude in decimal degrees of centroid of
                 landslide location, only required if event_id is not defined
+            method (str): 'tik' = full waveform inversion using Tikhonov
+                                regularization (L2 norm minimization)
+                          'lasso' = full waveform inversion using Lasso method
+                                (L1 norm minimization with smoothing)
+                          'triangle' = parameterized inversion using overlapping
+                                  triangles (variation of method of Ekstrom et al., 2013)
+                          'basis' = parameterized using many hanning basis functions
+                          'sinusoid' = parameterized using single sinusoid
+                                  (variation of method by Chao et al. YEAR)
         """
         # General
         self.st = st
@@ -62,11 +73,11 @@ class LSforce:
         self.numsta = len(st)
         self.greens_computed = False
 
-        self.event_id = event_id 
+        self.event_id = event_id
         if self.event_id is None:
             self.orphan = True
             if source_lat is None or source_lon is None:
-                raise Exception('source_lat and source_lon must be defined if' 
+                raise Exception('source_lat and source_lon must be defined if'
                                 ' no event_id is provided')
             else:
                 self.lat = source_lat
@@ -78,19 +89,38 @@ class LSforce:
             self.mainfolder = os.getcwd()
         else:
             self.mainfolder = mainfolder
+
+        if method not in ['tik', 'lasso', 'triangle']:
+            raise Exception('%s method not yet implemented.' % method.upper())
         
-        
-    def compute_greens(self, modelfile, gfduration, T0):
-        
+        self.method = method
+        if self.method in ['triangle'] and self.domain == 'freq':
+            raise Exception('triangle method must be done in time domain, '
+                            'frequency domain not implemented')
+
+    def compute_greens(self, modelfile, gfduration, T0, L=5.):
+
         """
         Use CPS to compute the necessary Greens functions relating the source
         location and the seismic stations in st
-        
+        Will compute the type of Greens functions appropriate for the method
+        defined during class initiation
+
         Args:
-            
+
+            modelfile (str): Full file path to location of CPS model file
+            gfduration (float):
+            T0 (float): number of seconds prior to impulse application
+            L (float): half width, in seconds, of triangle. Only needed for
+                triangle method, default 5 sec. This will also correspond
+                to sample interval of resulting force time function because
+                triangles overlap by 50%
+
         """
         self.modelfile = modelfile
         self.T0 = T0
+
+        self.L = L
 
         if self.nickname is None:
             self.nickname = ''
@@ -99,11 +129,11 @@ class LSforce:
             self.evdir = os.path.join(self.mainfolder, self.nickname)
         else:
             self.evdir = os.path.join(self.mainfolder, 'EV%s' % self.event_id)
-        self.moddir = os.path.join(self.evdir, ('%s_%s') % (self.nickname, \
+        self.moddir = os.path.join(self.evdir, ('%s_%s') % (self.nickname,
                                    os.path.splitext(os.path.basename(modelfile))[0]))
-        self.sacodir = os.path.join(self.moddir, 'sacorig')
-        self.sacdir = os.path.join(self.moddir, 'sacdata')
-        
+        self.sacodir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
+        self.sacdir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
+
         # Make all the directories
         if not os.path.exists(self.mainfolder):
             os.mkdir(self.mainfolder)
@@ -115,24 +145,29 @@ class LSforce:
             os.mkdir(self.sacodir)
         if not os.path.exists(self.sacdir):
             os.mkdir(self.sacdir)
-            
+
         #write T0 file
         with open(os.path.join(self.moddir, 'T0.txt'), 'w') as f:
             f.write(('%3.2f') % T0)
-    
+        
+        #write L file, if applicable
+        if self.method in ['triangle']:
+            with open(os.path.join(self.moddir, 'L.txt'), 'w') as f:
+                f.write(('%3.2f') % L)
+
         #make sure there is only one occurrence of each station in list (ignore channels)
         stas = [trace.stats.station for trace in self.st]
         stacods = unique_list(stas)
         dists = [self.st.select(station=sta)[0].stats.rdist for sta in stacods]
-    
+
         #stations, dist = list(zip(*sorted(zip(stas, dists))))
-    
+
         #write stadistlist.txt
         f = open(os.path.join(self.moddir, 'stadistlist.txt'), 'w')
         for sta, dis in zip(stacods, dists):
             f.write(('%s\t%5.1f\n') % (sta, dis))
         f.close()
-    
+
         #write dist file in free format
         #figure out how many samples
         samples = next_pow_2(gfduration*self.samplerate)
@@ -141,27 +176,28 @@ class LSforce:
             f.write(('%0.1f %0.2f %i %i 0\n') % (dis, 1./self.samplerate, samples, self.T0))
         f.close()
         self.greenlength = samples
-    
+
         #move copy of modelfile to current directory for recordkeeping
         shutil.copy2(modelfile, os.path.join(self.moddir, os.path.basename(modelfile)))
-    
+
         #write shell script to run Green's functions
         self.shellscript = os.path.join(self.moddir, 'CPScommands.sh')
-        text = ("""#!/bin/bash
-rm %s
-rm %s
-hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF
-hspec96 > hspec96.out
-hpulse96 -d %s -V -OD -p > Green
-f96tosac Green
-cp *.sac %s
-mv *.sac %s
-""") % (os.path.join(self.sacodir, '*.sac'), os.path.join(self.sacdir, '*.sac'), self.modelfile,
-        os.path.join(self.moddir, 'dist'), os.path.join(self.moddir, 'dist'),
-        os.path.join(self.sacdir, '.'), os.path.join(self.sacodir, '.'))
-
         with open(self.shellscript, 'w') as f:
-            f.write(text)
+            f.write('#!/bin/bash\n')
+            f.write('rm %s\n' % os.path.join(self.sacodir, '*.sac'))
+            f.write('rm %s\n' % os.path.join(self.sacdir, '*.sac'))
+            f.write('hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n' %
+                    (self.modelfile, os.path.join(self.moddir, 'dist')))
+            f.write('hspec96 > hspec96.out\n')
+            if self.method == 'triangle':
+                f.write('hpulse96 -d %s -V -D -t -l %d > Green\n' %
+                        (os.path.join(self.moddir, 'dist'), int(self.L/self.samplerate)))
+            else:
+                f.write('hpulse96 -d %s -V -OD -p > Green\n' %
+                        os.path.join(self.moddir, 'dist'))
+            f.write('f96tosac Green\n')
+            f.write('cp *.sac %s\n' % os.path.join(self.sacdir, '.'))
+            f.write('mv *.sac %s\n' % os.path.join(self.sacodir, '.'))
 
         os.chmod(self.shellscript, stat.S_IRWXU)
 
@@ -186,7 +222,7 @@ mv *.sac %s
 #        lines = [line.split('\t') for line in lines]
 #        temp2 = [(line[0], float(line[1].split('\n')[0])) for line in lines]
 #        sta, dist = list(zip(*temp2))
-    
+
         #copy and rename files
         files = [os.path.basename(x) for x in glob.glob(os.path.join(self.sacdir, '*.sac'))]
         files.sort()
@@ -204,15 +240,14 @@ mv *.sac %s
         os.chdir(currentdir)
         self.greens_computed = True
 
-
     def load_greens(self, modelfile):
-        
+
         """
         If Greens functions were already computed for this exact data
         selection, this simply loads info about them needed for setup
-        
+
         Args:
-            modefile (str): the name of hte model file used to compute the 
+            modefile (str): the name of hte model file used to compute the
                 Greens functions. This is so they can be found because they
                 are saved in a folder referencing the model file name
 
@@ -227,46 +262,44 @@ mv *.sac %s
             self.evdir = os.path.join(self.mainfolder, self.nickname)
         else:
             self.evdir = os.path.join(self.mainfolder, 'EV%s' % self.event_id)
-        self.moddir = os.path.join(self.evdir, ('%s_%s') % (self.nickname, \
+        self.moddir = os.path.join(self.evdir, ('%s_%s') % (self.nickname,
                                    os.path.splitext(os.path.basename(modelfile))[0]))
-        self.sacodir = os.path.join(self.moddir, 'sacorig')
-        self.sacdir = os.path.join(self.moddir, 'sacdata')
-            
+        if os.path.exists(os.path.join(self.moddir, 'sacorig_%s' % self.method)):
+            self.sacodir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
+            self.sacdir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
+        else:
+            self.sacodir = os.path.join(self.moddir, 'sacorig')
+            self.sacdir = os.path.join(self.moddir, 'sacdata')
+
         #read T0 file
         with open(os.path.join(self.moddir, 'T0.txt'), 'r') as f:
             self.T0 = float(f.read())
-    
+
+        if self.method in ['triangle']:
+            with open(os.path.join(self.moddir, 'L.txt'), 'r') as f:
+                self.L = float(f.read())
+
         # Read a file to get greenlength
         temp = read(glob.glob(os.path.join(self.sacdir, '*RVF*.sac'))[0])
         self.greenlength = len(temp[0])
         self.greens_computed = True
 
-
-    def setup(self, method='tik', weights=None, weightpre=None,
-              period_range=[30., 150.],
+    def setup(self, weights=None, weightpre=None, period_range=[30., 150.],
               filter_order=2, zeroPhase=False):
         """
         Loads in greens functions and creates all matrices needed
-        
+
         Args:
-            method (str): 'tik' = full waveform inversion using Tikhonov
-                                regularization (L2 norm minimization)
-                          'lasso' = full waveform inversion using Lasso method
-                                (L1 norm minimization with smoothing)
-                          'triangle' = parameterized inversion using overlapping
-                                  triangles (variation of method of Ekstrom et al., 2013)
-                          'basis' = parameterized using many hanning basis functions
-                          'sinusoid' = parameterized using single sinusoid
-                                  (variation of method by Chao et al. YEAR)
             weights: if None, no weighting is applied, array of floats
                 corresponding to length and order of st applies manual weighting,
                 if 'prenoise' is specified, will used std of noise window before
                 event (length by weightpre) or 'distance' to weight by 1/distance
-            weightpre (float): length of pre-noise window in seconds (if not None, noise will be used to 
+            weightpre (float): length of pre-noise window in seconds (if not None, noise will be used to
                   determine weights)
             period_range (list): Range of periods to consider in inversion, in seconds
             filter_order (int): Order of filter applied over period_range
             zeroPhase (bool): If True, zeroPhase filtering will be used
+
         """
         # Create filter dictionary to keep track of filter used without
         # creating too many new attributes
@@ -276,14 +309,10 @@ mv *.sac %s
                        'periodmin': period_range[0],
                        'periodmax': period_range[1],
                        'order': filter_order}
-        
+
         # Clear weights
         self.Wvec = None
         self.W = None
-
-        if method not in ['tik', 'lasso']:
-            raise Exception('%s method not yet implemented.' % method.upper()) 
-        self.method = method
 
         if weights is None:
             self.weight_method = None
@@ -292,13 +321,13 @@ mv *.sac %s
             self.weights = weights
         else:
             self.weight_method = weights
-            
+
         if self.weight_method != 'Manual':
             if weights == 'prenoise' and weightpre is None:
                 raise Exception('weightpre must be defined if prenoise weighting is used')
             else:
-                self.weightpre = weightpre  
-        
+                self.weightpre = weightpre
+
         #check if sampling rate specified is compatible with period_range
         if 2.*self.filter['freqmax'] > self.samplerate:
             raise Exception('samplerate and period_range are not compatible, '
@@ -317,7 +346,7 @@ mv *.sac %s
         #resample st to samplerate
         st.resample(self.samplerate)
         #st.taper(max_percentage=0.05)
-    
+
         #make sure st data are all the same length
         lens = [len(trace.data) for trace in st]
         if len(set(lens)) != 1:
@@ -326,7 +355,7 @@ mv *.sac %s
             stts = [tr.stats.starttime for tr in st]
             lens = [tr.stats.npts for tr in st]
             st.interpolate(self.samplerate, starttime=np.max(stts), npts=np.min(lens)-1)
-    
+
         K = 1.e-15  # CPS variable needed for conversion to meaningful units
         self.datalength = len(st[0].data)
 
@@ -343,16 +372,18 @@ mv *.sac %s
             self.lenUall = self.NFFT*len(st)
         else:
             raise Exception('domain not recognized. Must be time or freq')
+
+        if self.method in ['tik', 'lasso']:
             
-        if method in ['tik', 'lasso']:
-        
+            self.Fsamplerate = self.samplerate
+
             # initialize weighting matrices
             Wvec = np.ones(self.lenUall)
             indx = 0
             weight = np.ones(self.numsta)
-            
+
             n = self.datalength
-    
+
             for i, trace in enumerate(st):
                 newline = 0
                 #find component of st
@@ -376,14 +407,14 @@ mv *.sac %s
                                freqmax=self.filter['freqmax'],
                                corners=self.filter['order'],
                                zerophase=self.filter['zeroPhase'])
-        
+
                     zhf.detrend()
                     zhf.taper(max_percentage=0.05)
                     zhf.filter('bandpass', freqmin=self.filter['freqmin'],
                                freqmax=self.filter['freqmax'],
                                corners=self.filter['order'],
                                zerophase=self.filter['zeroPhase'])
-                    
+
                     if self.domain == 'time':
                         ZVF = makeconvmat(zvf.data, size=(n, n))  # sparse.diags(zvff,0)
                         ZHF = makeconvmat(zhf.data, size=(n, n))  # sparse.diags(zhff,0)
@@ -392,7 +423,7 @@ mv *.sac %s
                         zhff = np.fft.fft(zhf.data, self.NFFT)
                         ZVF = np.diag(zvff)  # sparse.diags(zvff,0)
                         ZHF = np.diag(zhff)  # sparse.diags(zhff,0)
-                    az = math.radians(trace.stats.azimuth)  #math.radians(np.round(trace.stats.azimuth))
+                    az = math.radians(trace.stats.azimuth)  # math.radians(np.round(trace.stats.azimuth))
                     newline = np.hstack((K*ZVF, K*ZHF*math.cos(az), K*ZHF*math.sin(az)))  # sparse.hstack((K*ZVF, K*ZHF*math.cos(az), K*ZHF*math.sin(az)))
                 elif component == 'R':
                     rvf = read(os.path.join(self.sacdir, '*%s*RVF.sac' % station))
@@ -405,16 +436,16 @@ mv *.sac %s
                         raise Exception('Found more than one RHF GF for %s' % station)
                     else:
                         rhf = rhf[0]
-    
+
                     #process the same way as st
                     rvf.detrend()
                     rvf.taper(max_percentage=0.05)
-        
+
                     rvf.filter('bandpass', freqmin=self.filter['freqmin'],
                                freqmax=self.filter['freqmax'],
                                corners=self.filter['order'],
                                zerophase=self.filter['zeroPhase'])
-        
+
                     rhf.detrend()
                     rhf.taper(max_percentage=0.05)
                     rhf.filter('bandpass', freqmin=self.filter['freqmin'],
@@ -459,11 +490,11 @@ mv *.sac %s
                     datline = trace.data
                 else:
                     datline = np.fft.fft(trace.data, self.NFFT)
-    
+
                 if i == 0:  # initialize G and d if first station
                     G = newline.copy()
                     d = datline.copy()
-                else: # otherwise build on G and d
+                else:  # otherwise build on G and d
                     G = np.vstack((G, newline.copy()))  # sparse.vstack((G,newline))
                     d = np.hstack((d, datline.copy()))
                 if weights is not None:
@@ -474,14 +505,136 @@ mv *.sac %s
                         #weight[i] = 1./np.mean(np.abs(trace.data[0:int(weightpre*trace.stats.sampling_rate)])) # RMS, old way
                     elif weights == 'distance':
                         weight[i] = trace.stats.rdist
-                        
+
                     Wvec[indx:indx+self.datalength] = Wvec[indx:indx+self.datalength]*weight[i]
                     indx += self.datalength
-    
+
+        elif self.method in ['triangle']:
+
+            # initialize weighting matrices
+            Wvec = np.ones(self.lenUall)
+            indx = 0
+            weight = np.ones(self.numsta)
+
+            n = self.datalength
+            fshiftby = int(self.L/self.samplerate) # Number of samples to shift each triangle by
+            Flen = int(np.floor(self.datalength/fshiftby)) # Number of shifts, corresponds to length of force time function
+            self.Fsamplerate = 1./fshiftby
+
+            for i, trace in enumerate(st):
+                newline = 0
+                #find component of st
+                component = trace.stats.channel[2]
+                station = trace.stats.station
+                if component == 'Z':
+                    zvf = read(os.path.join(self.sacdir, '*%s*ZVF.sac' % station))
+                    if len(zvf) > 1:
+                        raise Exception('Found more than one ZVF GF for %s' % station)
+                    else:
+                        zvf = zvf[0]
+                    zhf = read(os.path.join(self.sacdir, '*%s*ZHF.sac' % station))
+                    if len(zhf) > 1:
+                        raise Exception('Found more than one ZHF GF for %s' % station)
+                    else:
+                        zhf = zhf[0]
+                    #process the same way as st (except shouldn't need to resample)
+                    """ Don't need to filter these GFs? Has non-zero offset so filtering does weird things, already convolved with LP source-time function
+                    zvf.detrend()
+                    zvf.taper(max_percentage=0.05)
+                    zvf.filter('bandpass', freqmin=self.filter['freqmin'],
+                               freqmax=self.filter['freqmax'],
+                               corners=self.filter['order'],
+                               zerophase=self.filter['zeroPhase'])
+
+                    zhf.detrend()
+                    zhf.taper(max_percentage=0.05)
+                    zhf.filter('bandpass', freqmin=self.filter['freqmin'],
+                               freqmax=self.filter['freqmax'],
+                               corners=self.filter['order'],
+                               zerophase=self.filter['zeroPhase'])
+                    """
+                    ZVF = makeshiftmat(zvf.data, shiftby=fshiftby, size1=(n, Flen))  # sparse.diags(zvff,0)
+                    ZHF = makeshiftmat(zhf.data, shiftby=fshiftby, size1=(n, Flen))  # sparse.diags(zhff,0)
+                    az = math.radians(trace.stats.azimuth)  # math.radians(np.round(trace.stats.azimuth))
+                    newline = np.hstack((K*ZVF, K*ZHF*math.cos(az), K*ZHF*math.sin(az)))  # sparse.hstack((K*ZVF, K*ZHF*math.cos(az), K*ZHF*math.sin(az)))
+                elif component == 'R':
+                    rvf = read(os.path.join(self.sacdir, '*%s*RVF.sac' % station))
+                    if len(rvf) > 1:
+                        raise Exception('Found more than one RVF GF for %s' % station)
+                    else:
+                        rvf = rvf[0]
+                    rhf = read(os.path.join(self.sacdir, '*%s*RHF.sac' % station))
+                    if len(rhf) > 1:
+                        raise Exception('Found more than one RHF GF for %s' % station)
+                    else:
+                        rhf = rhf[0]
+                    """ Don't need to filter these GFs?
+                    #process the same way as st
+                    rvf.detrend()
+                    rvf.taper(max_percentage=0.05)
+
+                    rvf.filter('bandpass', freqmin=self.filter['freqmin'],
+                               freqmax=self.filter['freqmax'],
+                               corners=self.filter['order'],
+                               zerophase=self.filter['zeroPhase'])
+
+                    rhf.detrend()
+                    rhf.taper(max_percentage=0.05)
+                    rhf.filter('bandpass', freqmin=self.filter['freqmin'],
+                               freqmax=self.filter['freqmax'],
+                               corners=self.filter['order'],
+                               zerophase=self.filter['zeroPhase'])
+                    """
+                    RVF = makeshiftmat(rvf.data, shiftby=fshiftby, size1=(n, Flen))  # sparse.diags(rvff,0)
+                    RHF = makeshiftmat(rhf.data, shiftby=fshiftby, size1=(n, Flen))  # sparse.diags(rhff,0)
+                    az = math.radians(trace.stats.azimuth)
+                    newline = np.hstack((K*RVF, K*RHF*math.cos(az), K*RHF*math.sin(az)))  # sparse.hstack((K*RVF, K*RHF*math.cos(az), K*RHF*math.sin(az)))
+                elif component == 'T':
+                    thf = read(os.path.join(self.sacdir, '*%s*THF.sac' % station))
+                    if len(thf) > 1:
+                        raise Exception('Found more than one THF GF for %s' % station)
+                    else:
+                        thf = thf[0]
+                    """ Don't need to filter these GFs?
+                    #process the same way as st
+                    thf.detrend()
+                    thf.taper(max_percentage=0.05)
+                    thf.filter('bandpass', freqmin=self.filter['freqmin'],
+                               freqmax=self.filter['freqmax'],
+                               corners=self.filter['order'],
+                               zerophase=self.filter['zeroPhase'])
+                    """
+                    THF = makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))  # sparse.diags(thff,0)
+                    TVF = 0.*THF.copy()
+                    az = math.radians(trace.stats.azimuth)
+                    newline = np.hstack((TVF, K*THF*math.sin(az), -K*THF*math.cos(az)))  # sparse.hstack((K*TVF, K*THF*math.sin(az), -K*THF*math.cos(az)))
+                else:
+                    raise Exception('st not rotated to T and R for %s' % station)
+                # Deal with data
+                datline = trace.data
+
+                if i == 0:  # initialize G and d if first station
+                    G = newline.copy()
+                    d = datline.copy()
+                else:  # otherwise build on G and d
+                    G = np.vstack((G, newline.copy()))  # sparse.vstack((G,newline))
+                    d = np.hstack((d, datline.copy()))
+                if weights is not None:
+                    if self.weight_method == 'Manual':
+                        weight[i] = weights[i]
+                    elif weights == 'prenoise':
+                        weight[i] = 1./np.std(trace.data[0:int(weightpre*trace.stats.sampling_rate)])
+                        #weight[i] = 1./np.mean(np.abs(trace.data[0:int(weightpre*trace.stats.sampling_rate)])) # RMS, old way
+                    elif weights == 'distance':
+                        weight[i] = trace.stats.rdist
+
+                    Wvec[indx:indx+self.datalength] = Wvec[indx:indx+self.datalength]*weight[i]
+                    indx += self.datalength
+
             # Normalize Wvec so largest weight is 1.
             self.Wvec = Wvec/np.max(np.abs(Wvec))
             self.weights = weight/np.max(np.abs(weight))
-    
+
             if np.shape(G)[0] != len(d):
                 raise Exception('G and d sizes are not compatible, fix something somewhere')
             self.G = G * 1./self.samplerate  # need to multiply G by sample interval (sec) since convolution is an integral
@@ -494,14 +647,13 @@ mv *.sac %s
             #TODO setup for other methods
             print('Put setup for other methods here')
 
-
     def invert(self, zeroTime=None, imposeZero=False,
                addtoZero=False, maxduration=None, jackknife=False,
                num_iter=200, frac_delete=0.5, **kwargs):
         """
         Perform single force inversion of long-period landslide
         seismic signal using Tikhonov regularization
-    
+
         Args:
             zeroTime (float): Optional estimated start time of real part of signal, in seconds from
                 start time of seismic data. Useful for making figures showing selected start time
@@ -535,13 +687,12 @@ mv *.sac %s
             alpha (float): regularization parameter that was used
             fit1 (array):
             size1 (array):
-            
-            
+
         """
         # Check inputs for consistency
         if imposeZero and (zeroTime is None or zeroTime == 0.):
             raise Exception('imposeZero set to True but no zeroTime provided')
-        
+
         # Save input choices
         self.regr_param = kwargs  # regression parameters specific to method
         self.addtoZero = addtoZero
@@ -562,40 +713,39 @@ mv *.sac %s
         self.alphafit = {'alphas': None,
                          'fit': None,
                          'size': None}
-        
+
         if jackknife:
-            self.jackknife = dict(ZforceL = [],
-                                  ZforceU = [],
-                                  NforceL = [],
-                                  NforceU = [],
-                                  EforceL = [],
-                                  EforceU = [],
-                                  VR_all = [],
-                                  Zforce_all = [],
-                                  Nforce_all = [],
-                                  Eforce_all = [],
+            self.jackknife = dict(ZforceL=[],
+                                  ZforceU=[],
+                                  NforceL=[],
+                                  NforceU=[],
+                                  EforceL=[],
+                                  EforceU=[],
+                                  VR_all=[],
+                                  Zforce_all=[],
+                                  Nforce_all=[],
+                                  Eforce_all=[],
                                   num_iter=num_iter,
                                   frac_delete=frac_delete,
                                   )
         else:
             self.jackknife = None
 
-        if self.method == 'tik':
+        if self.method in ['tik', 'triangle']:
             self.Tikinvert(**kwargs)
         elif self.method == 'lasso':
             self.Lasso(**kwargs)
-            
 
     def Tikinvert(self, alphaset=None, alpha_method='Lcurve',
                   zeroScaler=15., Tikhratio=[1.0, 0., 0.]):
         """
         Full waveform inversion using Tikhonov regularization
-        
+
         Args:
             alphaset (float): Set regularization parameter, if None, will search for best alpha
 
             alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
-                'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on 
+                'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on
                 discrepancy principle and noise calculated from data from before zeroTime.
             zeroScaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
                 The lower the number, teh stronger the constraint, but the higher the risk of high freq.
@@ -606,97 +756,105 @@ mv *.sac %s
         if np.sum(Tikhratio) != 1.:
             raise Exception('Tikhonov ratios must add to 1')
         self.parameters = {}
-    
+
         if self.W is not None:
             Ghat = self.W.dot(self.G)  # np.dot(W.tocsr(),G.tocsr())
             dhat = self.W.dot(self.d)  # np.dot(W.tocsr(),sparse.csr_matrix(d))
         else:
             Ghat = self.G  # G.tocsr()
             dhat = self.d  # sparse.csr_matrix(d)
-            
+
         if self.jackknife is not None:  # save version at this point for use later
             Ghatori = Ghat.copy()
             dhatori = dhat.copy()
-    
+
         m, n = np.shape(Ghat)
-    
+
         Ghatnorm = np.linalg.norm(Ghat)
         #Ghatmax = np.abs(Ghat).max()
-        
+
         dl = self.datalength
-        
+        gl = int(n/3)  #self.datalength
 
         if self.addtoZero is True:  # constrain forces to add to zero
-            scaler = Ghatnorm #10**(np.round(np.log10(Ghatmax)+4))#10**(np.round(np.log10(Ghatnorm))) # 10**(np.round(np.log10(Ghatmax)+4))
-            first1 = np.hstack((np.ones(dl), np.zeros(2*dl)))
-            second1 = np.hstack((np.zeros(dl), np.ones(dl), np.zeros(dl)))
-            third1 = np.hstack((np.zeros(2*dl), np.ones(dl)))
+            scaler = Ghatnorm  # 10**(np.round(np.log10(Ghatmax)+4))#10**(np.round(np.log10(Ghatnorm))) # 10**(np.round(np.log10(Ghatmax)+4))
+            first1 = np.hstack((np.ones(gl), np.zeros(2*gl)))
+            second1 = np.hstack((np.zeros(gl), np.ones(gl), np.zeros(gl)))
+            third1 = np.hstack((np.zeros(2*gl), np.ones(gl)))
             A1 = np.vstack((first1, second1, third1))*scaler
             Ghat = np.vstack((Ghat, A1))
             dhat = np.hstack((dhat, np.zeros(3)))
         else:
             A1 = None
-    
-        scaler = Ghatnorm/zeroScaler #10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
+
+        scaler = Ghatnorm/zeroScaler  # 10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
         if self.imposeZero:  # tell model when there should be no forces
-            len2 = int(np.round((self.zeroTime)*self.samplerate))
-            len3 = int(np.round(0.2*len2))  # 20% taper overlapping into main event by x seconds
-            #halflen3 = int(len3/2)
-            temp = np.hanning(2*len3)
-            temp = temp[len3:]
-            vals = np.hstack((np.ones(len2-len3), temp))
-            for i, val in enumerate(vals):
-                first1 = np.zeros(3*dl)
+            #TODO get this to work for triangle method (need to change len methods)
+            len2 = int(np.floor((self.zeroTime*self.Fsamplerate)))
+            if self.method == 'triangle':
+                len2 = int(np.floor(((self.zeroTime-self.L)*self.Fsamplerate)))
+            if self.method == 'tik':
+                len3 = int(np.round(0.2*len2))  # 20% taper overlapping into main event by x seconds
+                #halflen3 = int(len3/2)
+                temp = np.hanning(2*len3)
+                temp = temp[len3:]
+                vals2 = np.hstack((np.ones(len2-len3), temp))
+            else: # No taper
+                vals2 = np.hstack((np.ones(len2), np.zeros(gl-len2)))
+                
+            for i, val in enumerate(vals2):
+                first1 = np.zeros(3*gl)
                 second1 = first1.copy()
                 third1 = first1.copy()
                 first1[i] = val
-                second1[i+dl] = val
-                third1[i+2*dl] = val
+                second1[i+gl] = val
+                third1[i+2*gl] = val
                 if i == 0:
                     A2 = np.vstack((first1, second1, third1))
                 else:
                     A2 = np.vstack((A2, first1, second1, third1))
             A2 *= scaler
             Ghat = np.vstack((Ghat, A2))
-            dhat = np.hstack((dhat, np.zeros(len(vals)*3)))
+            dhat = np.hstack((dhat, np.zeros(len(vals2)*3)))
         else:
             A2 = None
-    
+
         if self.maxduration is not None:
             if self.zeroTime is None:
                 zerotime = 0.
             else:
                 zerotime = self.zeroTime
-            startind = int((zerotime + self.maxduration)*self.samplerate)
-            len2 = int(dl - startind)
+            startind = int((zerotime + self.maxduration)*self.Fsamplerate)
+            len2 = int(gl - startind)
             len3 = int(np.round(0.2*len2))  # 20% taper so zero imposition isn't sudden
             temp = np.hanning(2*len3)
             temp = temp[:len3]
-            vals = np.hstack((temp, np.ones(len2-len3)))
-            for i, val in enumerate(vals):
+            vals3 = np.hstack((temp, np.ones(len2-len3)))
+            for i, val in enumerate(vals3):
                 place = i + startind
-                first1 = np.zeros(3*dl)
+                first1 = np.zeros(3*gl)
                 second1 = first1.copy()
                 third1 = first1.copy()
                 first1[place] = val
-                second1[place+dl] = val
-                third1[place+2*dl] = val
+                second1[place+gl] = val
+                third1[place+2*gl] = val
                 if i == 0:
                     A3 = np.vstack((first1, second1, third1))
                 else:
                     A3 = np.vstack((A3, first1, second1, third1))
             A3 *= scaler
+
             Ghat = np.vstack((Ghat, A3))
-            dhat = np.hstack((dhat, np.zeros(len(vals)*3)))
+            dhat = np.hstack((dhat, np.zeros(len(vals3)*3)))
         else:
             A3 = None
-        
+
         if alphaset is not None:
             alpha = alphaset
         dhat = dhat.T
-        
+
         # Build roughening matrix
-        I = np.eye(n, n) # sparse.eye(np.shape(G)[1],np.shape(G)[1])
+        I = np.eye(n, n)  # sparse.eye(np.shape(G)[1],np.shape(G)[1])
         if Tikhratio[1] != 0.:
             # Build L1 (first order) roughening matrix
             L1 = np.diag(-1 * np.ones(n)) + np.diag(np.ones(n-1), k=1)
@@ -712,7 +870,7 @@ mv *.sac %s
         else:
             L2 = 0.
             L2part = 0.
-    
+
         if alphaset is None:
             if alpha_method == 'Lcurve':
                 alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I, L1, L2,
@@ -723,7 +881,7 @@ mv *.sac %s
                                                         self.samplerate,
                                                         self.numsta,
                                                         dl, L1=L1, L2=L2,
-                                                        Tikhratio=Tikhratio)#, tolerance=0.5)
+                                                        Tikhratio=Tikhratio)  # , tolerance=0.5)
             print('best alpha is %6.1e' % alpha)
             self.alpha = alpha
             self.alphafit['alphas'] = alphas
@@ -731,13 +889,13 @@ mv *.sac %s
             self.alphafit['size'] = size1
         else:
             self.alpha = alpha
-    
+
         Ghat = np.matrix(Ghat)
         Apart = np.dot(Ghat.H, Ghat)
 
-        A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things (if any are zero they won't matter)    
+        A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)  # Combo of all regularization things (if any are zero they won't matter)
         x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
-    
+
         if self.domain is 'freq':
             model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
             self.model = model.copy()
@@ -764,16 +922,20 @@ mv *.sac %s
             dtnew = self.G.dot(model)  # forward_model(G,model)
             self.dtnew = np.reshape(dtnew, (self.numsta, dl))
             self.dtorig = np.reshape(self.d, (self.numsta, dl))
-    
+
         #compute variance reduction
         self.VR = varred(self.dtorig, self.dtnew)
         print(('variance reduction %f percent') % (self.VR,))
-        tvec = np.arange(0, len(self.Zforce)*1/self.samplerate, 1/self.samplerate)-self.T0
+        tvec = np.arange(0, len(self.Zforce)*1/self.Fsamplerate, 1/self.Fsamplerate)-self.T0
         #np.linspace(0,(len(Zforce)-1)*1/samplerate,len(Zforce))-T0
         if self.zeroTime is not None:
-            tvec = tvec - self.zeroTime
+            tvec -= self.zeroTime
+        if self.method == 'triangle':  # Shift so that peak of triangle function lines up with time of force interval
+            tvec += self.L
         self.tvec = tvec
-
+        self.dtvec = np.arange(0, self.datalength/self.samplerate, 1/self.samplerate)
+        if self.zeroTime is not None:
+            self.dtvec -= self.zeroTime
         # Use constant alpha parameter (found above, if not previously set) for jackknife iterations
         stasets = []
         if self.jackknife is not None:
@@ -785,28 +947,30 @@ mv *.sac %s
                 stasets.append(indxcut)
 
                 obj = [sum(ind) for ind in zip(np.tile(list(range(self.datalength)),
-                                               len(indxcut)), np.repeat([x*self.datalength for x in indxcut], self.datalength))]
+                                               len(indxcut)), np.repeat([x1*self.datalength for x1 in indxcut],
+                                               self.datalength))]
+
                 dhat1 = np.delete(dhatori.copy(), obj)
                 Ghat1 = np.delete(Ghatori.copy(), obj, axis=0)
-                
+
                 Gtemp = np.delete(self.G.copy(), obj, axis=0)
                 dtemp = np.delete(self.d.copy(), obj)
-                
-                if A1 is not None: # Use A1, A2, A3 from full solution, if exist
+
+                if A1 is not None:  # Use A1, A2, A3 from full solution, if exist
                     Ghat1 = np.vstack((Ghat1, A1))
                     dhat1 = np.hstack((dhat1, np.zeros(3)))
                 if A2 is not None:
                     Ghat1 = np.vstack((Ghat1, A2))
-                    dhat1 = np.hstack((dhat1, np.zeros(len(vals)*3)))
+                    dhat1 = np.hstack((dhat1, np.zeros(len(vals2)*3)))
                 if A3 is not None:
                     Ghat1 = np.vstack((Ghat1, A3))
-                    dhat1 = np.hstack((dhat1, np.zeros(len(vals)*3)))
-                
+                    dhat1 = np.hstack((dhat1, np.zeros(len(vals3)*3)))
+
                 dhat1 = dhat1.T
                 Ghat1 = np.matrix(Ghat1)
                 Apart = np.dot(Ghat1.H, Ghat1)
-        
-                Aj = Apart+self.alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things (if any are zero they won't matter)    
+
+                Aj = Apart+self.alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)  # Combo of all regularization things (if any are zero they won't matter)
                 xj = np.squeeze(np.asarray(np.dot(Ghat1.H, dhat1)))
 
                 if self.domain is 'freq':
@@ -819,7 +983,7 @@ mv *.sac %s
                     df_new = np.dot(Gtemp, model.T)  # forward_model(G,model)
                     #convert d and df_new back to time domain
                     dt, dtnew = back2time(dtemp, df_new, numkeep, dl)
-        
+
                 else:  # domain is time
                     model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
                     div = int(len(model)/3)
@@ -834,7 +998,7 @@ mv *.sac %s
                 self.jackknife['Nforce_all'].append(Nf.copy())
                 self.jackknife['Eforce_all'].append(Ef.copy())
                 self.jackknife['VR_all'].append(VR.copy())
-            
+
             self.jackknife['ZforceL'] = np.percentile(self.jackknife['Zforce_all'],
                                                       2.5, axis=0)
             self.jackknife['ZforceU'] = np.percentile(self.jackknife['Zforce_all'],
@@ -847,23 +1011,21 @@ mv *.sac %s
                                                       2.5, axis=0)
             self.jackknife['NforceU'] = np.percentile(self.jackknife['Nforce_all'],
                                                       97.5, axis=0)
-            
+
             self.jackknife['VR_all'] = np.array(self.jackknife['VR_all'])
 
-
-            print('Jackknife VR stats: max %2.0f, min %2.0f, median %2.0f' % \
+            print('Jackknife VR stats: max %2.0f, min %2.0f, median %2.0f' %
                   (self.jackknife['VR_all'].max(), self.jackknife['VR_all'].min(),
-                  np.median(self.jackknife['VR_all'])))
-
+                   np.median(self.jackknife['VR_all'])))
 
     def Lasso(G, d, samplerate, numsta, datlenorig, W=None, T0=0, alpharatio=10., domain='time',
-                     alphaset=None, zeroTime=None, imposeZero=False, addtoZero=False, alpha_method='Lcurve',
-                     maxduration=None):
+              alphaset=None, zeroTime=None, imposeZero=False, addtoZero=False, alpha_method='Lcurve',
+              maxduration=None):
         """
         NOT YET UPDATED FOR CLASS STRUCTURE, WONT RUN AS IS
         Wrapper function to perform single force inversion of long-period landslide seismic signal
         using scikit learn's Lasso function (L1 norm minimization) with smoothing added on top
-    
+
         Args:
             G (array): model matrix (m x n)
             d (array): vector of concatenated data (m x 1)
@@ -886,12 +1048,12 @@ mv *.sac %s
             addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
                 to zero.
             alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
-                'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on 
+                'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on
                 discrepancy principle and noise calculated from data from before zeroTime.
             maxduration (float): Maximum duration allowed for the event, starting at zeroTime if defined,
                 otherwise starting from beginning of seismic data. Points after this will tend towards
                 zero. This helps tamp down artifacts due to edge effects.
-        
+
         Returns: (model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas, curves)
             model (array): model vector of concatated components (n x 1) of solution using
                 regularization parameter alpha
@@ -909,26 +1071,24 @@ mv *.sac %s
             fit1 (array):
             size1 (array):
             curves (array):
-            
-            
+
         """
         raise Exception('Lasso not yet implemented yet in class structure')
-        
-        
+
         if W is not None:
             Ghat = W.dot(G)  # np.dot(W.tocsr(),G.tocsr())
             dhat = W.dot(d)  # np.dot(W.tocsr(),sparse.csr_matrix(d))
         else:
             Ghat = G  # G.tocsr()
             dhat = d  # sparse.csr_matrix(d)
-    
+
         m, n = np.shape(Ghat)
-    
+
         Ghatnorm = np.linalg.norm(Ghat)
         #Ghatmax = np.abs(Ghat).max()
-        
+
         if addtoZero is True:  # constrain forces to add to zero
-            scaler = Ghatnorm #10**(np.round(np.log10(Ghatmax)+4))#10**(np.round(np.log10(Ghatnorm))) # 10**(np.round(np.log10(Ghatmax)+4))
+            scaler = Ghatnorm  # 10**(np.round(np.log10(Ghatmax)+4))#10**(np.round(np.log10(Ghatnorm))) # 10**(np.round(np.log10(Ghatmax)+4))
             first1 = np.hstack((np.ones(datlenorig), np.zeros(2*datlenorig)))
             second1 = np.hstack((np.zeros(datlenorig), np.ones(datlenorig), np.zeros(datlenorig)))
             third1 = np.hstack((np.zeros(2*datlenorig), np.ones(datlenorig)))
@@ -936,8 +1096,8 @@ mv *.sac %s
             Ghat = np.vstack((Ghat, A))
             dhat = np.hstack((dhat, np.zeros(3)))
             #import pdb; pdb.set_trace()
-    
-        scaler = Ghatnorm/15.#10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
+
+        scaler = Ghatnorm/15.  # 10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
         if imposeZero is True:  # tell model when there should be no forces
             if zeroTime is None:
                 raise Exception('imposeZero set to True but no zeroTime provided')
@@ -961,7 +1121,7 @@ mv *.sac %s
             A = A*scaler
             Ghat = np.vstack((Ghat, A))
             dhat = np.hstack((dhat, np.zeros(len(vals)*3)))
-            
+
         if maxduration is not None:
             if zeroTime is None:
                 zeroTime = 0.
@@ -986,16 +1146,16 @@ mv *.sac %s
             A = A*scaler
             Ghat = np.vstack((Ghat, A))
             dhat = np.hstack((dhat, np.zeros(len(vals)*3)))
-    
+
         if alphaset is not None:
             alpha = alphaset
         dhat = dhat.T
-        
+
         # Build roughening matrix
         if alpharatio is not None:
             # Build L2 (second order) roughening matrix
             L2 = np.diag(np.ones(n)) + np.diag(-2*np.ones(n-1), k=1) + np.diag(np.ones(n-2), k=2)
-    
+
         if alphaset is None:
             if alpharatio is None:
                 # Use just LassoCV
@@ -1023,10 +1183,10 @@ mv *.sac %s
             fit1 = None
             size1 = None
             alphas = None
-    
+
         model = lasso.coef_
         div = int(len(model)/3)
-    
+
         if domain is 'freq':
             Zforce = - np.real(np.fft.ifft(model[0:div])/10**5)  # convert from dynes to newtons, flip so up is positive
             Nforce = np.real(np.fft.ifft(model[div:2*div])/10**5)
@@ -1035,7 +1195,7 @@ mv *.sac %s
             df_new = np.dot(G, model.T)  # forward_model(G,model)
             #convert d and df_new back to time domain
             dt, dtnew = back2time(d, df_new, numsta, datlenorig)
-    
+
         else:  # domain is time
             Zforce = - model[0:div]/10**5  # convert from dynes to netwons, flip so up is positive
             Nforce = model[div:2*div]/10**5
@@ -1043,7 +1203,7 @@ mv *.sac %s
             dtnew = G.dot(model)  # forward_model(G,model)
             dtnew = np.reshape(dtnew, (numsta, datlenorig))
             dt = np.reshape(d, (numsta, datlenorig))
-    
+
         #compute variance reduction
         VR = varred(dt, dtnew)
         print(('variance reduction %2.0f percent') % (VR,))
@@ -1052,7 +1212,6 @@ mv *.sac %s
         if zeroTime is not None:
             tvec = tvec - zeroTime
         return model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas
-
 
     def plotdatafit(self):
         """
@@ -1073,12 +1232,12 @@ mv *.sac %s
             staname = ('%s - %2.1f km') % (temp, trace.stats.rdist)
             labels.append(staname)
             yticks1.append(-(i+1)*offset)
-    
+
         ax = fig.add_axes([0.25, 0.05, 0.7, 0.9])
         #.T might be flipping the data upside down...
-        ax.plot(np.tile(self.tvec, (self.numsta, 1)).T, self.dtorig.T-addmat.T, 'k', label='Original')
-        ax.plot(np.tile(self.tvec, (self.numsta, 1)).T, self.dtnew.T-addmat.T, 'r', label='Model')
-        ax.set_xlim((self.tvec[0], self.tvec[-1]))
+        ax.plot(np.tile(self.dtvec, (self.numsta, 1)).T, self.dtorig.T-addmat.T, 'k', label='Original')
+        ax.plot(np.tile(self.dtvec, (self.numsta, 1)).T, self.dtnew.T-addmat.T, 'r', label='Model')
+        ax.set_xlim((self.dtvec[0], self.dtvec[-1]))
         ax.set_xlabel('Time (sec)')
         ax.set_yticks(yticks1)
         ax.set_yticklabels(labels)
@@ -1089,13 +1248,12 @@ mv *.sac %s
         plt.show()
         return fig
 
-
     def plotinv(self, subplots=False, xlim=None, ylim=None, sameY=True,
                 highf_tr=None, hfylabel=None, hfshift=0., tvecshift=0.,
                 jackshowall=False):
         """
         Plot inversion result
-        
+
         Args:
             subplots (bool): True, make subplots, False, plot all one one plot
             vline (array): plot vertical line at t=vline
@@ -1109,19 +1267,19 @@ mv *.sac %s
                 not usually need, only for display purposes
             jackshowall (bool): if True and jackknife was run, will show all
                 individual runs (will change subplots to True)
-            
+
         Returns
             figure handle
-    
+
         """
         tvec = self.tvec - tvecshift
-        
+
         # Find y limits
         if self.jackknife is None:
             if ylim is None:
                 ylim1 = (np.amin([self.Zforce.min(), self.Eforce.min(),
                                   self.Nforce.min()]), np.amax([self.Zforce.max(),
-                                 self.Eforce.max(), self.Nforce.max()]))
+                                                               self.Eforce.max(), self.Nforce.max()]))
                 ylim = (ylim1[0]+0.1*ylim1[0], ylim1[1]+0.1*ylim1[1])  # add 10% on each side to make it look nicer
         else:
             Zupper = self.jackknife['ZforceU']
@@ -1140,7 +1298,7 @@ mv *.sac %s
                 ylim = (ylim1[0]+0.1*ylim1[0], ylim1[1]+0.1*ylim1[1])  # add 10% on each side to make it look nicer
 
         if jackshowall:
-            subplots=True
+            subplots = True
 
         if subplots:
             if highf_tr is None:
@@ -1159,13 +1317,13 @@ mv *.sac %s
             ax2.plot(tvec, self.Nforce, 'r')
             ax2.set_ylabel('North Force (N)')
             ax3.plot(tvec, self.Eforce, 'g')
-            
+
             ax3.set_ylabel('East Force (N)')
-    
+
             x = np.concatenate((tvec, tvec[::-1]))
             if self.jackknife is not None:
                 if jackshowall:
-                    for Z, N, E in zip(self.jackknife['Zforce_all'], 
+                    for Z, N, E in zip(self.jackknife['Zforce_all'],
                                        self.jackknife['Nforce_all'],
                                        self.jackknife['Eforce_all']):
                         ax1.plot(self.tvec, Z, 'b', alpha=0.3)
@@ -1184,7 +1342,7 @@ mv *.sac %s
                     poly = plt.Polygon(list(zip(x, y)), facecolor='g',
                                        edgecolor='none', alpha=0.2)
                     ax3.add_patch(poly)
-            
+
             if highf_tr is not None:
                 if type(highf_tr) != Trace:
                     raise Exception('highf_tr is not an obspy trace')
@@ -1194,19 +1352,19 @@ mv *.sac %s
                 tvec2 += adjust
                 tvec2 -= hfshift
                 ax4.plot(tvec2, highf_tr.data)
-            
+
             axes = fig.get_axes()
             if not xlim:
                 xlim = [self.tvec.min(), self.tvec.max()]
             axes = fig.get_axes()
             [axe.set_xlim(xlim) for axe in axes]
             [axe.grid(True) for axe in axes]
-                
+
             if sameY or ylim is not None:
                 ax1.set_ylim(ylim)
                 ax2.set_ylim(ylim)
                 ax3.set_ylim(ylim)
-    
+
             if self.imposeZero:
                 [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
             if self.maxduration is not None:
@@ -1219,8 +1377,7 @@ mv *.sac %s
                 ax4.annotate('%s - shifted -%1.0f s' % (highf_tr.id, hfshift), (0.8, 0.1), xycoords='axes fraction')
             else:
                 ax4.annotate('%s' % highf_tr.id, (0.9, 0.1), xycoords='axes fraction')
-            
-                
+
         else:
             if highf_tr is None:
                 fig = plt.figure(figsize=(14, 4))
@@ -1244,8 +1401,8 @@ mv *.sac %s
 
             ax.plot(tvec, self.Zforce, 'b', label='Up')
             ax.plot(tvec, self.Nforce, 'r', label='North')
-            ax.plot(tvec, self.Eforce, 'g', label='East')   
-            
+            ax.plot(tvec, self.Eforce, 'g', label='East')
+
             if self.jackknife is not None:
                 x = np.concatenate((tvec, tvec[::-1]))
 
@@ -1263,13 +1420,13 @@ mv *.sac %s
                 ax.add_patch(poly)
             if xlim:
                 ax.set_xlim(xlim)
-            
+
             if highf_tr is not None:
                 ax4.set_xlim(ax.get_xlim())
                 ax4.grid(True)
             if hfylabel is not None:
                 ax4.set_ylabel(hfylabel)
-                
+
             ax.legend(loc='upper right')
             ax.grid(True)
             ax.set_ylabel('Force (N)')
@@ -1278,18 +1435,17 @@ mv *.sac %s
                 ax.axvline(0, color='gray', linestyle='solid', lw=3)
             if self.maxduration is not None:
                 ax.axvline(self.maxduration, color='gray', linestyle='solid', lw=3)
-    
+
         plt.xlabel('Time (sec')
         plt.show()
         return fig
-
 
     def plotangmag(self, subplots=False, xlim=None, ylim=None,
                    sameY=True, tvecshift=0.):
         """
         plot angles and magnitudes of inversion result and append results
         to object for further use
-        
+
         USAGE plotinv(Zforce,Nforce,Eforce,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
         INPUTS
         [ZEN]force
@@ -1304,12 +1460,12 @@ mv *.sac %s
         fig - figure handle
         """
         tvec = self.tvec - tvecshift
-        
+
         if self.jackknife is None:
             if ylim is None:
                 ylim1 = (np.amin([self.Zforce.min(), self.Eforce.min(),
                                   self.Nforce.min()]), np.amax([self.Zforce.max(),
-                                                 self.Eforce.max(), self.Nforce.max()]))
+                                                                self.Eforce.max(), self.Nforce.max()]))
                 ylim = (ylim1[0]+0.1*ylim1[0], ylim1[1]+0.1*ylim1[1])  # add 10% on each side to make it look nicer
         else:
             Zupper = self.jackknife['ZforceU']
@@ -1318,21 +1474,20 @@ mv *.sac %s
             Zlower = self.jackknife['ZforceL']
             Nlower = self.jackknife['NforceL']
             Elower = self.jackknife['EforceL']
-            
+
             if ylim is None:
                 ylim1 = (np.amin([Zlower.min(), Elower.min(), Nlower.min()]),
                          np.amax([Zupper.max(), Eupper.max(),
                                   Nupper.max()]))
             ylim = (ylim1[0]+0.1*ylim1[0], ylim1[1]+0.1*ylim1[1])  # add 10% on each side to make it look nicer
         fig = plt.figure(figsize=(10, 10))
-    
+
         # Plot the inversion result in the first one
         ax = fig.add_subplot(411)
-        
         ax.plot(tvec, self.Zforce, 'b', label='Up')
         ax.plot(tvec, self.Nforce, 'r', label='North')
         ax.plot(tvec, self.Eforce, 'g', label='East')
-        
+
         if self.jackknife is not None:
             x = np.concatenate((tvec, tvec[::-1]))
             y = np.concatenate((Zlower, Zupper[::-1]))
@@ -1352,7 +1507,7 @@ mv *.sac %s
         ax.grid(True)
         ax.set_ylabel('Force (N)')
         ax.set_ylim(ylim)
-    
+
         # Plot the magnitudes in second one
         ax1 = fig.add_subplot(412)
         Mag = np.linalg.norm(list(zip(self.Zforce, self.Eforce, self.Nforce)), axis=1)
@@ -1361,7 +1516,7 @@ mv *.sac %s
         if self.jackknife is not None:
             MagU = np.linalg.norm(list(zip(np.maximum(np.abs(Zupper), np.abs(Zlower)),
                                            np.maximum(np.abs(Eupper), np.abs(Elower)),
-                                           np.maximum(np.abs(Nupper), np.abs(Nlower)))),axis=1)
+                                           np.maximum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
             MagL = np.linalg.norm(list(zip(np.minimum(np.abs(Zupper), np.abs(Zlower)),
                                            np.minimum(np.abs(Eupper), np.abs(Elower)),
                                            np.minimum(np.abs(Nupper), np.abs(Nlower)))), axis=1)
@@ -1372,7 +1527,7 @@ mv *.sac %s
             MagL = None
         #ax1.legend(loc='upper right')
         ax1.set_ylabel('Force (N)')
-    
+
         # Plot the horizontal azimuth
         ax2 = fig.add_subplot(413)
         tempang = (180/np.pi)*np.arctan2(self.Nforce, self.Eforce)-90  # get angle counterclockwise relative to N
@@ -1398,7 +1553,6 @@ mv *.sac %s
         #ax2.plot(tvec, HazL, 'r')
         ax2.set_ylabel('Azimuth (deg CW from N)')
 
-    
         #Plot the vertical angle
         ax3 = fig.add_subplot(414)
         Vang = (180/np.pi)*np.arctan(self.Zforce/np.sqrt(self.Nforce**2+self.Eforce**2))
@@ -1414,7 +1568,7 @@ mv *.sac %s
             axes = fig.get_axes()
             [axe.set_xlim(xlim) for axe in axes]
             [axe.grid(True) for axe in axes]
-        
+
         if self.imposeZero:
             [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
         if self.maxduration is not None:
@@ -1423,14 +1577,50 @@ mv *.sac %s
 
         plt.xlabel('Time (sec')
         plt.show()
-        
+
         self.angmag = dict(Mag=Mag, MagU=MagU, MagL=MagL, Vang=Vang, Haz=Haz)
-    
+
         return fig
 
+    def trajectory(self, Mass):
+        """
+        """
+        self.Mass = Mass
+        startidx = np.where(self.tvec==0)[0][0]
+        dx = 1./self.Fsamplerate
+        Za = -self.Zforce.copy()
+        Ea = -self.Eforce.copy()
+        Na = -self.Nforce.copy()
+        Za[:startidx-1] = 0.
+        Ea[:startidx-1] = 0.
+        Na[:startidx-1] = 0.
+        self.Zvel = np.cumsum(Za/Mass)*dx
+        self.Evel = np.cumsum(Ea/Mass)*dx
+        self.Nvel = np.cumsum(Na/Mass)*dx
 
+        self.Zdisp = np.cumsum(self.Zvel)*dx
+        self.Edisp = np.cumsum(self.Evel)*dx
+        self.Ndisp = np.cumsum(self.Nvel)*dx
+        
+        # Normalize to zero time
+        
+        fig, ax = plt.subplots()
+        ax.scatter(self.Edisp/1000., self.Ndisp/1000., c=self.tvec)
+        ax.set_xlabel('East Distance (km)')
+        ax.set_ylabel('North Distance (km)')
+        ax.axis('equal')
+        plt.show()
+
+#        if self.jackknife is not None:
+#            Zupper = self.jackknife['ZforceU']
+#            Nupper = self.jackknife['NforceU']
+#            Eupper = self.jackknife['EforceU']
+#            Zlower = self.jackknife['ZforceL']
+#            Nlower = self.jackknife['NforceL']
+#            Elower = self.jackknife['EforceL']
+        
     def saverun(self, filepath=None, timestamp=False, figs2save=None,
-                figs2save_names=None, light=True):
+                figs2save_names=None, light=True, filetype='png'):
         """
         Args:
             filepath (str): full filepath where all files should be saved
@@ -1440,21 +1630,21 @@ mv *.sac %s
             figs2save (list): list of figure handles to save
             figs2save_names (list): list of names of figures (appends to end)
             light (bool): to reduce size, does not save seismic data with object
-            
+
         """
         if filepath is None:
             filepath = self.mainfolder
-        
+
         obj = copy.copy(self)
         if light:
             obj.st = None
-        
+
         # Get file name prefix
         if self.jackknife is None:
             jk = ''
         else:
             jk = 'JK'
-        
+
         if timestamp:
             filename = '%s_%1.0f-%1.0fsec_%s%s' % (self.nickname,
                        self.filter['periodmin'], self.filter['periodmax'], jk,
@@ -1462,16 +1652,16 @@ mv *.sac %s
         else:
             filename = '%s_%1.0f-%1.0fsec_%s' % (self.nickname,
                        self.filter['periodmin'], self.filter['periodmax'], jk)
-        
+
         with open(os.path.join(filepath, '%s.pickle' % filename), 'wb') as f:
             pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-            
+
         if figs2save is not None:
             if figs2save_names is None:
                 figs2save_names = range(len(figs2save))
             for i, fig in enumerate(figs2save):
-                fig.savefig(os.path.join(filepath, '%s_%s.png' % \
-                                         (filename, figs2save_names[i])),
+                fig.savefig(os.path.join(filepath, '%s_%s.%s' %
+                                         (filename, figs2save_names[i], filetype)),
                             bbox_inches='tight')
 
 
@@ -1479,9 +1669,9 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
     """
     Find best regularization (trade-off) parameter, alpha, by computing model with many values of
     alpha, plotting Lcurve, and finding point of steepest curvature where slope is negative.
-    
+
     Args:
-        Ghat (array): m x n matrix of 
+        Ghat (array): m x n matrix of
         dhat (array): 1 x n array of weighted data
         I (array): Identity matrix
         L1 (array): First order roughening matrix, if 0., will use only zeroth order Tikhonov reg.
@@ -1489,14 +1679,14 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
         Tikhratio (list): Proportion each regularization method contributes, where values correspond
             to [zeroth, first order, second order]. Must add to 1.
     Returns:
-        
+
     """
     templ1 = np.ceil(np.log10(np.linalg.norm(Ghat)))  # Roughly estimate largest singular value (should not use alpha larger than expected largest singular value)
     templ2 = np.arange(templ1-6, templ1-2)
     alphas = 10**templ2
     fit1 = []
     size1 = []
-    
+
     # Convert to matrix so can use complex conjugate .H (so this code will work for both time and freq domains)
     Ghat = np.matrix(Ghat)
 
@@ -1511,14 +1701,14 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
         L1part = np.dot(L1.T, L1)
 
     x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
-    
+
     #rough first iteration
     for alpha in alphas:
-        A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things
+        A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)  # Combo of all regularization things
         model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
-        size1.append(sp.linalg.norm(Tikhratio[0]*model) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, model))\
+        size1.append(sp.linalg.norm(Tikhratio[0]*model) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, model))
                      + sp.linalg.norm(Tikhratio[2]*np.dot(L2part, model)))  # size1.append(sp.linalg.norm(model.todense()))
     fit1 = np.array(fit1)
     size1 = np.array(size1)
@@ -1529,18 +1719,18 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
     tempcurve = curves.copy()
     tempcurve[slp2 < 0] = np.max(curves)
     idx = np.argmin(tempcurve)
-    alpha = alphas[idx] #[alpha for i, alpha in enumerate(alphas) if curves[i] == curves.min()]
+    alpha = alphas[idx]  # [alpha for i, alpha in enumerate(alphas) if curves[i] == curves.min()]
 
     # Then hone in
     alphas = np.logspace(np.round(np.log10(alpha))-1, np.round(np.log10(alpha))+1, 20)
     fit1 = []
     size1 = []
     for newalpha in alphas:
-        A = Apart+newalpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part) # Combo of all regularization things
-        model, residuals, rank, s = sp.linalg.lstsq(A, x) # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        A = Apart+newalpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)  # Combo of all regularization things
+        model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
-        size1.append(sp.linalg.norm(Tikhratio[0]*model) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, model))\
+        size1.append(sp.linalg.norm(Tikhratio[0]*model) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, model))
                      + sp.linalg.norm(Tikhratio[2]*np.dot(L2part, model)))  # size1.append(sp.linalg.norm(model.todense()))
         #size1.append(sp.linalg.norm(Tikhratio[0]*model + Tikhratio[1]*L1part*model + Tikhratio[2]*L2part*model))  # size1.append(sp.linalg.norm(model.todense()))
     fit1 = np.array(fit1)
@@ -1554,7 +1744,7 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
     #import pdb; pdb.set_trace()
     #curves[curves < 1]
     idx = np.argmin(tempcurve)
-    bestalpha = alphas[idx]#[alpha1 for i, alpha1 in enumerate(alphas) if tempcurves[i] == curves.min()]
+    bestalpha = alphas[idx]  # [alpha1 for i, alpha1 in enumerate(alphas) if tempcurves[i] == curves.min()]
 
     Lcurve(fit1, size1, alphas)
     if type(bestalpha) == list:
@@ -1601,7 +1791,7 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
     fit1 = []
     size1 = []
     alphas = []
-    
+
     Ghat = np.matrix(Ghat)
 
     Apart = np.dot(Ghat.H, Ghat)
@@ -1615,7 +1805,7 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
         L1part = np.dot(L1.T, L1)
 
     x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
-    
+
     while opposite is False:
         print(('ak = %s' % (ak,)))
         print(('bk = %s' % (bk,)))
@@ -1628,13 +1818,13 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
         # Save info on these runs for Lcurve later if desired
         fit1.append(fitak)
         alphas.append(ak)
-        size1.append(sp.linalg.norm(Tikhratio[0]*modelak) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, modelak))\
+        size1.append(sp.linalg.norm(Tikhratio[0]*modelak) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, modelak))
                      + sp.linalg.norm(Tikhratio[2]*np.dot(L2part, modelak)))
         #sp.linalg.norm(Tikhratio[0]*modelak + Tikhratio[1]*L1part*modelak + Tikhratio[2]*L2part*modelak))#sp.linalg.norm(modelak))
         fit1.append(fitbk)
         alphas.append(bk)
-        size1.append(sp.linalg.norm(Tikhratio[0]*modelbk) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, modelbk))\
-                     + sp.linalg.norm(Tikhratio[2]*np.dot(L2part, modelbk)))        
+        size1.append(sp.linalg.norm(Tikhratio[0]*modelbk) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, modelbk))
+                     + sp.linalg.norm(Tikhratio[2]*np.dot(L2part, modelbk)))
         fak = fitak - noise  # should be negative
         fbk = fitbk - noise  # should be positive
         print(('fak = %s' % (fak,)))
@@ -1660,7 +1850,7 @@ def findalphaD(Ghat, dhat, I, zeroTime, samplerate, numsta, datlenorig, toleranc
         fitck = sp.linalg.norm(np.dot(Ghat, modelck.T)-dhat)
         fit1.append(fitck)
         alphas.append(ck)
-        size1.append(sp.linalg.norm(Tikhratio[0]*modelck) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, modelck))\
+        size1.append(sp.linalg.norm(Tikhratio[0]*modelck) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, modelck))
                      + sp.linalg.norm(Tikhratio[2]*np.dot(L2part, modelck)))
         fck = fitck - noise
         print(('ck = %s' % (ck,)))
@@ -1769,10 +1959,43 @@ def makeconvmat(c, size=None):
     return C
 
 
+def makeshiftmat(c, shiftby, size1):
+    """
+    Build matrix that can be used for shifting of overlapping triangles for
+    triangle method, signal goes across rows and each shift is a new column
+    (opposite orientation to makeconvmat)
+    
+    Args:
+        c (array): vector of data (usually greens function)
+        shiftby (int): number of samples to shift greens function in each row
+        size1 (tup): (nrows, ncols) of desired result. Will pad c if nrows is 
+            greater than len(c). Will shift c forward by shiftby ncols times
+    
+    Returns:
+        Matrix of shifted c of size size1
+
+    """
+    diff = len(c) - size1[0]
+    if diff < 0:
+        cpad = np.pad(c, (0, -diff), mode='edge')  # , end_values=(0., 0.))  # mode='linear_ramp'
+    elif diff > 0:
+        cpad = c[:size1[0]]
+    else:
+        cpad = c
+    C = np.zeros(size1)
+    for i in range(size1[1]):  # Loop over shifts and apply
+        nshift = i * shiftby
+        temp = np.pad(cpad.copy(), (nshift, 0), mode='edge')  # , end_values=(0., 0.))
+        temp = temp[:size1[0]]
+        C[:, i] = temp.copy()
+
+    return C
+
+
 def curvature(x, y, negslope=True):
     """
     Estimate the radius of curvature for each point on line to find corner of L-curve
-    
+
     Args:
         x (array): x points
         y (array): y points
@@ -1846,7 +2069,7 @@ def rotate2ZNE(data_1, azimuth_1, dip_1, data_2, azimuth_2, dip_2, data_3, azimu
 def rotate(st, baz=None):
     """
     rotate all components of st that can be rotated, to radial and transverse
-    
+
     Args:
         st: obspy stream object to rotate
         baz (list): Not required if backaz already attached to st stats, list
