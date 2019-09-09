@@ -69,21 +69,25 @@ def getEventInfo(event_id, database='/Users/kallstadt/LSseis/landslideDatabase/l
     connection.text_factory = str
     with connection:
         cursor = connection.cursor()
-        try:
-            event_id = int(event_id)
-            cursor_output = (cursor.execute('SELECT * FROM events WHERE Eid = ?', (event_id, )))
-            dat = cursor_output.fetchall()[0]
-            temp = cursor.description
-            names = [t[0] for t in temp]
-            eventDict = dict(list(zip(names, dat)))
-            # Convert to the right units
-            temp = eventDict['StartTime'].split(' ')
-            eventDict['StartTime'] = UTCDateTime(temp[0]+'T'+temp[1])
-            temp = eventDict['EndTime'].split(' ')
-            eventDict['EndTime'] = UTCDateTime(temp[0]+'T'+temp[1])
-        except Exception as e:
-            print(e)
-            return
+        #try:
+        event_id = int(event_id)
+        cursor_output = (cursor.execute('SELECT * FROM events WHERE Eid = ?', (event_id, )))
+        dat = cursor_output.fetchall()[0]
+        temp = cursor.description
+        names = [t[0] for t in temp]
+        eventDict = dict(list(zip(names, dat)))
+        # Convert to the right units
+        temp = eventDict['StartTime'].split(' ')
+        if len(temp) < 2:
+            raise Exception('Problem with time format of start time for eid %i' % event_id)
+        eventDict['StartTime'] = UTCDateTime(temp[0]+'T'+temp[1])
+        temp = eventDict['EndTime'].split(' ')
+        if len(temp) < 2:
+            raise Exception('Problem with time format of end time for eid %i' % event_id)
+        eventDict['EndTime'] = UTCDateTime(temp[0]+'T'+temp[1])
+        #except Exception as e:
+        #    print(e)
+        #    return
 
         return eventDict
 

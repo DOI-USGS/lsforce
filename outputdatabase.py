@@ -253,17 +253,18 @@ def waveformfig_db(eids=None, numstas=5, bufferperc=0.15, database='/Users/kalls
         plt.close('all')
 
 
-def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis/landslideDatabase', ampdetectHF=None,
-              detectHF=None, detectLP=None, both=False, minradius=0., maxradius=None, Zonly=False, reloadfile=False,
-              loadfromfile=False, savedat=False, folderdat='data', merge=True, pad=True, fill_value=0., detrend='demean',
+def grab_data(event_id, bufferperc=0.1, numstas=5, path='/Users/kallstadt/LSseis/landslideDatabase',
+              ampdetectHF=None, detectHF=None, detectLP=None, both=False, minradius=0.,
+              maxradius=None, Zonly=False, reloadfile=False, loadfromfile=False, savedat=False,
+              folderdat='data', merge=True, pad=True, fill_value=0., detrend='demean',
               database='/Users/kallstadt/LSseis/landslideDatabase/lsseis.db'):
 
     """Pulls data from IRIS and other sources and links station correction info
 
     Args:
         event_id (int): to request data for
-        bufferperc (float): percentage of the waveform duration to use as a buffer for before and after the signal
-            to make the signal easier to see in the plots
+        bufferperc (float): percentage of the waveform duration to use as a buffer for before and 
+            after the signal to make the signal easier to see in the plots
         numstas (int): Number of stations to include (not components, but stations)
         path (str): Path to landslide database so code can find any local files linked to in database
         ampdetectHF: None, True or False, only select station with HF amplitude measurements
