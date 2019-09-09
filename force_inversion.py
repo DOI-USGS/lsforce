@@ -92,7 +92,7 @@ class LSforce:
 
         if method not in ['tik', 'lasso', 'triangle']:
             raise Exception('%s method not yet implemented.' % method.upper())
-        
+
         self.method = method
         if self.method in ['triangle'] and self.domain == 'freq':
             raise Exception('triangle method must be done in time domain, '
@@ -517,8 +517,8 @@ class LSforce:
             weight = np.ones(self.numsta)
 
             n = self.datalength
-            fshiftby = int(self.L/self.samplerate) # Number of samples to shift each triangle by
-            Flen = int(np.floor(self.datalength/fshiftby)) # Number of shifts, corresponds to length of force time function
+            fshiftby = int(self.L/self.samplerate)  # Number of samples to shift each triangle by
+            Flen = int(np.floor(self.datalength/fshiftby))  # Number of shifts, corresponds to length of force time function
             self.Fsamplerate = 1./fshiftby
 
             for i, trace in enumerate(st):
@@ -631,21 +631,22 @@ class LSforce:
                     Wvec[indx:indx+self.datalength] = Wvec[indx:indx+self.datalength]*weight[i]
                     indx += self.datalength
 
-            # Normalize Wvec so largest weight is 1.
-            self.Wvec = Wvec/np.max(np.abs(Wvec))
-            self.weights = weight/np.max(np.abs(weight))
-
-            if np.shape(G)[0] != len(d):
-                raise Exception('G and d sizes are not compatible, fix something somewhere')
-            self.G = G * 1./self.samplerate  # need to multiply G by sample interval (sec) since convolution is an integral
-            self.d = d * 100.  # convert data from m to cm
-            if weights is not None:
-                self.W = np.diag(self.Wvec)  # sparse.diags(Wvec,0)
-            else:
-                self.W = None
         else:
             #TODO setup for other methods
             print('Put setup for other methods here')
+
+        # Normalize Wvec so largest weight is 1.
+        self.Wvec = Wvec/np.max(np.abs(Wvec))
+        self.weights = weight/np.max(np.abs(weight))
+
+        if np.shape(G)[0] != len(d):
+            raise Exception('G and d sizes are not compatible, fix something somewhere')
+        self.G = G * 1./self.samplerate  # need to multiply G by sample interval (sec) since convolution is an integral
+        self.d = d * 100.  #WHY?convert data from m to cm
+        if weights is not None:
+            self.W = np.diag(self.Wvec)  # sparse.diags(Wvec,0)
+        else:
+            self.W = None
 
     def invert(self, zeroTime=None, imposeZero=False,
                addtoZero=False, maxduration=None, jackknife=False,
@@ -874,7 +875,7 @@ class LSforce:
         if alphaset is None:
             if alpha_method == 'Lcurve':
                 alpha, fit1, size1, alphas = findalpha(Ghat, dhat, I, L1, L2,
-                                                       Tikhratio)
+                                                       Tikhratio=Tikhratio, invmethod='lsq')
             else:
                 alpha, fit1, size1, alphas = findalphaD(Ghat, dhat, I,
                                                         self.zeroTime,
@@ -1665,7 +1666,7 @@ class LSforce:
                             bbox_inches='tight')
 
 
-def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
+def findalpha(Ghat, dhat, I, L1=0., L2=0., invmethod='lsq', Tikhratio=[1., 0., 0.], rough=False):
     """
     Find best regularization (trade-off) parameter, alpha, by computing model with many values of
     alpha, plotting Lcurve, and finding point of steepest curvature where slope is negative.
@@ -1676,8 +1677,12 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
         I (array): Identity matrix
         L1 (array): First order roughening matrix, if 0., will use only zeroth order Tikhonov reg.
         L2 (array): Second order roughening matrix, if 0., will use only zeroth order Tikhonov reg.
+        invmethod (str): if 'lsq' will use least squares (regular tikhonov), 'nnls' will use non-negative
+            least squares
         Tikhratio (list): Proportion each regularization method contributes, where values correspond
             to [zeroth, first order, second order]. Must add to 1.
+        rough (bool): If False (default), will do two iterations to fine tune the alpha parameter,
+            if True, time will be saved because it will only do one round of searching
     Returns:
 
     """
@@ -1705,7 +1710,12 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
     #rough first iteration
     for alpha in alphas:
         A = Apart+alpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)  # Combo of all regularization things
-        model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        if invmethod == 'lsq':
+            model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+        elif invmethod == 'nnls':
+            model, residuals = sp.optimize.nnls(A, x)
+        else:
+            raise Exception('inversion method %s not recognized' % invmethod)
         temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
         fit1.append(sp.linalg.norm(temp1))
         size1.append(sp.linalg.norm(Tikhratio[0]*model) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, model))
@@ -1721,30 +1731,37 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., Tikhratio=[1., 0., 0.]):
     idx = np.argmin(tempcurve)
     alpha = alphas[idx]  # [alpha for i, alpha in enumerate(alphas) if curves[i] == curves.min()]
 
-    # Then hone in
-    alphas = np.logspace(np.round(np.log10(alpha))-1, np.round(np.log10(alpha))+1, 20)
-    fit1 = []
-    size1 = []
-    for newalpha in alphas:
-        A = Apart+newalpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)  # Combo of all regularization things
-        model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
-        temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
-        fit1.append(sp.linalg.norm(temp1))
-        size1.append(sp.linalg.norm(Tikhratio[0]*model) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, model))
-                     + sp.linalg.norm(Tikhratio[2]*np.dot(L2part, model)))  # size1.append(sp.linalg.norm(model.todense()))
-        #size1.append(sp.linalg.norm(Tikhratio[0]*model + Tikhratio[1]*L1part*model + Tikhratio[2]*L2part*model))  # size1.append(sp.linalg.norm(model.todense()))
-    fit1 = np.array(fit1)
-    size1 = np.array(size1)
-    curves = curvature(np.log10(fit1), np.log10(size1))
-    # Zero out any points where function is concave so avoid picking points form dropoff at end
-    slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
-    alphas = np.array(alphas)
-    tempcurve = curves.copy()
-    tempcurve[slp2 < 0] = np.max(curves)
-    #import pdb; pdb.set_trace()
-    #curves[curves < 1]
-    idx = np.argmin(tempcurve)
-    bestalpha = alphas[idx]  # [alpha1 for i, alpha1 in enumerate(alphas) if tempcurves[i] == curves.min()]
+    if not rough:
+        # Then hone in
+        alphas = np.logspace(np.round(np.log10(alpha))-1, np.round(np.log10(alpha))+1, 10)
+        fit1 = []
+        size1 = []
+        for newalpha in alphas:
+            A = Apart+newalpha**2*(Tikhratio[0]*I + Tikhratio[1]*L1part + Tikhratio[2]*L2part)  # Combo of all regularization things
+            if invmethod == 'lsq':
+                model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+            elif invmethod == 'nnls':
+                model, residuals = sp.optimize.nnls(A, x)
+    
+            temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
+            fit1.append(sp.linalg.norm(temp1))
+            size1.append(sp.linalg.norm(Tikhratio[0]*model) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, model))
+                         + sp.linalg.norm(Tikhratio[2]*np.dot(L2part, model)))  # size1.append(sp.linalg.norm(model.todense()))
+            #size1.append(sp.linalg.norm(Tikhratio[0]*model + Tikhratio[1]*L1part*model + Tikhratio[2]*L2part*model))  # size1.append(sp.linalg.norm(model.todense()))
+        fit1 = np.array(fit1)
+        size1 = np.array(size1)
+        curves = curvature(np.log10(fit1), np.log10(size1))
+        # Zero out any points where function is concave so avoid picking points form dropoff at end
+        slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
+        alphas = np.array(alphas)
+        tempcurve = curves.copy()
+        tempcurve[slp2 < 0] = np.max(curves)
+        #import pdb; pdb.set_trace()
+        #curves[curves < 1]
+        idx = np.argmin(tempcurve)
+        bestalpha = alphas[idx]  # [alpha1 for i, alpha1 in enumerate(alphas) if tempcurves[i] == curves.min()]
+    else:
+        bestalpha = alpha
 
     Lcurve(fit1, size1, alphas)
     if type(bestalpha) == list:
