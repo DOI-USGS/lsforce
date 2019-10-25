@@ -390,12 +390,12 @@ class LSforce:
                 component = trace.stats.channel[2]
                 station = trace.stats.station
                 if component == 'Z':
-                    zvf = read(os.path.join(self.sacdir, '*%s*ZVF.sac' % station))
+                    zvf = read(os.path.join(self.sacdir, '*_%s_*ZVF.sac' % station))
                     if len(zvf) > 1:
                         raise Exception('Found more than one ZVF GF for %s' % station)
                     else:
                         zvf = zvf[0]
-                    zhf = read(os.path.join(self.sacdir, '*%s*ZHF.sac' % station))
+                    zhf = read(os.path.join(self.sacdir, '*_%s_*ZHF.sac' % station))
                     if len(zhf) > 1:
                         raise Exception('Found more than one ZHF GF for %s' % station)
                     else:
@@ -426,12 +426,12 @@ class LSforce:
                     az = math.radians(trace.stats.azimuth)  # math.radians(np.round(trace.stats.azimuth))
                     newline = np.hstack((K*ZVF, K*ZHF*math.cos(az), K*ZHF*math.sin(az)))  # sparse.hstack((K*ZVF, K*ZHF*math.cos(az), K*ZHF*math.sin(az)))
                 elif component == 'R':
-                    rvf = read(os.path.join(self.sacdir, '*%s*RVF.sac' % station))
+                    rvf = read(os.path.join(self.sacdir, '*_%s_*RVF.sac' % station))
                     if len(rvf) > 1:
                         raise Exception('Found more than one RVF GF for %s' % station)
                     else:
                         rvf = rvf[0]
-                    rhf = read(os.path.join(self.sacdir, '*%s*RHF.sac' % station))
+                    rhf = read(os.path.join(self.sacdir, '*_%s_*RHF.sac' % station))
                     if len(rhf) > 1:
                         raise Exception('Found more than one RHF GF for %s' % station)
                     else:
@@ -463,7 +463,7 @@ class LSforce:
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack((K*RVF, K*RHF*math.cos(az), K*RHF*math.sin(az)))  # sparse.hstack((K*RVF, K*RHF*math.cos(az), K*RHF*math.sin(az)))
                 elif component == 'T':
-                    thf = read(os.path.join(self.sacdir, '*%s*THF.sac' % station))
+                    thf = read(os.path.join(self.sacdir, '*_%s_*THF.sac' % station))
                     if len(thf) > 1:
                         raise Exception('Found more than one THF GF for %s' % station)
                     else:
@@ -2113,7 +2113,7 @@ def rotate(st, baz=None):
             loc = None
         st_temp = st.select(station=station.split('.')[0], location=loc).copy()  # [trace for trace in st if station in trace.stat.station]
         if len(st_temp) == 3:  # if len 3, put z down, rotate horizontals
-            #try:
+            try:
                 z = st_temp.select(component='Z').copy()
                 st_rotated = st_rotated+z.copy()
                 chans = [trace.stats.channel for trace in st_temp]
@@ -2143,8 +2143,8 @@ def rotate(st, baz=None):
                 st_h = st_temp.select(component='N').copy()+st_temp.select(component='E').copy()
                 st_h.rotate('NE->RT')
                 st_rotated = st_rotated+st_h.copy()
-            #except:
-                #print('error in rotating for '+station+' -skipping')
+            except:
+                print('error in rotating for '+station+' -skipping')
         elif len(st_temp) == 1:  # if len 1, put z down, continue
             z = st_temp.select(component='Z')
             st_rotated = st_rotated+z.copy()
