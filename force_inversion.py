@@ -315,12 +315,15 @@ class LSforce:
         self.W = None
 
         if weights is None:
+            # Don't weight at all
             self.weight_method = None
-        elif type(np.array(weights)) is np.array:
+        elif isinstance(weights, str):
+            # The user specified a weight method
+            self.weight_method = weights
+        else:
+            # The user specified a vector of station weights
             self.weight_method = 'Manual'
             self.weights = weights
-        else:
-            self.weight_method = weights
 
         if self.weight_method != 'Manual':
             if weights == 'prenoise' and weightpre is None:
