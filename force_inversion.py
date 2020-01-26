@@ -1352,8 +1352,8 @@ class LSforce:
                     raise Exception('highf_tr is not an obspy trace')
                 tvec2 = np.linspace(0, (len(highf_tr.data)-1)*1/highf_tr.stats.sampling_rate, num=len(highf_tr.data))
                 # Temporary fix, adjust for same zerotime
-                adjust = np.min(tvec)
-                tvec2 += adjust
+                if self.zeroTime:
+                    tvec2 -= self.zeroTime
                 tvec2 -= hfshift
                 ax4.plot(tvec2, highf_tr.data)
 
@@ -1394,8 +1394,8 @@ class LSforce:
                     raise Exception('highf_tr is not an obspy trace')
                 tvec2 = np.linspace(0, (len(highf_tr.data)-1)*1/highf_tr.stats.sampling_rate, num=len(highf_tr.data))
                 # Temporary fix, adjust for same zerotime
-                adjust = np.min(tvec)
-                tvec2 += adjust
+                if self.zeroTime:
+                    tvec2 -= self.zeroTime
                 tvec2 -= hfshift
                 ax4.plot(tvec2, highf_tr.data)
                 if hfshift != 0:
