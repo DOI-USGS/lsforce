@@ -7,17 +7,20 @@ import math
 import glob
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+from matplotlib import cm
 import scipy as sp
 import urllib.request, urllib.error, urllib.parse
 import random as rnd
 import pickle
 from sklearn import linear_model as lm
-
+import xarray as xr
+import warnings
 import os
 import stat
 import shutil
 import subprocess
 import copy
+import cartopy.crs as ccrs
 
 
 def unique_list(seq):  # make a list only contain unique values and keep their order
@@ -76,14 +79,13 @@ class LSforce:
         self.event_id = event_id
         if self.event_id is None:
             self.orphan = True
-            if source_lat is None or source_lon is None:
-                raise Exception('source_lat and source_lon must be defined if'
-                                ' no event_id is provided')
-            else:
-                self.lat = source_lat
-                self.lon = source_lon
         else:
             self.orphan = False
+        if source_lat is None or source_lon is None:
+            raise Exception('source_lat and source_lon not defined')
+        else:
+            self.lat = source_lat
+            self.lon = source_lon
 
         if mainfolder is None:
             self.mainfolder = os.getcwd()
@@ -149,7 +151,7 @@ class LSforce:
         #write T0 file
         with open(os.path.join(self.moddir, 'T0.txt'), 'w') as f:
             f.write(('%3.2f') % T0)
-        
+
         #write L file, if applicable
         if self.method in ['triangle']:
             with open(os.path.join(self.moddir, 'L.txt'), 'w') as f:
@@ -187,14 +189,14 @@ class LSforce:
             f.write('rm %s\n' % os.path.join(self.sacodir, '*.sac'))
             f.write('rm %s\n' % os.path.join(self.sacdir, '*.sac'))
             f.write('hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n' %
-                    (self.modelfile, os.path.join(self.moddir, 'dist'))) # change HS to change source depth
+                    (self.modelfile, 'dist'))
             f.write('hspec96 > hspec96.out\n')
             if self.method == 'triangle':
                 f.write('hpulse96 -d %s -V -D -t -l %d > Green\n' %
-                        (os.path.join(self.moddir, 'dist'), int(self.L/self.samplerate)))
+                        ('dist', int(self.L/self.samplerate)))
             else:
                 f.write('hpulse96 -d %s -V -OD -p > Green\n' %
-                        os.path.join(self.moddir, 'dist'))
+                        'dist')
             f.write('f96tosac Green\n')
             f.write('cp *.sac %s\n' % os.path.join(self.sacdir, '.'))
             f.write('mv *.sac %s\n' % os.path.join(self.sacodir, '.'))
@@ -377,7 +379,7 @@ class LSforce:
             raise Exception('domain not recognized. Must be time or freq')
 
         if self.method in ['tik', 'lasso']:
-            
+
             self.Fsamplerate = self.samplerate
 
             # initialize weighting matrices
@@ -797,9 +799,9 @@ class LSforce:
         scaler = Ghatnorm/zeroScaler  # 10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
         if self.imposeZero:  # tell model when there should be no forces
             #TODO get this to work for triangle method (need to change len methods)
-            len2 = int(np.floor((self.zeroTime*self.Fsamplerate)))
+            len2 = int(np.floor(((self.zeroTime+self.T0)*self.Fsamplerate)))
             if self.method == 'triangle':
-                len2 = int(np.floor(((self.zeroTime-self.L)*self.Fsamplerate)))
+                len2 = int(np.floor(((self.zeroTime-self.L)*self.Fsamplerate)))  # Potentially need to adjust for T0 here too?
             if self.method == 'tik':
                 len3 = int(zeroTaperlen*self.Fsamplerate)  # make it constant
                 #halflen3 = int(len3/2)
@@ -808,7 +810,7 @@ class LSforce:
                 vals2 = np.hstack((np.ones(len2-len3), temp))
             else: # No taper
                 vals2 = np.hstack((np.ones(len2), np.zeros(gl-len2)))
-                
+
             for i, val in enumerate(vals2):
                 first1 = np.zeros(3*gl)
                 second1 = first1.copy()
@@ -831,7 +833,7 @@ class LSforce:
                 zerotime = 0.
             else:
                 zerotime = self.zeroTime
-            startind = int((zerotime + self.maxduration)*self.Fsamplerate)
+            startind = int((zerotime + self.T0 + self.maxduration)*self.Fsamplerate)
             len2 = int(gl - startind)
             len3 = int(np.round(0.2*len2))  # 20% taper so zero imposition isn't sudden
             temp = np.hanning(2*len3)
@@ -1235,9 +1237,8 @@ class LSforce:
                 addmat = oneline
             else:
                 addmat = np.vstack((addmat, oneline*(i+1)))
-            temp = trace.stats.station+'.'+trace.stats.channel+'.'+trace.stats.location+'.'+trace.stats.network
-            staname = ('%s - %2.1f km') % (temp, trace.stats.rdist)
-            labels.append(staname)
+            label = f'{trace.stats.network}.{trace.stats.station} ({trace.stats.channel[-1]}) – {trace.stats.rdist:.1f} km'
+            labels.append(label)
             yticks1.append(-(i+1)*offset)
 
         ax = fig.add_axes([0.25, 0.05, 0.7, 0.9])
@@ -1257,7 +1258,7 @@ class LSforce:
 
     def plotinv(self, subplots=False, xlim=None, ylim=None, sameY=True,
                 highf_tr=None, hfylabel=None, hfshift=0., tvecshift=0.,
-                jackshowall=False):
+                jackshowall=False, infra_tr=None, infra_shift=0):
         """
         Plot inversion result
 
@@ -1280,6 +1281,9 @@ class LSforce:
 
         """
         tvec = self.tvec - tvecshift
+
+        annot_kwargs = dict(xy=(0.99, 0.25), xycoords='axes fraction',
+                            ha='right')
 
         # Find y limits
         if self.jackknife is None:
@@ -1319,13 +1323,22 @@ class LSforce:
                 ax2 = fig.add_subplot(412)  # ,sharex=ax1)
                 ax3 = fig.add_subplot(413)  # ,sharex=ax1)
                 ax4 = fig.add_subplot(414)
-            ax1.plot(tvec, self.Zforce, 'b')
-            ax1.set_ylabel('Up Force (N)')
-            ax2.plot(tvec, self.Nforce, 'r')
-            ax2.set_ylabel('North Force (N)')
-            ax3.plot(tvec, self.Eforce, 'g')
 
-            ax3.set_ylabel('East Force (N)')
+                if infra_tr is not None:
+                    plt.close(fig)
+                    fig = plt.figure(figsize=(14, 15))
+                    ax1 = fig.add_subplot(511)
+                    ax2 = fig.add_subplot(512)  # ,sharex=ax1)
+                    ax3 = fig.add_subplot(513)  # ,sharex=ax1)
+                    ax4 = fig.add_subplot(514)
+                    ax5 = fig.add_subplot(515)
+
+            ax1.plot(tvec, self.Zforce, 'b', linewidth=1)
+            ax1.set_ylabel('Up force (N)')
+            ax2.plot(tvec, self.Nforce, 'r', linewidth=1)
+            ax2.set_ylabel('North force (N)')
+            ax3.plot(tvec, self.Eforce, 'g', linewidth=1)
+            ax3.set_ylabel('East force (N)')
 
             x = np.concatenate((tvec, tvec[::-1]))
             if self.jackknife is not None:
@@ -1333,9 +1346,9 @@ class LSforce:
                     for Z, N, E in zip(self.jackknife['Zforce_all'],
                                        self.jackknife['Nforce_all'],
                                        self.jackknife['Eforce_all']):
-                        ax1.plot(self.tvec, Z, 'b', alpha=0.3)
-                        ax2.plot(self.tvec, N, 'r', alpha=0.3)
-                        ax3.plot(self.tvec, E, 'g', alpha=0.3)
+                        ax1.plot(self.tvec, Z, 'b', alpha=0.2, linewidth=1)
+                        ax2.plot(self.tvec, N, 'r', alpha=0.2, linewidth=1)
+                        ax3.plot(self.tvec, E, 'g', alpha=0.2, linewidth=1)
                 else:
                     y = np.concatenate((Zlower, Zupper[::-1]))
                     poly = plt.Polygon(list(zip(x, y)), facecolor='b',
@@ -1355,10 +1368,33 @@ class LSforce:
                     raise Exception('highf_tr is not an obspy trace')
                 tvec2 = np.linspace(0, (len(highf_tr.data)-1)*1/highf_tr.stats.sampling_rate, num=len(highf_tr.data))
                 # Temporary fix, adjust for same zerotime
-                adjust = np.min(tvec)
-                tvec2 += adjust
+                if self.zeroTime:
+                    tvec2 -= self.zeroTime
                 tvec2 -= hfshift
-                ax4.plot(tvec2, highf_tr.data)
+                ms2ums = 1e6
+                ax4.plot(tvec2, highf_tr.data * ms2ums, 'black')
+                ax4.set_ylabel('Velocity (μm/s)')
+
+            if infra_tr is not None:
+                if type(infra_tr) != Trace:
+                    raise Exception('highf_tr is not an obspy trace')
+                tvec2 = np.linspace(0, (len(infra_tr.data)-1)*1/infra_tr.stats.sampling_rate, num=len(infra_tr.data))
+                # Temporary fix, adjust for same zerotime
+                if self.zeroTime:
+                    tvec2 -= self.zeroTime
+                tvec2 -= infra_shift
+                ax5.plot(tvec2, infra_tr.data, 'black')
+                ax5.set_ylabel('Pressure (Pa)')
+
+                if infra_shift != 0:
+                    ax5.annotate(
+                        '%s (shifted -%1.0f s)' % (infra_tr.id, infra_shift), **annot_kwargs)
+                else:
+                    ax5.annotate('%s' % infra_tr.id, **annot_kwargs)
+
+                # Remove x-axis labels for plots above this one
+                for axis in [ax1, ax2, ax3, ax4]:
+                    plt.setp(axis.get_xticklabels(), visible=False)
 
             axes = fig.get_axes()
             if not xlim:
@@ -1381,9 +1417,9 @@ class LSforce:
                 ax4.set_ylabel(hfylabel)
 
             if hfshift != 0:
-                ax4.annotate('%s - shifted -%1.0f s' % (highf_tr.id, hfshift), (0.8, 0.1), xycoords='axes fraction')
+                ax4.annotate('%s (shifted -%1.0f s)' % (highf_tr.id, hfshift), **annot_kwargs)
             else:
-                ax4.annotate('%s' % highf_tr.id, (0.9, 0.1), xycoords='axes fraction')
+                ax4.annotate('%s' % highf_tr.id, **annot_kwargs)
 
         else:
             if highf_tr is None:
@@ -1397,14 +1433,14 @@ class LSforce:
                     raise Exception('highf_tr is not an obspy trace')
                 tvec2 = np.linspace(0, (len(highf_tr.data)-1)*1/highf_tr.stats.sampling_rate, num=len(highf_tr.data))
                 # Temporary fix, adjust for same zerotime
-                adjust = np.min(tvec)
-                tvec2 += adjust
+                if self.zeroTime:
+                    tvec2 -= self.zeroTime
                 tvec2 -= hfshift
                 ax4.plot(tvec2, highf_tr.data)
                 if hfshift != 0:
-                    ax4.annotate('%s - shifted -%1.0f s' % (highf_tr.id, hfshift), (0.8, 0.1), xycoords='axes fraction')
+                    ax4.annotate('%s - shifted -%1.0f s' % (highf_tr.id, hfshift), **annot_kwargs)
                 else:
-                    ax4.annotate('%s' % highf_tr.id, (0.9, 0.1), xycoords='axes fraction')
+                    ax4.annotate('%s' % highf_tr.id, **annot_kwargs)
 
             ax.plot(tvec, self.Zforce, 'b', label='Up')
             ax.plot(tvec, self.Nforce, 'r', label='North')
@@ -1443,7 +1479,10 @@ class LSforce:
             if self.maxduration is not None:
                 ax.axvline(self.maxduration, color='gray', linestyle='solid', lw=3)
 
-        plt.xlabel('Time (sec')
+        t0 = self.st[0].stats.starttime
+        if self.zeroTime:
+            t0 += self.zeroTime
+        plt.xlabel('Time (s) from {}'.format(t0.strftime('%Y-%m-%d %H:%M:%S')))
         plt.show()
         return fig
 
@@ -1589,43 +1628,275 @@ class LSforce:
 
         return fig
 
-    def trajectory(self, Mass):
-        """
-        """
-        self.Mass = Mass
-        startidx = np.where(self.tvec==0)[0][0]
-        dx = 1./self.Fsamplerate
-        Za = -self.Zforce.copy()
-        Ea = -self.Eforce.copy()
-        Na = -self.Nforce.copy()
-        Za[:startidx-1] = 0.
-        Ea[:startidx-1] = 0.
-        Na[:startidx-1] = 0.
-        self.Zvel = np.cumsum(Za/Mass)*dx
-        self.Evel = np.cumsum(Ea/Mass)*dx
-        self.Nvel = np.cumsum(Na/Mass)*dx
+    def _integrate_acceleration(self, Zforce, Eforce, Nforce, Mass, startidx,
+                                endidx, detrend=None):
 
-        self.Zdisp = np.cumsum(self.Zvel)*dx
-        self.Edisp = np.cumsum(self.Evel)*dx
-        self.Ndisp = np.cumsum(self.Nvel)*dx
-        
-        # Normalize to zero time
-        
+        traj_tvec = self.tvec[startidx:endidx + 1]
+
+        dx = 1. / self.Fsamplerate
+        Za = -Zforce.copy()[startidx:endidx+1] / Mass
+        Ea = -Eforce.copy()[startidx:endidx+1] / Mass
+        Na = -Nforce.copy()[startidx:endidx+1] / Mass
+        Zvel = np.cumsum(Za) * dx
+        Evel = np.cumsum(Ea) * dx
+        Nvel = np.cumsum(Na) * dx
+
+        # Detrend is either None (no detrending) or a time where velo should
+        # be fully tapered to zero
+        if detrend:
+            zeroidx = np.where(traj_tvec == detrend)[0][0]  # Index corresponding to time where velo should be zero
+            for comp in [Zvel, Evel, Nvel]:
+                trend = np.linspace(0, comp[zeroidx], len(traj_tvec[:zeroidx]))
+                comp[:zeroidx] -= trend
+                comp[zeroidx:] = np.zeros(len(comp[zeroidx:]))
+
+        Zdisp = np.cumsum(Zvel) * dx
+        Edisp = np.cumsum(Evel) * dx
+        Ndisp = np.cumsum(Nvel) * dx
+
+        return Za, Ea, Na, Zvel, Evel, Nvel, Zdisp, Edisp, Ndisp, traj_tvec
+
+    def _trajectory_automass(self, Zforce, Eforce, Nforce, Mass=None,
+                             target_length=None, duration=None, detrend=None):
+        """
+        Calls _integrate_acceleration().
+        """
+
+        # Check args
+        if Mass and target_length:
+            raise ValueError('Cannot specify both mass and target length!')
+        if not Mass and not target_length:
+            raise ValueError('You must specify either mass or target length!')
+
+        startidx = np.where(self.tvec == 0)[0][0]  # Always start at t = 0
+        # Clip time series to `duration` [s] if desired
+        if duration:
+            endidx = np.where(self.tvec == duration)[0][0]
+        else:
+            endidx = len(self.tvec)
+
+        # Either use the mass that was provided, or calculate one
+        if target_length:
+
+            MASS_INC = int(1e7)  # [kg] Smaller increment is slower but more precise
+
+            # Initialize with end-members
+            Mass = 0  # [kg]
+            current_length = np.inf  # [km]
+
+            while current_length > target_length:
+
+                Mass += MASS_INC  # Increase the mass
+
+                # Calculate the runout length [km] based on this mass
+                *_, Edisp, Ndisp, _ = self._integrate_acceleration(Zforce, Eforce, Nforce, Mass, startidx, endidx, detrend)
+                current_length = _calculate_Hdist(Edisp, Ndisp)[-1] / 1000  # [km]
+        else:
+            Mass = int(Mass)
+
+        # Calculate trajectory based on mass assigned above
+        Za, Ea, Na, Zvel, Evel, Nvel, Zdisp, Edisp, Ndisp, traj_tvec = self._integrate_acceleration(Zforce, Eforce, Nforce, Mass, startidx, endidx, detrend)
+
+        return Za, Ea, Na, Zvel, Evel, Nvel, Zdisp, Edisp, Ndisp, Mass, traj_tvec
+
+    def trajectory(self, Mass=None, target_length=None, duration=None,
+                   elevation_profile=False, plot_jackknife=False, image=None,
+                   dem=None, reference_point=None, detrend_velocity=None):
+        """
+        Integrate force time series to velocity and then displacement. Either
+        provide a mass or a target horizontal runout length. If a length is
+        provided, the code will find the mass that achieves this length. Calls
+        _trajectory_automass().
+
+        Args:
+            Mass: Landslide mass [kg]
+            target_length: Horizontal runout length from groundtruth [m]
+            duration: Clip time series to go from 0-duration [s]
+            elevation_profile: If True, plot vertical displacement versus
+                               horizontal runout distance (H vs. L) instead of
+                               a map view
+            plot_jackknife: Toggle plotting jackknifed displacements as well
+            image: An xarray.DataArray with coordinates defined in km with the
+                   origin (0, 0) being the start location of the trajectory
+            dem: A UTM-projected DEM GeoTIFF to slice thru for elevation
+                 profile plot
+            reference_point (int/float or list): Plot a dot on trajectory, and
+                                                 line on colorbar, at this
+                                                 specified time(s) for
+                                                 reference (default: None, for
+                                                 no markings)
+            detrend_velocity: If provided, force velocity to linearly go to
+                              zero at this time [s]. If None, don't detrend
+
+        Returns:
+            The output figure
+        """
+
+        # Convert reference points to numpy array
+        reference_points = np.atleast_1d(reference_point)
+
+        # For the full inversion (all channels) result
+        self.Za, self.Ea, self.Na, self.Zvel, self.Evel, self.Nvel, self.Zdisp, self.Edisp, self.Ndisp, self.Mass, self.traj_tvec = self._trajectory_automass(self.Zforce,
+                                                                                                                                                              self.Eforce,
+                                                                                                                                                              self.Nforce,
+                                                                                                                                                              Mass=Mass,
+                                                                                                                                                              target_length=target_length,
+                                                                                                                                                              duration=duration,
+                                                                                                                                                              detrend=detrend_velocity)
+        self.Hdist = _calculate_Hdist(self.Edisp, self.Ndisp)
+
         fig, ax = plt.subplots()
-        ax.scatter(self.Edisp/1000., self.Ndisp/1000., c=self.tvec)
-        ax.set_xlabel('East Distance (km)')
-        ax.set_ylabel('North Distance (km)')
+
+        # Converting to km below
+        if elevation_profile:
+            x = self.Hdist / 1000
+            y = self.Zdisp / 1000
+        else:
+            x = self.Edisp / 1000
+            y = self.Ndisp / 1000
+        sc = ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', zorder=100)
+
+        if elevation_profile:
+            ax.set_xlabel('Horizontal distance (km)')
+            ax.set_ylabel('Vertical distance (km)')
+        else:
+            ax.set_xlabel('East distance (km)')
+            ax.set_ylabel('North distance (km)')
+
+        t0 = self.st[0].stats.starttime
+        if self.zeroTime:
+            t0 += self.zeroTime
+        cbar = plt.colorbar(sc, label='Time (s) from {}'.format(t0.strftime('%Y-%m-%d %H:%M:%S')))
+
+        # Plot reference points, if any
+        if np.any(reference_points):
+            cmap = cm.get_cmap('Greys_r', reference_points.size)
+            for i, time in enumerate(reference_points):
+                try:
+                    ref_pt_ind = np.where(self.traj_tvec == time)[0][0]
+                except IndexError:
+                    raise  # No point corresponding to requested reference time
+                ax.scatter(x[ref_pt_ind], y[ref_pt_ind], color=cmap(i),
+                           zorder=150)
+                cbar.ax.plot([self.traj_tvec.min(), self.traj_tvec.max()],
+                             [time, time], color=cmap(i), linewidth=2)
+
+        title = f'mass = {self.Mass:,} kg\nrunout length = {self.Hdist[-1]/1000:.2f} km'
+        if target_length:
+            title += f'\n(target length = {target_length:g} km)'
+        ax.set_title(title)
+
+        # Plot jackknife trajectories as well if desired
+        if plot_jackknife:
+            self.jackknife['Zdisp_all'] = []
+            self.jackknife['Edisp_all'] = []
+            self.jackknife['Ndisp_all'] = []
+            self.jackknife['Hdist_all'] = []
+            for i in range(self.jackknife['num_iter']):
+                *_, Zdisp_i, Edisp_i, Ndisp_i, _, _ = self._trajectory_automass(self.jackknife['Zforce_all'][i],
+                                                                                self.jackknife['Eforce_all'][i],
+                                                                                self.jackknife['Nforce_all'][i],
+                                                                                Mass=Mass,
+                                                                                target_length=target_length,
+                                                                                duration=duration,
+                                                                                detrend=detrend_velocity)
+
+                # Store jackknifed trajectories
+                self.jackknife['Zdisp_all'].append(Zdisp_i)
+                self.jackknife['Edisp_all'].append(Edisp_i)
+                self.jackknife['Ndisp_all'].append(Ndisp_i)
+
+                # Converting to km below
+                if elevation_profile:
+                    Hdist_i = _calculate_Hdist(Edisp_i, Ndisp_i)
+                    self.jackknife['Hdist_all'].append(Hdist_i)  # Store
+                    x = Hdist_i / 1000
+                    y = Zdisp_i / 1000
+                else:
+                    x = Edisp_i / 1000
+                    y = Ndisp_i / 1000
+                ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', alpha=0.02)
+
         ax.axis('equal')
+
+        if (image is not None) and (not elevation_profile):
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+            image.plot.imshow(ax=ax, cmap='Greys_r', add_colorbar=False,
+                              add_labels=False, zorder=-10)
+            ax.axis('equal')
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
+
+        if (dem is not None) and elevation_profile:
+            distance, drop = self._slice_dem(dem)
+            ax.plot(distance / 1000, drop / 1000, color='black', zorder=100)
+
+        plt.tight_layout()
         plt.show()
 
-#        if self.jackknife is not None:
-#            Zupper = self.jackknife['ZforceU']
-#            Nupper = self.jackknife['NforceU']
-#            Eupper = self.jackknife['EforceU']
-#            Zlower = self.jackknife['ZforceL']
-#            Nlower = self.jackknife['NforceL']
-#            Elower = self.jackknife['EforceL']
-        
+        return fig
+
+    def _slice_dem(self, dem_file, interp_spacing=0.1):
+        """
+        Slice through an input DEM along the trajectory path.
+
+        Args:
+            dem_file: DEM GeoTIFF to slice (must be UTM-projected!)
+            interp_spacing: [m] Density of interpolation points
+
+        Returns:
+            horizontal_distance: Distance along path given by EDisp, NDisp
+            elevation: Elevation along horizontal_distance
+        """
+
+        dem = xr.open_rasterio(dem_file).squeeze()
+        # Set no data values to NaN
+        dem = dem.where(dem != dem.nodatavals)
+
+        # Define interpolation points in UTM space
+        crs = ccrs.epsg(int(dem.crs.split(':')[-1]))
+        if crs.proj4_params['proj'] != 'utm':
+            raise ValueError('Input DEM must have a UTM projection!')
+        loc_utm = crs.transform_point(self.lon, self.lat, ccrs.Geodetic())
+        points = [[x + loc_utm[0],
+                   y + loc_utm[1]] for x, y in zip(self.Edisp, self.Ndisp)]
+
+        # Densify the coarse points
+        path_x, path_y = [], []
+        x_prev, y_prev = points[0]
+        for pt in points[1:]:
+            x, y = pt
+
+            seg_length = np.linalg.norm([y - y_prev, x - x_prev])
+            # Choose a number of pts that gives approximately interp_spacing
+            n = int(seg_length / interp_spacing)
+
+            # Append densified path
+            path_x = np.hstack([path_x, np.linspace(x_prev, x, n)])
+            path_y = np.hstack([path_y, np.linspace(y_prev, y, n)])
+
+            x_prev, y_prev = x, y
+
+        # Actually interpolate!
+        profile = dem.interp(x=xr.DataArray(path_x), y=xr.DataArray(path_y),
+                             method='linear')
+
+        # Find horizontal distance vector (works for curvy paths!)
+        horiz_dist = np.hstack([0, np.cumsum(np.linalg.norm([np.diff(profile.x),
+                                                             np.diff(profile.y)],
+                                                            axis=0))])
+
+        # Check that interp_spacing wasn't too coarse by matching path lengths
+        if not np.isclose(horiz_dist[-1], self.Hdist[-1]):
+            raise ValueError('interp_spacing was too coarse. Try decreasing.')
+
+        warnings.warn('Assuming DEM vertical unit is meters!')
+
+        profile.data -= profile.data[0]  # Start at 0 and go negative
+
+        return horiz_dist, profile.data
+
     def saverun(self, filepath=None, timestamp=False, figs2save=None,
                 figs2save_names=None, light=True, filetype='png'):
         """
@@ -1670,6 +1941,27 @@ class LSforce:
                 fig.savefig(os.path.join(filepath, '%s_%s.%s' %
                                          (filename, figs2save_names[i], filetype)),
                             bbox_inches='tight')
+
+
+def _calculate_Hdist(Edisp, Ndisp):
+    """
+    Calculate horizontal distance vector (Hdist) from east and north
+    displacement vectors. This is the horizontal distance "along the avalanche
+    path" as a function of time. Hdist[-1] is L, the horizontal runout distance
+    (which is shorter than the 3-D runout distance).
+
+    Args:
+        Edisp: Eastward displacement vector as a function of time [m]
+        Ndisp: Northward displacement vector as a function of time [m]
+
+    Returns:
+        Horizontal distance as a function of time [m]
+    """
+
+    dx = np.diff(Edisp)
+    dy = np.diff(Ndisp)
+
+    return np.hstack([0, np.cumsum(np.linalg.norm([dx, dy], axis=0))])
 
 
 def findalpha(Ghat, dhat, I, L1=0., L2=0., invmethod='lsq', Tikhratio=[1., 0., 0.], rough=False):
@@ -1748,7 +2040,7 @@ def findalpha(Ghat, dhat, I, L1=0., L2=0., invmethod='lsq', Tikhratio=[1., 0., 0
                 model, residuals, rank, s = sp.linalg.lstsq(A, x)  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
             elif invmethod == 'nnls':
                 model, residuals = sp.optimize.nnls(A, x)
-    
+
             temp1 = np.dot(Ghat, model.T)-dhat  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
             fit1.append(sp.linalg.norm(temp1))
             size1.append(sp.linalg.norm(Tikhratio[0]*model) + sp.linalg.norm(Tikhratio[1]*np.dot(L1part, model))
@@ -1987,13 +2279,13 @@ def makeshiftmat(c, shiftby, size1):
     Build matrix that can be used for shifting of overlapping triangles for
     triangle method, signal goes across rows and each shift is a new column
     (opposite orientation to makeconvmat)
-    
+
     Args:
         c (array): vector of data (usually greens function)
         shiftby (int): number of samples to shift greens function in each row
-        size1 (tup): (nrows, ncols) of desired result. Will pad c if nrows is 
+        size1 (tup): (nrows, ncols) of desired result. Will pad c if nrows is
             greater than len(c). Will shift c forward by shiftby ncols times
-    
+
     Returns:
         Matrix of shifted c of size size1
 
