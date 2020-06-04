@@ -1,12 +1,10 @@
-# Dependencies
+lsforce
+=======
 
-seisk and all of its dependencies (github.com/kallstadt-usgs/seisk)
+🚨 _lsforce_ is currently under rapid development. Use at your own risk! 🚨
 
-and also do the following:
-
-conda install -c conda-forge basemap-data-hires
-
-# Environment (draft)
+Environment (draft)
+-------------------
 
 ```
 conda create -n lsforce -c conda-forge black ipython obspy
