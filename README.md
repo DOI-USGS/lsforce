@@ -9,5 +9,5 @@ conda install -c conda-forge basemap-data-hires
 # Environment (draft)
 
 ```
-conda create -n lsforce -c conda-forge black obspy
+conda create -n lsforce -c conda-forge black ipython obspy
 ```
