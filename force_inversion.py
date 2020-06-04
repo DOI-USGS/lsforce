@@ -743,7 +743,8 @@ class LSforce:
             self.Lasso(**kwargs)
 
     def Tikinvert(self, alphaset=None, alpha_method='Lcurve',
-                  zeroScaler=15., Tikhratio=[1.0, 0., 0.]):
+                  zeroScaler=15., zeroTaperlen=20., 
+                  Tikhratio=[1.0, 0., 0.]):
         """
         Full waveform inversion using Tikhonov regularization
 
@@ -756,6 +757,8 @@ class LSforce:
             zeroScaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
                 The lower the number, teh stronger the constraint, but the higher the risk of high freq.
                 oscillations due to a sudden release of the constraint
+            zeroTaperlen (float): length of taper for zeroScaler, in seconds.
+                shorter tapers can result in sharp artifacts, longer is better
             Tikhratio (array): Proportion each regularization method contributes, where values correspond
                 to [zeroth, first order, second order]. Must add to 1. Only used if method = 'tikh'
         """
@@ -800,7 +803,7 @@ class LSforce:
             if self.method == 'triangle':
                 len2 = int(np.floor(((self.zeroTime-self.L)*self.Fsamplerate)))  # Potentially need to adjust for T0 here too?
             if self.method == 'tik':
-                len3 = int(np.round(0.2*len2))  # 20% taper overlapping into main event by x seconds
+                len3 = int(zeroTaperlen*self.Fsamplerate)  # make it constant
                 #halflen3 = int(len3/2)
                 temp = np.hanning(2*len3)
                 temp = temp[len3:]
