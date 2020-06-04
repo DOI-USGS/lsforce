@@ -743,7 +743,7 @@ class LSforce:
             self.Lasso(**kwargs)
 
     def Tikinvert(self, alphaset=None, alpha_method='Lcurve',
-                  zeroScaler=15., zeroTaperlen=20., 
+                  zeroScaler=15., zeroTaperlen=20.,
                   Tikhratio=[1.0, 0., 0.]):
         """
         Full waveform inversion using Tikhonov regularization
