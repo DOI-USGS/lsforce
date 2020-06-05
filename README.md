@@ -6,9 +6,31 @@ lsforce
 Installation
 ------------
 
-1. Install [Computer Programs in Seismology](http://www.eas.slu.edu/eqc/eqccps.html),
-   and ensure it's on your `PATH`
+The following has only been tested on macOS Mojave.
 
+1. Install
+   [Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html), and
+   ensure it's on your `PATH`:
+   
+   * Install [GCC](https://gcc.gnu.org/) with e.g. [Homebrew](https://brew.sh/):
+     ```
+     brew install gcc
+     ```
+   * Complete the
+     [CPS license form](http://www.eas.slu.edu/eqc/eqc_cps/CPS/cpslisc.html), download
+     the resulting archive, and unzip
+   * Move the directory `PROGRAMS.330/` to where you'd like to install, then:
+     ```
+     cd PROGRAMS.330
+     ./Setup OSX40
+     ./C
+     ```
+   * Add the executables to your `PATH` by adding the following line to your e.g.
+     `~/.bash_profile`:
+     ```
+     export PATH="$PATH:/path/to/PROGRAMS.330/bin"
+     ```
+     
 2. Create a [conda](https://docs.conda.io/en/latest/) environment:
    ```
    conda create -n lsforce -c conda-forge black cartopy ipython obspy scikit-learn xarray
