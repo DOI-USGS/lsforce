@@ -51,8 +51,8 @@ class LSforce:
         """
         Args:
             st (Stream): obspy stream with event data , source to station
-                distance and azimuth must be attached in stats as tr.stats.rdist,
-                tr.stats.baz, tr.stats.az. Should be corrected for station
+                distance and azimuth must be attached in stats as tr.stats.rdist [km],
+                tr.stats.back_azimuth, tr.stats.azimuth. Should be corrected for station
                 response but otherwise unfiltered
             samplerate (float): Number of samples per second (Hz) to use in inversion.
                 All data will be resampled to this rate and Greens functions
