@@ -1047,7 +1047,7 @@ class LSforce:
         )  # Combo of all regularization things (if any are zero they won't matter)
         x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
 
-        if self.domain is 'freq':
+        if self.domain == 'freq':
             model, residuals, rank, s = sp.linalg.lstsq(
                 A, x
             )  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
@@ -1145,7 +1145,7 @@ class LSforce:
                 )  # Combo of all regularization things (if any are zero they won't matter)
                 xj = np.squeeze(np.asarray(np.dot(Ghat1.H, dhat1)))
 
-                if self.domain is 'freq':
+                if self.domain == 'freq':
                     model, residuals, rank, s = sp.linalg.lstsq(
                         Aj, xj
                     )  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
@@ -1404,7 +1404,7 @@ class LSforce:
         model = lasso.coef_
         div = int(len(model) / 3)
 
-        if domain is 'freq':
+        if domain == 'freq':
             Zforce = -np.real(
                 np.fft.ifft(model[0:div]) / 10 ** 5
             )  # convert from dynes to newtons, flip so up is positive
@@ -2899,7 +2899,7 @@ def rotate(st, baz=None):
     for station in staloc:
         # get all components with that station name
         loc = station.split('.')[1]
-        if loc is '':
+        if loc == '':
             loc = None
         st_temp = st.select(
             station=station.split('.')[0], location=loc
@@ -2913,7 +2913,7 @@ def rotate(st, baz=None):
                 if 'H1' in str(chans) and 'H2' in str(chans):
                     try:
                         for k, trace in enumerate(st_temp):
-                            if trace.stats.location is '':
+                            if trace.stats.location == '':
                                 loc = '--'
                             else:
                                 loc = trace.stats.location
