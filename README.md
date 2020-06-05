@@ -15,3 +15,10 @@ Create conda environment:
 ```
 conda create -n lsforce -c conda-forge black ipython obspy
 ```
+
+Install [_waveform_collection_](https://github.com/uafgeotools/waveform_collection) into
+this environment:
+```
+conda activate lsforce
+pip install git+https://github.com/uafgeotools/waveform_collection.git
+```
