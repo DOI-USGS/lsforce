@@ -55,3 +55,8 @@ The following has only been tested on macOS Mojave.
    cd meow
    curl -O http://www.eas.slu.edu/eqc/eqc_cps/TUTORIAL/SPHERICITY/AK135/tak135sph.mod
    ```
+
+Usage
+-----
+
+A usage example is given in `example.py`.
