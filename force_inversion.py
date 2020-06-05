@@ -338,7 +338,7 @@ class LSforce:
                 event (length by weightpre) or 'distance' to weight by 1/distance
             weightpre (float): length of pre-noise window in seconds (if not None, noise will be used to
                   determine weights)
-            period_range (list): Range of periods to consider in inversion, in seconds
+            period_range (list or tuple): Range of periods to consider in inversion, in seconds
             filter_order (int): Order of filter applied over period_range
             zeroPhase (bool): If True, zeroPhase filtering will be used
 
