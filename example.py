@@ -47,20 +47,41 @@ if not os.path.exists(data_filename):
         'BRLK', 'Q19K', 'LTUW', 'BRSE', 'WFLS', 'P18K', 'BING', 'CONG', 'WFLW', 'MPEN',
         'BULG', 'SLK',  'N18K', 'JOES', 'SVW2', 'JUDD', 'O22K', 'FIRE',
     )
-    st = gather_waveforms(source='IRIS', network=','.join(NETWORKS),
-                          station=','.join(STATIONS), location='*', channel='BHZ,HHZ',
-                          starttime=STARTTIME, endtime=ENDTIME)
+    st = gather_waveforms(
+        source='IRIS',
+        network=','.join(NETWORKS),
+        station=','.join(STATIONS),
+        location='*',
+        channel='BHZ,HHZ',
+        starttime=STARTTIME,
+        endtime=ENDTIME,
+    )
 
     # Gather horizontals (only a few)
-    st += gather_waveforms(source='IRIS', network='TA', station='N19K', location='*',
-                           channel='BHE,BHN', starttime=STARTTIME, endtime=ENDTIME)
-    st += gather_waveforms(source='IRIS', network='ZE', station='WFLW', location='*',
-                           channel='HHE,HHN', starttime=STARTTIME, endtime=ENDTIME)
+    st += gather_waveforms(
+        source='IRIS',
+        network='TA',
+        station='N19K',
+        location='*',
+        channel='BHE,BHN',
+        starttime=STARTTIME,
+        endtime=ENDTIME,
+    )
+    st += gather_waveforms(
+        source='IRIS',
+        network='ZE',
+        station='WFLW',
+        location='*',
+        channel='HHE,HHN',
+        starttime=STARTTIME,
+        endtime=ENDTIME,
+    )
 
     # Assign additional info to Traces
     for tr in st:
-        dist, az, baz = gps2dist_azimuth(LS_LAT, LS_LON, tr.stats.latitude,
-                                         tr.stats.longitude)
+        dist, az, baz = gps2dist_azimuth(
+            LS_LAT, LS_LON, tr.stats.latitude, tr.stats.longitude
+        )
         tr.stats.rdist = dist / 1000  # [km]
         tr.stats.azimuth = az  # [deg]
         tr.stats.back_azimuth = baz  # [deg]
@@ -89,11 +110,25 @@ RAYLEIGH_VELO = 0.9  # [km/s] Surface-wave group velocity @ 1 Hz
 INFRA_VELO = 0.337   # [km/s] Reasonable given air temp of 50 degrees F
 
 # Gather seismic
-st_hf = gather_waveforms(source='IRIS', network='AV', station='ILSW', location='--',
-                         channel='BHZ', starttime=STARTTIME, endtime=ENDTIME)
+st_hf = gather_waveforms(
+    source='IRIS',
+    network='AV',
+    station='ILSW',
+    location='--',
+    channel='BHZ',
+    starttime=STARTTIME,
+    endtime=ENDTIME,
+)
 # Gather infrasound
-st_infra = gather_waveforms(source='IRIS', network='TA', station='O20K', location='*',
-                            channel='BDF', starttime=STARTTIME, endtime=ENDTIME)
+st_infra = gather_waveforms(
+    source='IRIS',
+    network='TA',
+    station='O20K',
+    location='*',
+    channel='BDF',
+    starttime=STARTTIME,
+    endtime=ENDTIME,
+)
 
 # Combined processing
 (st_hf + st_infra).remove_response()
@@ -115,8 +150,15 @@ infra_shift = st_infra[0].stats.rdist / INFRA_VELO
 
 #%% SETUP
 
-force = LSforce(st=st, samplerate=1, nickname=RUN_NAME, event_id=EVENT_ID,
-                mainfolder=MAIN_FOLDER, source_lat=LS_LAT, source_lon=LS_LON)
+force = LSforce(
+    st=st,
+    samplerate=1,
+    nickname=RUN_NAME,
+    event_id=EVENT_ID,
+    mainfolder=MAIN_FOLDER,
+    source_lat=LS_LAT,
+    source_lon=LS_LON,
+)
 
 if CALCULATE_GF:
     force.compute_greens(modelfile=MODEL_FILE, gfduration=200, T0=-10)
@@ -127,8 +169,17 @@ force.setup(period_range=PERIOD_RANGE, zeroPhase=True)
 
 #%% INVERT
 
-force.invert(zeroTime=119, imposeZero=True, addtoZero=True, jackknife=True, num_iter=20,
-             frac_delete=0.3, alphaset=4.8e-20, zeroScaler=2, Tikhratio=[0.4, 0.0, 0.6])
+force.invert(
+    zeroTime=119,
+    imposeZero=True,
+    addtoZero=True,
+    jackknife=True,
+    num_iter=20,
+    frac_delete=0.3,
+    alphaset=4.8e-20,
+    zeroScaler=2,
+    Tikhratio=[0.4, 0.0, 0.6],
+)
 
 #%% PLOT
 
@@ -137,12 +188,28 @@ L = 5.8  # [km] Estimate of horizontal COM runout length
 
 # Plot inversion waveform fits and results
 force.plotdatafit()
-force.plotinv(highf_tr=st_hf[0], hfshift=hf_shift, infra_tr=st_infra[0],
-              infra_shift=infra_shift, jackshowall=True, xlim=XLIM, subplots=True)
+force.plotinv(
+    highf_tr=st_hf[0],
+    hfshift=hf_shift,
+    infra_tr=st_infra[0],
+    infra_shift=infra_shift,
+    jackshowall=True,
+    xlim=XLIM,
+    subplots=True,
+)
 force.plotangmag(xlim=XLIM)
 
 # Calculate/plot trajectories
-force.trajectory(target_length=L, plot_jackknife=True, duration=XLIM[1],
-                 detrend_velocity=XLIM[1])
-force.trajectory(target_length=L, plot_jackknife=True, duration=XLIM[1],
-                 detrend_velocity=XLIM[1], elevation_profile=True)
+force.trajectory(
+    target_length=L,
+    plot_jackknife=True,
+    duration=XLIM[1],
+    detrend_velocity=XLIM[1]
+)
+force.trajectory(
+    target_length=L,
+    plot_jackknife=True,
+    duration=XLIM[1],
+    detrend_velocity=XLIM[1],
+    elevation_profile=True,
+)
