@@ -13,7 +13,7 @@ curl -O http://www.eas.slu.edu/eqc/eqc_cps/TUTORIAL/SPHERICITY/AK135/tak135sph.m
 
 Create conda environment:
 ```
-conda create -n lsforce -c conda-forge black ipython obspy
+conda create -n lsforce -c conda-forge black cartopy ipython obspy scikit-learn xarray
 ```
 
 Install [_waveform_collection_](https://github.com/uafgeotools/waveform_collection) into
