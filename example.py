@@ -184,7 +184,7 @@ force.setup(period_range=PERIOD_RANGE, zerophase=True)
 
 force.invert(
     zero_time=119,
-    imposeZero=True,
+    impose_zero=True,
     addtoZero=True,
     jackknife=True,
     num_iter=20,
