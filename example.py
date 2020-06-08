@@ -37,8 +37,9 @@ data_filename = os.path.join(main_folder, f'{RUN_NAME}_data.pkl')
 if not os.path.exists(data_filename):
 
     client = Client('IRIS')
-    waveform_kwargs = dict(location='*', starttime=STARTTIME, endtime=ENDTIME,
-                           attach_response=True)
+    waveform_kwargs = dict(
+        location='*', starttime=STARTTIME, endtime=ENDTIME, attach_response=True
+    )
 
     # Gather vertical components (most of the waveforms!)
     NETWORKS = (
@@ -58,21 +59,19 @@ if not os.path.exists(data_filename):
 
     # Gather horizontals (only a few)
     st += client.get_waveforms(
-        network='TA',
-        station='N19K',
-        channel='BHE,BHN',
-        **waveform_kwargs,
+        network='TA', station='N19K', channel='BHE,BHN', **waveform_kwargs
     )
     st += client.get_waveforms(
-        network='ZE',
-        station='WFLW',
-        channel='HHE,HHN',
-        **waveform_kwargs,
+        network='ZE', station='WFLW', channel='HHE,HHN', **waveform_kwargs
     )
 
     # Grab coordinates
-    inv = client.get_stations(network=','.join(NETWORKS), starttime=STARTTIME,
-                              endtime=ENDTIME, level='channel')
+    inv = client.get_stations(
+        network=','.join(NETWORKS),
+        starttime=STARTTIME,
+        endtime=ENDTIME,
+        level='channel'
+    )
 
     # Assign additional info to Traces
     for tr in st:
