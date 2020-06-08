@@ -1,4 +1,4 @@
-from force_inversion import LSforce
+from lsforce import LSforce
 from waveform_collection import gather_waveforms
 from obspy import read, UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
