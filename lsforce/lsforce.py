@@ -717,10 +717,10 @@ class LSForce:
                 start time of seismic data. Useful for making figures showing selected start time
                 and also for imposeZero option
             impose_zero (bool): Will add weighting matrix to suggest forces tend towards zero prior
-                to zeroTime (zeroTime must be defined)
+                to zero_time (zero_time must be defined)
             addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
                 to zero.
-            maxduration (float): Maximum duration allowed for the event, starting at zeroTime if defined,
+            maxduration (float): Maximum duration allowed for the event, starting at zero_time if defined,
                 otherwise starting from beginning of seismic data. Points after this will tend towards
                 zero. This helps tamp down artifacts due to edge effects.
             jackknife
@@ -734,7 +734,7 @@ class LSForce:
             Zforce (array): vertical force time series extracted from model
             Nforce (array): same as above for north force
             Eforce (array): same as above for east force
-            tvec (array): Time vector, referenced using zeroTime (if specified) and corrected for T0
+            tvec (array): Time vector, referenced using zero_time (if specified) and corrected for T0
                 time shift
             VR (float): Variance reduction (%), rule of thumb, this should be ~50%-80%, if 100%,
                 solution is fitting data exactly and results are suspect. If ~5%, model may be wrong or
@@ -753,7 +753,7 @@ class LSForce:
         # Save input choices
         self.regr_param = kwargs  # regression parameters specific to method
         self.addtoZero = addtoZero
-        self.zeroTime = zero_time
+        self.zero_time = zero_time
         self.imposeZero = impose_zero
         self.maxduration = maxduration
 
@@ -854,10 +854,10 @@ class LSForce:
         scaler = Ghatnorm / zeroScaler
         if self.imposeZero:  # tell model when there should be no forces
             # TODO get this to work for triangle method (need to change len methods)
-            len2 = int(np.floor(((self.zeroTime + self.T0) * self.Fsamplerate)))
+            len2 = int(np.floor(((self.zero_time + self.T0) * self.Fsamplerate)))
             if self.method == 'triangle':
                 len2 = int(
-                    np.floor(((self.zeroTime - self.L) * self.Fsamplerate))
+                    np.floor(((self.zero_time - self.L) * self.Fsamplerate))
                 )  # Potentially need to adjust for T0 here too?
             if self.method == 'tik':
                 len3 = int(zeroTaperlen * self.Fsamplerate)  # make it constant
@@ -885,10 +885,10 @@ class LSForce:
             A2 = None
 
         if self.maxduration is not None:
-            if self.zeroTime is None:
+            if self.zero_time is None:
                 zerotime = 0.0
             else:
-                zerotime = self.zeroTime
+                zerotime = self.zero_time
             startind = int((zerotime + self.T0 + self.maxduration) * self.Fsamplerate)
             len2 = int(gl - startind)
             len3 = int(
@@ -951,7 +951,7 @@ class LSForce:
                     Ghat,
                     dhat,
                     I,
-                    self.zeroTime,
+                    self.zero_time,
                     self.samplerate,
                     self.numsta,
                     dl,
@@ -1011,8 +1011,8 @@ class LSForce:
             np.arange(0, len(self.Zforce) * 1 / self.Fsamplerate, 1 / self.Fsamplerate)
             - self.T0
         )
-        if self.zeroTime is not None:
-            tvec -= self.zeroTime
+        if self.zero_time is not None:
+            tvec -= self.zero_time
         if (
             self.method == 'triangle'
         ):  # Shift so that peak of triangle function lines up with time of force interval
@@ -1021,8 +1021,8 @@ class LSForce:
         self.dtvec = np.arange(
             0, self.datalength / self.samplerate, 1 / self.samplerate
         )
-        if self.zeroTime is not None:
-            self.dtvec -= self.zeroTime
+        if self.zero_time is not None:
+            self.dtvec -= self.zero_time
         # Use constant alpha parameter (found above, if not previously set) for jackknife iterations
         stasets = []
         if self.jackknife is not None:
@@ -1568,8 +1568,8 @@ class LSForce:
                     num=len(highf_tr.data),
                 )
                 # Temporary fix, adjust for same zerotime
-                if self.zeroTime:
-                    tvec2 -= self.zeroTime
+                if self.zero_time:
+                    tvec2 -= self.zero_time
                 tvec2 -= hfshift
                 ms2ums = 1e6
                 ax4.plot(tvec2, highf_tr.data * ms2ums, 'black')
@@ -1584,8 +1584,8 @@ class LSForce:
                     num=len(infra_tr.data),
                 )
                 # Temporary fix, adjust for same zerotime
-                if self.zeroTime:
-                    tvec2 -= self.zeroTime
+                if self.zero_time:
+                    tvec2 -= self.zero_time
                 tvec2 -= infra_shift
                 ax5.plot(tvec2, infra_tr.data, 'black')
                 ax5.set_ylabel('Pressure (Pa)')
@@ -1646,8 +1646,8 @@ class LSForce:
                     num=len(highf_tr.data),
                 )
                 # Temporary fix, adjust for same zerotime
-                if self.zeroTime:
-                    tvec2 -= self.zeroTime
+                if self.zero_time:
+                    tvec2 -= self.zero_time
                 tvec2 -= hfshift
                 ax4.plot(tvec2, highf_tr.data)
                 if hfshift != 0:
@@ -1698,8 +1698,8 @@ class LSForce:
                 ax.axvline(self.maxduration, color='gray', linestyle='solid', lw=3)
 
         t0 = self.st[0].stats.starttime
-        if self.zeroTime:
-            t0 += self.zeroTime
+        if self.zero_time:
+            t0 += self.zero_time
         plt.xlabel('Time (s) from {}'.format(t0.strftime('%Y-%m-%d %H:%M:%S')))
         plt.show()
         return fig
@@ -2057,8 +2057,8 @@ class LSForce:
             ax.set_ylabel('North distance (km)')
 
         t0 = self.st[0].stats.starttime
-        if self.zeroTime:
-            t0 += self.zeroTime
+        if self.zero_time:
+            t0 += self.zero_time
         cbar = plt.colorbar(
             sc, label='Time (s) from {}'.format(t0.strftime('%Y-%m-%d %H:%M:%S'))
         )
