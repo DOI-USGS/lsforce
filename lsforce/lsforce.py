@@ -95,7 +95,7 @@ class LSForce:
                 'frequency domain not implemented'
             )
 
-    def compute_greens(self, modelfile, gfduration, T0, L=5.0):
+    def compute_greens(self, model_file, gfduration, T0, L=5.0):
         """
         Use CPS to compute the necessary Greens functions relating the source
         location and the seismic stations in st
@@ -103,7 +103,7 @@ class LSForce:
         defined during class initiation
 
         Args:
-            modelfile (str): Full file path to location of CPS model file
+            model_file (str): Full file path to location of CPS model file
             gfduration (float):
             T0 (float): number of seconds prior to impulse application
             L (float): half width, in seconds, of triangle. Only needed for
@@ -112,7 +112,7 @@ class LSForce:
                 triangles overlap by 50%
         """
 
-        self.modelfile = modelfile
+        self.model_file = model_file
         self.T0 = T0
 
         self.L = L
@@ -123,7 +123,7 @@ class LSForce:
         self.moddir = os.path.join(
             self.mainfolder,
             '%s_%s'
-            % (self.nickname, os.path.splitext(os.path.basename(modelfile))[0]),
+            % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
         self.sacodir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
         self.sacdir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
@@ -169,8 +169,8 @@ class LSForce:
         f.close()
         self.greenlength = samples
 
-        # move copy of modelfile to current directory for recordkeeping
-        shutil.copy2(modelfile, os.path.join(self.moddir, os.path.basename(modelfile)))
+        # move copy of model_file to current directory for recordkeeping
+        shutil.copy2(model_file, os.path.join(self.moddir, os.path.basename(model_file)))
 
         # write shell script to run Green's functions
         self.shellscript = os.path.join(self.moddir, 'CPScommands.sh')
@@ -179,7 +179,7 @@ class LSForce:
             f.write('rm %s\n' % os.path.join(self.sacodir, '*.sac'))
             f.write('rm %s\n' % os.path.join(self.sacdir, '*.sac'))
             f.write(
-                'hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n' % (self.modelfile, 'dist')
+                'hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n' % (self.model_file, 'dist')
             )
             f.write('hspec96 > hspec96.out\n')
             if self.method == 'triangle':
@@ -231,14 +231,14 @@ class LSForce:
         os.chdir(currentdir)
         self.greens_computed = True
 
-    def load_greens(self, modelfile):
+    def load_greens(self, model_file):
 
         """
         If Greens functions were already computed for this exact data
         selection, this simply loads info about them needed for setup
 
         Args:
-            modelfile (str): the name of the model file used to compute the
+            model_file (str): the name of the model file used to compute the
                 Greens functions. This is so they can be found because they
                 are saved in a folder referencing the model file name
 
@@ -252,7 +252,7 @@ class LSForce:
         self.moddir = os.path.join(
             self.mainfolder,
             '%s_%s'
-            % (self.nickname, os.path.splitext(os.path.basename(modelfile))[0]),
+            % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
         if os.path.exists(os.path.join(self.moddir, 'sacorig_%s' % self.method)):
             self.sacodir = os.path.join(self.moddir, 'sacorig_%s' % self.method)

@@ -174,9 +174,9 @@ force = LSForce(
 )
 
 if CALCULATE_GF:
-    force.compute_greens(modelfile=model_file, gfduration=200, T0=-10)
+    force.compute_greens(model_file=model_file, gfduration=200, T0=-10)
 else:
-    force.load_greens(modelfile=model_file)
+    force.load_greens(model_file=model_file)
 
 force.setup(period_range=PERIOD_RANGE, zerophase=True)
 
