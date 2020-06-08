@@ -1,6 +1,6 @@
 from lsforce import LSforce
-from waveform_collection import gather_waveforms
 from obspy import read, UTCDateTime
+from obspy.clients.fdsn import Client
 from obspy.geodetics import gps2dist_azimuth
 import os
 import numpy as np
@@ -40,6 +40,10 @@ data_filename = os.path.join(aux_folder, f'{RUN_NAME}_data.pkl')
 # Download data if it doesn't exist as a file
 if not os.path.exists(data_filename):
 
+    client = Client('IRIS')
+    waveform_kwargs = dict(location='*', starttime=STARTTIME, endtime=ENDTIME,
+                           attach_response=True)
+
     # Gather vertical components (most of the waveforms!)
     NETWORKS = (
         'AK', 'AT', 'AV', 'TA', 'ZE',
@@ -49,38 +53,37 @@ if not os.path.exists(data_filename):
         'BRLK', 'Q19K', 'LTUW', 'BRSE', 'WFLS', 'P18K', 'BING', 'CONG', 'WFLW', 'MPEN',
         'BULG', 'SLK',  'N18K', 'JOES', 'SVW2', 'JUDD', 'O22K', 'FIRE',
     )
-    st = gather_waveforms(
-        source='IRIS',
+    st = client.get_waveforms(
         network=','.join(NETWORKS),
         station=','.join(STATIONS),
-        location='*',
         channel='BHZ,HHZ',
-        starttime=STARTTIME,
-        endtime=ENDTIME,
+        **waveform_kwargs,
     )
 
     # Gather horizontals (only a few)
-    st += gather_waveforms(
-        source='IRIS',
+    st += client.get_waveforms(
         network='TA',
         station='N19K',
-        location='*',
         channel='BHE,BHN',
-        starttime=STARTTIME,
-        endtime=ENDTIME,
+        **waveform_kwargs,
     )
-    st += gather_waveforms(
-        source='IRIS',
+    st += client.get_waveforms(
         network='ZE',
         station='WFLW',
-        location='*',
         channel='HHE,HHN',
-        starttime=STARTTIME,
-        endtime=ENDTIME,
+        **waveform_kwargs,
     )
+
+    # Grab coordinates
+    inv = client.get_stations(network=','.join(NETWORKS), starttime=STARTTIME,
+                              endtime=ENDTIME, level='channel')
 
     # Assign additional info to Traces
     for tr in st:
+        coords = inv.get_coordinates(tr.id, datetime=STARTTIME)
+        tr.stats.latitude = coords['latitude']
+        tr.stats.longitude = coords['longitude']
+        tr.stats.elevation = coords['elevation']
         dist, az, baz = gps2dist_azimuth(
             LS_LAT, LS_LON, tr.stats.latitude, tr.stats.longitude
         )
@@ -112,24 +115,24 @@ RAYLEIGH_VELO = 0.9  # [km/s] Surface-wave group velocity @ 1 Hz
 INFRA_VELO = 0.337   # [km/s] Reasonable given air temp of 50 degrees F
 
 # Gather seismic
-st_hf = gather_waveforms(
-    source='IRIS',
+st_hf = client.get_waveforms(
     network='AV',
     station='ILSW',
     location='--',
     channel='BHZ',
     starttime=STARTTIME,
     endtime=ENDTIME,
+    attach_response=True,
 )
 # Gather infrasound
-st_infra = gather_waveforms(
-    source='IRIS',
+st_infra = client.get_waveforms(
     network='TA',
     station='O20K',
     location='*',
     channel='BDF',
     starttime=STARTTIME,
     endtime=ENDTIME,
+    attach_response=True,
 )
 
 # Combined processing
@@ -142,7 +145,13 @@ st_hf.filter('bandpass', freqmin=0.5, freqmax=5)
 st_infra.filter('bandpass', freqmin=0.5, freqmax=10)
 
 # Add "rdist" to tr.stats
+ref_inv = client.get_stations(network='AV,TA', station='ILSW,O20K', starttime=STARTTIME,
+                              endtime=ENDTIME, level='channel')
 for tr in st_hf + st_infra:
+    coords = ref_inv.get_coordinates(tr.id, datetime=STARTTIME)
+    tr.stats.latitude = coords['latitude']
+    tr.stats.longitude = coords['longitude']
+    tr.stats.elevation = coords['elevation']
     dist = gps2dist_azimuth(LS_LAT, LS_LON, tr.stats.latitude, tr.stats.longitude)[0]
     tr.stats.rdist = dist / 1000  # [km]
 
