@@ -796,7 +796,7 @@ class LSForce:
         self,
         alphaset=None,
         alpha_method='Lcurve',
-        zeroScaler=15.0,
+        zero_scaler=15.0,
         zeroTaperlen=20.0,
         Tikhratio=(1.0, 0.0, 0.0),
     ):
@@ -809,10 +809,10 @@ class LSForce:
             alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
                 'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on
                 discrepancy principle and noise calculated from data from before zero_time.
-            zeroScaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
+            zero_scaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
                 The lower the number, teh stronger the constraint, but the higher the risk of high freq.
                 oscillations due to a sudden release of the constraint
-            zeroTaperlen (float): length of taper for zeroScaler, in seconds.
+            zeroTaperlen (float): length of taper for zero_scaler, in seconds.
                 shorter tapers can result in sharp artifacts, longer is better
             Tikhratio (array): Proportion each regularization method contributes, where values correspond
                 to [zeroth, first order, second order]. Must add to 1. Only used if method = 'tikh'
@@ -851,7 +851,7 @@ class LSForce:
         else:
             A1 = None
 
-        scaler = Ghatnorm / zeroScaler
+        scaler = Ghatnorm / zero_scaler
         if self.impose_zero:  # tell model when there should be no forces
             # TODO get this to work for triangle method (need to change len methods)
             len2 = int(np.floor(((self.zero_time + self.T0) * self.Fsamplerate)))
