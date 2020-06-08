@@ -21,7 +21,7 @@ import copy
 import cartopy.crs as ccrs
 
 
-class LSforce:
+class LSForce:
     """
     Class for single force inversions
     """

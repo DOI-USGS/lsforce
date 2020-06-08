@@ -1,4 +1,4 @@
-from lsforce import LSforce
+from lsforce import LSForce
 from obspy import read, UTCDateTime
 from obspy.clients.fdsn import Client
 from obspy.geodetics import gps2dist_azimuth
@@ -161,7 +161,7 @@ infra_shift = st_infra[0].stats.rdist / INFRA_VELO
 
 #%% SETUP
 
-force = LSforce(
+force = LSForce(
     st=st,
     samplerate=1,
     nickname=RUN_NAME,
