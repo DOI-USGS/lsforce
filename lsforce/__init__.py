@@ -1,1 +1,1 @@
-from .force_inversion import LSforce
+from .lsforce import LSforce
