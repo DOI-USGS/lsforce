@@ -397,7 +397,6 @@ class LSForce:
             n = self.datalength
 
             for i, trace in enumerate(st):
-                newline = 0
                 # find component of st
                 component = trace.stats.channel[2]
                 station = trace.stats.station
@@ -562,7 +561,6 @@ class LSForce:
             self.Fsamplerate = 1.0 / fshiftby
 
             for i, trace in enumerate(st):
-                newline = 0
                 # find component of st
                 component = trace.stats.channel[2]
                 station = trace.stats.station
@@ -1604,7 +1602,6 @@ class LSForce:
                 for axis in [ax1, ax2, ax3, ax4]:
                     plt.setp(axis.get_xticklabels(), visible=False)
 
-            axes = fig.get_axes()
             if not xlim:
                 xlim = [self.tvec.min(), self.tvec.max()]
             axes = fig.get_axes()
@@ -1708,7 +1705,7 @@ class LSForce:
         return fig
 
     def plotangmag(
-        self, subplots=False, xlim=None, ylim=None, sameY=True, tvecshift=0.0
+        self, xlim=None, ylim=None, tvecshift=0.0
     ):
         """
         plot angles and magnitudes of inversion result and append results
@@ -1720,7 +1717,6 @@ class LSForce:
         tvec =
         T0 = T0 (time delay) used in Green's functions (usually negative)
         zerotime = designated time for event start
-        subplots = True, make subplots, False, plot all one one plot
         vline = plot vertical line at t=vline
         [ZEN]upper = upper limit of uncertainties (None if none)
         [ZEN]lower = ditto for lower limit
@@ -2693,14 +2689,13 @@ def makeshiftmat(c, shiftby, size1):
     return C
 
 
-def curvature(x, y, negslope=True):
+def curvature(x, y):
     """
     Estimate the radius of curvature for each point on line to find corner of L-curve
 
     Args:
         x (array): x points
         y (array): y points
-        negslope:
 
     Returns:
         radius of curvature for each point (ends will be nan)
