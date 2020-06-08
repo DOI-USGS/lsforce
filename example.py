@@ -174,7 +174,7 @@ force = LSForce(
 )
 
 if CALCULATE_GF:
-    force.compute_greens(model_file=model_file, gfduration=200, T0=-10)
+    force.compute_greens(model_file=model_file, gf_duration=200, T0=-10)
 else:
     force.load_greens(model_file=model_file)
 

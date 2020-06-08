@@ -95,7 +95,7 @@ class LSForce:
                 'frequency domain not implemented'
             )
 
-    def compute_greens(self, model_file, gfduration, T0, L=5.0):
+    def compute_greens(self, model_file, gf_duration, T0, L=5.0):
         """
         Use CPS to compute the necessary Greens functions relating the source
         location and the seismic stations in st
@@ -104,7 +104,7 @@ class LSForce:
 
         Args:
             model_file (str): Full file path to location of CPS model file
-            gfduration (float):
+            gf_duration (float):
             T0 (float): number of seconds prior to impulse application
             L (float): half width, in seconds, of triangle. Only needed for
                 triangle method, default 5 sec. This will also correspond
@@ -159,7 +159,7 @@ class LSForce:
 
         # write dist file in free format
         # figure out how many samples
-        samples = next_pow_2(gfduration * self.samplerate)
+        samples = next_pow_2(gf_duration * self.samplerate)
         f = open(os.path.join(self.moddir, 'dist'), 'w')
         for dis in dists:
             f.write(
