@@ -109,6 +109,8 @@ st.sort(keys=['rdist', 'channel'])
 RAYLEIGH_VELO = 0.9  # [km/s] Surface-wave group velocity @ 1 Hz
 INFRA_VELO = 0.337   # [km/s] Reasonable given air temp of 50 degrees F
 
+client = Client('IRIS')
+
 # Gather seismic
 st_hf = client.get_waveforms(
     network='AV',
