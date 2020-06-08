@@ -2,7 +2,6 @@
 import numpy as np
 from obspy import Trace, Stream, read, UTCDateTime
 from obspy.signal.util import next_pow_2
-#from scipy import sparse
 import math
 import glob
 import matplotlib.pyplot as plt
@@ -484,19 +483,19 @@ class LSforce:
                     )
 
                     if self.domain == 'time':
-                        ZVF = makeconvmat(zvf.data, size=(n, n))  # sparse.diags(zvff,0)
-                        ZHF = makeconvmat(zhf.data, size=(n, n))  # sparse.diags(zhff,0)
+                        ZVF = makeconvmat(zvf.data, size=(n, n))
+                        ZHF = makeconvmat(zhf.data, size=(n, n))
                     else:
                         zvff = np.fft.fft(zvf.data, self.NFFT)
                         zhff = np.fft.fft(zhf.data, self.NFFT)
-                        ZVF = np.diag(zvff)  # sparse.diags(zvff,0)
-                        ZHF = np.diag(zhff)  # sparse.diags(zhff,0)
+                        ZVF = np.diag(zvff)
+                        ZHF = np.diag(zhff)
                     az = math.radians(
                         trace.stats.azimuth
                     )  # math.radians(np.round(trace.stats.azimuth))
                     newline = np.hstack(
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
-                    )  # sparse.hstack((K*ZVF, K*ZHF*math.cos(az), K*ZHF*math.sin(az)))
+                    )
                 elif component == 'R':
                     rvf = read(os.path.join(self.sacdir, '*_%s_*RVF.sac' % station))
                     if len(rvf) > 1:
@@ -531,17 +530,17 @@ class LSforce:
                         zerophase=self.filter['zeroPhase'],
                     )
                     if self.domain == 'time':
-                        RVF = makeconvmat(rvf.data, size=(n, n))  # sparse.diags(rvff,0)
-                        RHF = makeconvmat(rhf.data, size=(n, n))  # sparse.diags(rhff,0)
+                        RVF = makeconvmat(rvf.data, size=(n, n))
+                        RHF = makeconvmat(rhf.data, size=(n, n))
                     else:
                         rvff = np.fft.fft(rvf.data, self.NFFT)
                         rhff = np.fft.fft(rhf.data, self.NFFT)
-                        RVF = np.diag(rvff)  # sparse.diags(rvff,0)
-                        RHF = np.diag(rhff)  # sparse.diags(rhff,0)
+                        RVF = np.diag(rvff)
+                        RHF = np.diag(rhff)
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
-                    )  # sparse.hstack((K*RVF, K*RHF*math.cos(az), K*RHF*math.sin(az)))
+                    )
                 elif component == 'T':
                     thf = read(os.path.join(self.sacdir, '*_%s_*THF.sac' % station))
                     if len(thf) > 1:
@@ -559,15 +558,15 @@ class LSforce:
                         zerophase=self.filter['zeroPhase'],
                     )
                     if self.domain == 'time':
-                        THF = makeconvmat(thf.data, size=(n, n))  # sparse.diags(thff,0)
+                        THF = makeconvmat(thf.data, size=(n, n))
                     else:
                         thff = np.fft.fft(thf.data, self.NFFT)
-                        THF = np.diag(thff)  # sparse.diags(thff,0)
+                        THF = np.diag(thff)
                     TVF = 0.0 * THF.copy()
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (TVF, K * THF * math.sin(az), -K * THF * math.cos(az))
-                    )  # sparse.hstack((K*TVF, K*THF*math.sin(az), -K*THF*math.cos(az)))
+                    )
                 else:
                     raise Exception('st not rotated to T and R for %s' % station)
                 # Deal with data
@@ -580,7 +579,7 @@ class LSforce:
                     G = newline.copy()
                     d = datline.copy()
                 else:  # otherwise build on G and d
-                    G = np.vstack((G, newline.copy()))  # sparse.vstack((G,newline))
+                    G = np.vstack((G, newline.copy()))
                     d = np.hstack((d, datline.copy()))
                 if weights is not None:
                     if self.weight_method == 'Manual':
@@ -648,16 +647,16 @@ class LSforce:
                     """
                     ZVF = makeshiftmat(
                         zvf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )  # sparse.diags(zvff,0)
+                    )
                     ZHF = makeshiftmat(
                         zhf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )  # sparse.diags(zhff,0)
+                    )
                     az = math.radians(
                         trace.stats.azimuth
                     )  # math.radians(np.round(trace.stats.azimuth))
                     newline = np.hstack(
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
-                    )  # sparse.hstack((K*ZVF, K*ZHF*math.cos(az), K*ZHF*math.sin(az)))
+                    )
                 elif component == 'R':
                     rvf = read(os.path.join(self.sacdir, '*%s*RVF.sac' % station))
                     if len(rvf) > 1:
@@ -688,14 +687,14 @@ class LSforce:
                     """
                     RVF = makeshiftmat(
                         rvf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )  # sparse.diags(rvff,0)
+                    )
                     RHF = makeshiftmat(
                         rhf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )  # sparse.diags(rhff,0)
+                    )
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
-                    )  # sparse.hstack((K*RVF, K*RHF*math.cos(az), K*RHF*math.sin(az)))
+                    )
                 elif component == 'T':
                     thf = read(os.path.join(self.sacdir, '*%s*THF.sac' % station))
                     if len(thf) > 1:
@@ -713,12 +712,12 @@ class LSforce:
                     """
                     THF = makeshiftmat(
                         thf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )  # sparse.diags(thff,0)
+                    )
                     TVF = 0.0 * THF.copy()
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (TVF, K * THF * math.sin(az), -K * THF * math.cos(az))
-                    )  # sparse.hstack((K*TVF, K*THF*math.sin(az), -K*THF*math.cos(az)))
+                    )
                 else:
                     raise Exception('st not rotated to T and R for %s' % station)
                 # Deal with data
@@ -728,7 +727,7 @@ class LSforce:
                     G = newline.copy()
                     d = datline.copy()
                 else:  # otherwise build on G and d
-                    G = np.vstack((G, newline.copy()))  # sparse.vstack((G,newline))
+                    G = np.vstack((G, newline.copy()))
                     d = np.hstack((d, datline.copy()))
                 if weights is not None:
                     if self.weight_method == 'Manual':
@@ -761,7 +760,7 @@ class LSforce:
         )  # need to multiply G by sample interval (sec) since convolution is an integral
         self.d = d * 100.0  # WHY?convert data from m to cm
         if weights is not None:
-            self.W = np.diag(self.Wvec)  # sparse.diags(Wvec,0)
+            self.W = np.diag(self.Wvec)
         else:
             self.W = None
 
@@ -892,10 +891,10 @@ class LSforce:
 
         if self.W is not None:
             Ghat = self.W.dot(self.G)  # np.dot(W.tocsr(),G.tocsr())
-            dhat = self.W.dot(self.d)  # np.dot(W.tocsr(),sparse.csr_matrix(d))
+            dhat = self.W.dot(self.d)
         else:
             Ghat = self.G  # G.tocsr()
-            dhat = self.d  # sparse.csr_matrix(d)
+            dhat = self.d
 
         if self.jackknife is not None:  # save version at this point for use later
             Ghatori = Ghat.copy()
@@ -993,7 +992,7 @@ class LSforce:
         dhat = dhat.T
 
         # Build roughening matrix
-        I = np.eye(n, n)  # sparse.eye(np.shape(G)[1],np.shape(G)[1])
+        I = np.eye(n, n)
         if Tikhratio[1] != 0.0:
             # Build L1 (first order) roughening matrix
             L1 = np.diag(-1 * np.ones(n)) + np.diag(np.ones(n - 1), k=1)
@@ -1050,7 +1049,7 @@ class LSforce:
         if self.domain == 'freq':
             model, residuals, rank, s = sp.linalg.lstsq(
                 A, x
-            )  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
+            )
             self.model = model.copy()
             #import pdb;pdb.set_trace()
             div = len(model) / 3
@@ -1148,7 +1147,7 @@ class LSforce:
                 if self.domain == 'freq':
                     model, residuals, rank, s = sp.linalg.lstsq(
                         Aj, xj
-                    )  # sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat)
+                    )
                     div = len(model) / 3
                     Zf = -np.real(
                         np.fft.ifft(model[0:div]) / 10 ** 5
@@ -1280,10 +1279,10 @@ class LSforce:
 
         if W is not None:
             Ghat = W.dot(G)  # np.dot(W.tocsr(),G.tocsr())
-            dhat = W.dot(d)  # np.dot(W.tocsr(),sparse.csr_matrix(d))
+            dhat = W.dot(d)
         else:
             Ghat = G  # G.tocsr()
-            dhat = d  # sparse.csr_matrix(d)
+            dhat = d
 
         m, n = np.shape(Ghat)
 
@@ -2437,7 +2436,7 @@ def findalpha(
         if invmethod == 'lsq':
             model, residuals, rank, s = sp.linalg.lstsq(
                 A, x
-            )  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+            )
         elif invmethod == 'nnls':
             model, residuals = sp.optimize.nnls(A, x)
         else:
@@ -2478,7 +2477,7 @@ def findalpha(
             if invmethod == 'lsq':
                 model, residuals, rank, s = sp.linalg.lstsq(
                     A, x
-                )  # sparse.csr_matrix(sparse.linalg.spsolve(Ghat.T*Ghat+alpha**2*I,Ghat.T*dhat))
+                )
             elif invmethod == 'nnls':
                 model, residuals = sp.optimize.nnls(A, x)
 
@@ -2712,7 +2711,6 @@ def forward_model(G, model):
     """
     run the forward model (without weights in order to compare to unweighted data)
     """
-    #model = sparse.csr_matrix(model)
     dnew = np.dot(G, model.T)
     return dnew
 
