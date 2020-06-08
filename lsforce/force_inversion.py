@@ -24,8 +24,6 @@ import cartopy.crs as ccrs
 class LSforce:
     """
     Class for single force inversions
-
-
     """
 
     def __init__(
@@ -69,6 +67,7 @@ class LSforce:
                           'sinusoid' = parameterized using single sinusoid
                                   (variation of method by Chao et al. YEAR)
         """
+
         # General
         self.st = st
         self.domain = domain
@@ -104,7 +103,6 @@ class LSforce:
             )
 
     def compute_greens(self, modelfile, gfduration, T0, L=5.0):
-
         """
         Use CPS to compute the necessary Greens functions relating the source
         location and the seismic stations in st
@@ -112,7 +110,6 @@ class LSforce:
         defined during class initiation
 
         Args:
-
             modelfile (str): Full file path to location of CPS model file
             gfduration (float):
             T0 (float): number of seconds prior to impulse application
@@ -120,8 +117,8 @@ class LSforce:
                 triangle method, default 5 sec. This will also correspond
                 to sample interval of resulting force time function because
                 triangles overlap by 50%
-
         """
+
         self.modelfile = modelfile
         self.T0 = T0
 
@@ -330,8 +327,8 @@ class LSforce:
             period_range (list or tuple): Range of periods to consider in inversion, in seconds
             filter_order (int): Order of filter applied over period_range
             zeroPhase (bool): If True, zeroPhase filtering will be used
-
         """
+
         # Create filter dictionary to keep track of filter used without
         # creating too many new attributes
         self.filter = {
@@ -785,7 +782,6 @@ class LSforce:
             frac_delete
             kwargs
 
-
         Returns: Populates object with the following attributes
             model (array): model vector of concatated components (n x 1) of solution using
                 regularization parameter alpha
@@ -802,8 +798,8 @@ class LSforce:
             alpha (float): regularization parameter that was used
             fit1 (array):
             size1 (array):
-
         """
+
         # Check inputs for consistency
         if imposeZero and (zeroTime is None or zeroTime == 0.0):
             raise Exception('imposeZero set to True but no zeroTime provided')
@@ -875,6 +871,7 @@ class LSforce:
             Tikhratio (array): Proportion each regularization method contributes, where values correspond
                 to [zeroth, first order, second order]. Must add to 1. Only used if method = 'tikh'
         """
+
         if np.sum(Tikhratio) != 1.0:
             raise Exception('Tikhonov ratios must add to 1')
         self.parameters = {}
@@ -1213,6 +1210,7 @@ class LSforce:
         alpha_method='Lcurve',
         maxduration=None,
     ):
+
         """
         NOT YET UPDATED FOR CLASS STRUCTURE, WONT RUN AS IS
         Wrapper function to perform single force inversion of long-period landslide seismic signal
@@ -1265,6 +1263,7 @@ class LSforce:
             curves (array):
 
         """
+
         raise Exception('Lasso not yet implemented yet in class structure')
 
         if W is not None:
@@ -1515,6 +1514,7 @@ class LSforce:
             figure handle
 
         """
+
         tvec = self.tvec - tvecshift
 
         annot_kwargs = dict(xy=(0.99, 0.25), xycoords='axes fraction', ha='right')
@@ -1791,6 +1791,7 @@ class LSforce:
         OUPUTS
         fig - figure handle
         """
+
         tvec = self.tvec - tvecshift
 
         if self.jackknife is None:
@@ -2395,6 +2396,7 @@ def findalpha(
     Returns:
 
     """
+
     templ1 = np.ceil(
         np.log10(np.linalg.norm(Ghat))
     )  # Roughly estimate largest singular value (should not use alpha larger than expected largest singular value)
@@ -2532,6 +2534,7 @@ def findalphaD(
     Args:
         tolerance (float): how close you want to get to the noise level with the solution
     """
+
     # Estimate the noise level (use signal before zeroTime)
     dtemp = dhat.copy()[: numsta * datlenorig]  # Trim off any extra zeros
     #lenall = len(dtemp)
@@ -2654,6 +2657,7 @@ def Lcurve(fit1, size1, alphas):
     """
     Plot Lcurve
     """
+
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111)
     ax.loglog(fit1, size1, '.')
@@ -2670,6 +2674,7 @@ def varred(dt, dtnew):
     """
     compute variance reduction in time domain (%)
     """
+
     shp = np.shape(dt)
     shp = shp[0] * shp[1]
     dt_temp = np.reshape(dt, shp)
@@ -2684,6 +2689,7 @@ def back2time(d, df_new, numsta, datlenorig):
     """
     convert data back to the time domain and cut off zero padding
     """
+
     datlength = int(len(d) / numsta)
     dfrsp = np.reshape(d, (numsta, datlength))
     dfnrsp = np.reshape(df_new, (numsta, datlength))
@@ -2701,6 +2707,7 @@ def forward_model(G, model):
     """
     run the forward model (without weights in order to compare to unweighted data)
     """
+
     dnew = np.dot(G, model.T)
     return dnew
 
@@ -2711,6 +2718,7 @@ def makeconvmat(c, size=None):
     size is optional input for desired size as (rows,cols), this will just shift cflip until it
     reaches the right size
     """
+
     cflip = c[::-1]  # flip order
     if size is None:
         C = np.zeros((2 * len(c) - 1, 2 * len(c) - 1))
@@ -2750,8 +2758,8 @@ def makeshiftmat(c, shiftby, size1):
 
     Returns:
         Matrix of shifted c of size size1
-
     """
+
     diff = len(c) - size1[0]
     if diff < 0:
         cpad = np.pad(
@@ -2837,6 +2845,7 @@ def rotate2ZNE(
     :rtype: Tuple of three NumPy arrays.
     :returns: The three rotated components, oriented in Z, N, and E.
     """
+
     # Internally works in Vertical, South, and East components; a right handed
     # coordinate system.
     # Define the base vectors of the old base in terms of the new base vectors.
@@ -2868,6 +2877,7 @@ def rotate(st, baz=None):
         baz (list): Not required if backaz already attached to st stats, list
             of backazimuths corresponding to st
     """
+
     # implant baz in st's
     if baz:
         for i, trace in enumerate(st):
@@ -2979,6 +2989,7 @@ def _dip_azimuth2ZSE_base_vector(dip, azimuth):
     numerical inaccuracies - also positive and negative zero are treated as
     equal):
     """
+
     # Convert both to radian.
     dip = np.deg2rad(dip)
     azimuth = np.deg2rad(azimuth)
@@ -3024,6 +3035,7 @@ def readrun(filename):
     """
     Read in a saved LSforce object
     """
+
     with open(filename, 'rb') as f:
         result = pickle.load(f)
 
