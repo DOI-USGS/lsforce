@@ -1,1 +1,1 @@
-from .lsforce import LSforce
+from .lsforce import LSForce
