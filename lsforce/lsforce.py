@@ -797,7 +797,7 @@ class LSForce:
         alphaset=None,
         alpha_method='Lcurve',
         zero_scaler=15.0,
-        zeroTaperlen=20.0,
+        zero_taper_length=20.0,
         Tikhratio=(1.0, 0.0, 0.0),
     ):
         """
@@ -812,7 +812,7 @@ class LSForce:
             zero_scaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
                 The lower the number, teh stronger the constraint, but the higher the risk of high freq.
                 oscillations due to a sudden release of the constraint
-            zeroTaperlen (float): length of taper for zero_scaler, in seconds.
+            zero_taper_length (float): length of taper for zero_scaler, in seconds.
                 shorter tapers can result in sharp artifacts, longer is better
             Tikhratio (array): Proportion each regularization method contributes, where values correspond
                 to [zeroth, first order, second order]. Must add to 1. Only used if method = 'tikh'
@@ -860,7 +860,7 @@ class LSForce:
                     np.floor(((self.zero_time - self.L) * self.Fsamplerate))
                 )  # Potentially need to adjust for T0 here too?
             if self.method == 'tik':
-                len3 = int(zeroTaperlen * self.Fsamplerate)  # make it constant
+                len3 = int(zero_taper_length * self.Fsamplerate)  # make it constant
                 temp = np.hanning(2 * len3)
                 temp = temp[len3:]
                 vals2 = np.hstack((np.ones(len2 - len3), temp))
