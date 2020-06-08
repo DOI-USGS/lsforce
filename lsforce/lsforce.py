@@ -699,7 +699,7 @@ class LSForce:
 
     def invert(
         self,
-        zeroTime=None,
+        zero_time=None,
         imposeZero=False,
         addtoZero=False,
         maxduration=None,
@@ -713,7 +713,7 @@ class LSForce:
         seismic signal using Tikhonov regularization
 
         Args:
-            zeroTime (float): Optional estimated start time of real part of signal, in seconds from
+            zero_time (float): Optional estimated start time of real part of signal, in seconds from
                 start time of seismic data. Useful for making figures showing selected start time
                 and also for imposeZero option
             imposeZero (bool): Will add weighting matrix to suggest forces tend towards zero prior
@@ -747,13 +747,13 @@ class LSForce:
         """
 
         # Check inputs for consistency
-        if imposeZero and (zeroTime is None or zeroTime == 0.0):
-            raise Exception('imposeZero set to True but no zeroTime provided')
+        if imposeZero and (zero_time is None or zero_time == 0.0):
+            raise Exception('imposeZero set to True but no zero_time provided')
 
         # Save input choices
         self.regr_param = kwargs  # regression parameters specific to method
         self.addtoZero = addtoZero
-        self.zeroTime = zeroTime
+        self.zeroTime = zero_time
         self.imposeZero = imposeZero
         self.maxduration = maxduration
 
@@ -808,7 +808,7 @@ class LSForce:
 
             alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
                 'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on
-                discrepancy principle and noise calculated from data from before zeroTime.
+                discrepancy principle and noise calculated from data from before zero_time.
             zeroScaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
                 The lower the number, teh stronger the constraint, but the higher the risk of high freq.
                 oscillations due to a sudden release of the constraint
@@ -1170,13 +1170,13 @@ class LSForce:
                 start time of seismic data. Useful for making figures showing selected start time
                 and also for imposeZero option
             imposeZero (bool): Will add weighting matrix to suggest forces tend towards zero prior
-                to zeroTime (zeroTime must be defined)
+                to zero_time (zero_time must be defined)
             addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
                 to zero.
             alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
                 'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on
-                discrepancy principle and noise calculated from data from before zeroTime.
-            maxduration (float): Maximum duration allowed for the event, starting at zeroTime if defined,
+                discrepancy principle and noise calculated from data from before zero_time.
+            maxduration (float): Maximum duration allowed for the event, starting at zero_time if defined,
                 otherwise starting from beginning of seismic data. Points after this will tend towards
                 zero. This helps tamp down artifacts due to edge effects.
 
@@ -1186,7 +1186,7 @@ class LSForce:
             Zforce (array): vertical force time series extracted from model
             Nforce (array): same as above for north force
             Eforce (array): same as above for east force
-            tvec (array): Time vector, referenced using zeroTime (if specified) and corrected for T0
+            tvec (array): Time vector, referenced using zero_time (if specified) and corrected for T0
                 time shift
             VR (float): Variance reduction (%), rule of thumb, this should be ~50%-80%, if 100%,
                 solution is fitting data exactly and results are suspect. If ~5%, model may be wrong or
@@ -1227,7 +1227,7 @@ class LSForce:
         scaler = Ghatnorm / 15.0
         if imposeZero is True:  # tell model when there should be no forces
             if zeroTime is None:
-                raise Exception('imposeZero set to True but no zeroTime provided')
+                raise Exception('imposeZero set to True but no zero_time provided')
             len2 = int(np.round(zeroTime * samplerate))
             len3 = int(
                 np.round(0.2 * len2)
@@ -2452,11 +2452,11 @@ def findalphaD(
         Tikhratio:
     """
 
-    # Estimate the noise level (use signal before zeroTime)
+    # Estimate the noise level (use signal before zero_time)
     dtemp = dhat.copy()[: numsta * datlenorig]  # Trim off any extra zeros
     dtemp = np.reshape(dtemp, (numsta, datlenorig))
     if zeroTime is None:
-        print('zeroTime not defined, noise estimated from first 100 samples')
+        print('zero_time not defined, noise estimated from first 100 samples')
         samps = 100
     else:
         samps = int(zeroTime * samplerate)
