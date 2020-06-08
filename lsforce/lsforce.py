@@ -221,13 +221,6 @@ class LSForce:
             print(stderr)
             raise Exception('Greens functions were not computed: %s' % stderr)
 
-#        # load in stadistlist - MIGHT NOT NEED THIS...
-#        f = open(os.path.join(self.moddir, 'stadistlist.txt'), 'r')
-#        lines = f.readlines()
-#        lines = [line.split('\t') for line in lines]
-#        temp2 = [(line[0], float(line[1].split('\n')[0])) for line in lines]
-#        sta, dist = list(zip(*temp2))
-
         # copy and rename files
         files = [
             os.path.basename(x) for x in glob.glob(os.path.join(self.sacdir, '*.sac'))
@@ -373,8 +366,6 @@ class LSForce:
         st = self.st.copy()
 
         # filter data to band specified
-        #st.detrend('linear')
-        #st.taper(max_percentage=0.05)
         st.filter(
             'bandpass',
             freqmin=self.filter['freqmin'],
@@ -385,7 +376,6 @@ class LSForce:
 
         # resample st to samplerate
         st.resample(self.samplerate)
-        #st.taper(max_percentage=0.05)
 
         # make sure st data are all the same length
         lens = [len(trace.data) for trace in st]
@@ -479,7 +469,7 @@ class LSForce:
                         ZHF = np.diag(zhff)
                     az = math.radians(
                         trace.stats.azimuth
-                    )  # math.radians(np.round(trace.stats.azimuth))
+                    )
                     newline = np.hstack(
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
                     )
@@ -575,7 +565,6 @@ class LSForce:
                         weight[i] = 1.0 / np.std(
                             trace.data[0 : int(weightpre * trace.stats.sampling_rate)]
                         )
-                        # weight[i] = 1./np.mean(np.abs(trace.data[0:int(weightpre*trace.stats.sampling_rate)])) # RMS, old way
                     elif weights == 'distance':
                         weight[i] = trace.stats.rdist
 
@@ -640,7 +629,7 @@ class LSForce:
                     )
                     az = math.radians(
                         trace.stats.azimuth
-                    )  # math.radians(np.round(trace.stats.azimuth))
+                    )
                     newline = np.hstack(
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
                     )
@@ -723,7 +712,6 @@ class LSForce:
                         weight[i] = 1.0 / np.std(
                             trace.data[0 : int(weightpre * trace.stats.sampling_rate)]
                         )
-                        # weight[i] = 1./np.mean(np.abs(trace.data[0:int(weightpre*trace.stats.sampling_rate)])) # RMS, old way
                     elif weights == 'distance':
                         weight[i] = trace.stats.rdist
 
@@ -890,13 +878,12 @@ class LSForce:
         m, n = np.shape(Ghat)
 
         Ghatnorm = np.linalg.norm(Ghat)
-        #Ghatmax = np.abs(Ghat).max()
 
         dl = self.datalength
         gl = int(n / 3)  # self.datalength
 
         if self.addtoZero is True:  # constrain forces to add to zero
-            scaler = Ghatnorm  # 10**(np.round(np.log10(Ghatmax)+4))#10**(np.round(np.log10(Ghatnorm))) # 10**(np.round(np.log10(Ghatmax)+4))
+            scaler = Ghatnorm
             first1 = np.hstack((np.ones(gl), np.zeros(2 * gl)))
             second1 = np.hstack((np.zeros(gl), np.ones(gl), np.zeros(gl)))
             third1 = np.hstack((np.zeros(2 * gl), np.ones(gl)))
@@ -908,7 +895,7 @@ class LSForce:
 
         scaler = (
             Ghatnorm / zeroScaler
-        )  # 10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
+        )
         if self.imposeZero:  # tell model when there should be no forces
             # TODO get this to work for triangle method (need to change len methods)
             len2 = int(np.floor(((self.zeroTime + self.T0) * self.Fsamplerate)))
@@ -918,7 +905,6 @@ class LSForce:
                 )  # Potentially need to adjust for T0 here too?
             if self.method == 'tik':
                 len3 = int(zeroTaperlen * self.Fsamplerate)  # make it constant
-                #halflen3 = int(len3/2)
                 temp = np.hanning(2 * len3)
                 temp = temp[len3:]
                 vals2 = np.hstack((np.ones(len2 - len3), temp))
@@ -1038,7 +1024,6 @@ class LSForce:
                 A, x
             )
             self.model = model.copy()
-            #import pdb;pdb.set_trace()
             div = len(model) / 3
             self.Zforce = -np.real(
                 np.fft.ifft(model[0:div]) / 10 ** 5
@@ -1055,7 +1040,6 @@ class LSForce:
         else:  # domain is time
             model, residuals, rank, s = sp.linalg.lstsq(A, x)
             self.model = model.copy()
-            # model,residuals,rank,s = sp.linalg.lstsq(Ghat,dhat,cond=alpha)
             div = int(len(model) / 3)
             self.Zforce = (
                 -model[0:div] / 10 ** 5
@@ -1073,7 +1057,6 @@ class LSForce:
             np.arange(0, len(self.Zforce) * 1 / self.Fsamplerate, 1 / self.Fsamplerate)
             - self.T0
         )
-        #np.linspace(0,(len(Zforce)-1)*1/samplerate,len(Zforce))-T0
         if self.zeroTime is not None:
             tvec -= self.zeroTime
         if (
@@ -1276,10 +1259,9 @@ class LSForce:
         m, n = np.shape(Ghat)
 
         Ghatnorm = np.linalg.norm(Ghat)
-        #Ghatmax = np.abs(Ghat).max()
 
         if addtoZero is True:  # constrain forces to add to zero
-            scaler = Ghatnorm  # 10**(np.round(np.log10(Ghatmax)+4))#10**(np.round(np.log10(Ghatnorm))) # 10**(np.round(np.log10(Ghatmax)+4))
+            scaler = Ghatnorm
             first1 = np.hstack((np.ones(datlenorig), np.zeros(2 * datlenorig)))
             second1 = np.hstack(
                 (np.zeros(datlenorig), np.ones(datlenorig), np.zeros(datlenorig))
@@ -1288,11 +1270,10 @@ class LSForce:
             A = np.vstack((first1, second1, third1)) * scaler
             Ghat = np.vstack((Ghat, A))
             dhat = np.hstack((dhat, np.zeros(3)))
-            #import pdb; pdb.set_trace()
 
         scaler = (
             Ghatnorm / 15.0
-        )  # 10**(np.round(np.log10(Ghatmax))+0.5) #10**(np.round(np.log10((Ghatnorm)+0.5)))
+        )
         if imposeZero is True:  # tell model when there should be no forces
             if zeroTime is None:
                 raise Exception('imposeZero set to True but no zeroTime provided')
@@ -1300,7 +1281,6 @@ class LSForce:
             len3 = int(
                 np.round(0.2 * len2)
             )  # 20% taper overlapping into main event by x seconds
-            # halflen3 = int(len3/2)
             temp = np.hanning(2 * len3)
             temp = temp[len3:]
             vals = np.hstack((np.ones(len2 - len3), temp))
@@ -1374,7 +1354,6 @@ class LSForce:
                 raise Exception(
                     'alphaset=None not implemented yet for smoothed Lasso. Must assign alpha'
                 )
-                # print('best alpha is %6.1e' % alpha)
         else:
             if alpharatio is not None:
                 Ghat2 = np.vstack((Ghat, alphaset * L2))
@@ -1417,7 +1396,6 @@ class LSForce:
         VR = varred(dt, dtnew)
         print(('variance reduction %2.0f percent') % (VR,))
         tvec = np.arange(0, len(Zforce) * 1 / samplerate, 1 / samplerate) - T0
-        # np.linspace(0,(len(Zforce)-1)*1/samplerate,len(Zforce))-T0
         if zeroTime is not None:
             tvec = tvec - zeroTime
         return (
@@ -2435,13 +2413,13 @@ def findalpha(
             raise Exception('inversion method %s not recognized' % invmethod)
         temp1 = (
             np.dot(Ghat, model.T) - dhat
-        )  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
+        )
         fit1.append(sp.linalg.norm(temp1))
         size1.append(
             sp.linalg.norm(Tikhratio[0] * model)
             + sp.linalg.norm(Tikhratio[1] * np.dot(L1part, model))
             + sp.linalg.norm(Tikhratio[2] * np.dot(L2part, model))
-        )  # size1.append(sp.linalg.norm(model.todense()))
+        )
     fit1 = np.array(fit1)
     size1 = np.array(size1)
     curves = curvature(np.log10(fit1), np.log10(size1))
@@ -2453,7 +2431,7 @@ def findalpha(
     idx = np.argmin(tempcurve)
     alpha = alphas[
         idx
-    ]  # [alpha for i, alpha in enumerate(alphas) if curves[i] == curves.min()]
+    ]
 
     if not rough:
         # Then hone in
@@ -2475,14 +2453,13 @@ def findalpha(
 
             temp1 = (
                 np.dot(Ghat, model.T) - dhat
-            )  # np.dot(Ghat.todense(),model.todense().T)-dhat.todense()
+            )
             fit1.append(sp.linalg.norm(temp1))
             size1.append(
                 sp.linalg.norm(Tikhratio[0] * model)
                 + sp.linalg.norm(Tikhratio[1] * np.dot(L1part, model))
                 + sp.linalg.norm(Tikhratio[2] * np.dot(L2part, model))
-            )  # size1.append(sp.linalg.norm(model.todense()))
-            # size1.append(sp.linalg.norm(Tikhratio[0]*model + Tikhratio[1]*L1part*model + Tikhratio[2]*L2part*model))  # size1.append(sp.linalg.norm(model.todense()))
+            )
         fit1 = np.array(fit1)
         size1 = np.array(size1)
         curves = curvature(np.log10(fit1), np.log10(size1))
@@ -2491,12 +2468,10 @@ def findalpha(
         alphas = np.array(alphas)
         tempcurve = curves.copy()
         tempcurve[slp2 < 0] = np.max(curves)
-        #import pdb; pdb.set_trace()
-        #curves[curves < 1]
         idx = np.argmin(tempcurve)
         bestalpha = alphas[
             idx
-        ]  # [alpha1 for i, alpha1 in enumerate(alphas) if tempcurves[i] == curves.min()]
+        ]
     else:
         bestalpha = alpha
 
@@ -2505,8 +2480,6 @@ def findalpha(
         if len(bestalpha) > 1:
             raise Exception('Returned more than one alpha value, check codes')
         bestalpha = bestalpha[0]
-    #import pdb; pdb.set_trace()
-    #assert False
     return bestalpha, fit1, size1, alphas
 
 
@@ -2537,7 +2510,6 @@ def findalphaD(
 
     # Estimate the noise level (use signal before zeroTime)
     dtemp = dhat.copy()[: numsta * datlenorig]  # Trim off any extra zeros
-    #lenall = len(dtemp)
     dtemp = np.reshape(dtemp, (numsta, datlenorig))
     if zeroTime is None:
         print('zeroTime not defined, noise estimated from first 100 samples')
@@ -2593,7 +2565,6 @@ def findalphaD(
             + sp.linalg.norm(Tikhratio[1] * np.dot(L1part, modelak))
             + sp.linalg.norm(Tikhratio[2] * np.dot(L2part, modelak))
         )
-        # sp.linalg.norm(Tikhratio[0]*modelak + Tikhratio[1]*L1part*modelak + Tikhratio[2]*L2part*modelak))#sp.linalg.norm(modelak))
         fit1.append(fitbk)
         alphas.append(bk)
         size1.append(
@@ -2693,9 +2664,6 @@ def back2time(d, df_new, numsta, datlenorig):
     datlength = int(len(d) / numsta)
     dfrsp = np.reshape(d, (numsta, datlength))
     dfnrsp = np.reshape(df_new, (numsta, datlength))
-    #for i in np.arange(len(dfrsp)):
-    #    dfrsp[i,:]=symmetric(dfrsp[i,:])
-    #    dfnrsp[i,:]=symmetric(dfnrsp[i,:])
     dt = np.real(np.fft.ifft(dfrsp, axis=1))
     dt = dt[0:, 0:datlenorig]
     dtnew = np.real(np.fft.ifft(dfnrsp, axis=1))
@@ -2764,7 +2732,7 @@ def makeshiftmat(c, shiftby, size1):
     if diff < 0:
         cpad = np.pad(
             c, (0, -diff), mode='edge'
-        )  # , end_values=(0., 0.))  # mode='linear_ramp'
+        )
     elif diff > 0:
         cpad = c[: size1[0]]
     else:
