@@ -1873,15 +1873,15 @@ class LSForce:
         return fig
 
     def _integrate_acceleration(
-        self, Zforce, Eforce, Nforce, Mass, startidx, endidx, detrend=None
+        self, Zforce, Eforce, Nforce, mass, startidx, endidx, detrend=None
     ):
 
         traj_tvec = self.tvec[startidx:endidx + 1]
 
         dx = 1.0 / self.Fsamplerate
-        Za = -Zforce.copy()[startidx:endidx + 1] / Mass
-        Ea = -Eforce.copy()[startidx:endidx + 1] / Mass
-        Na = -Nforce.copy()[startidx:endidx + 1] / Mass
+        Za = -Zforce.copy()[startidx:endidx + 1] / mass
+        Ea = -Eforce.copy()[startidx:endidx + 1] / mass
+        Na = -Nforce.copy()[startidx:endidx + 1] / mass
         Zvel = np.cumsum(Za) * dx
         Evel = np.cumsum(Ea) * dx
         Nvel = np.cumsum(Na) * dx
@@ -1908,7 +1908,7 @@ class LSForce:
         Zforce,
         Eforce,
         Nforce,
-        Mass=None,
+        mass=None,
         target_length=None,
         duration=None,
         detrend=None,
@@ -1918,9 +1918,9 @@ class LSForce:
         """
 
         # Check args
-        if Mass and target_length:
+        if mass and target_length:
             raise ValueError('Cannot specify both mass and target length!')
-        if not Mass and not target_length:
+        if not mass and not target_length:
             raise ValueError('You must specify either mass or target length!')
 
         startidx = np.where(self.tvec == 0)[0][0]  # Always start at t = 0
@@ -1936,20 +1936,20 @@ class LSForce:
             MASS_INC = int(1e7)  # [kg] Smaller increment is slower but more precise
 
             # Initialize with end-members
-            Mass = 0  # [kg]
+            mass = 0  # [kg]
             current_length = np.inf  # [km]
 
             while current_length > target_length:
 
-                Mass += MASS_INC  # Increase the mass
+                mass += MASS_INC  # Increase the mass
 
                 # Calculate the runout length [km] based on this mass
                 *_, Edisp, Ndisp, _ = self._integrate_acceleration(
-                    Zforce, Eforce, Nforce, Mass, startidx, endidx, detrend
+                    Zforce, Eforce, Nforce, mass, startidx, endidx, detrend
                 )
                 current_length = _calculate_Hdist(Edisp, Ndisp)[-1] / 1000  # [km]
         else:
-            Mass = int(Mass)
+            mass = int(mass)
 
         # Calculate trajectory based on mass assigned above
         (
@@ -1964,14 +1964,14 @@ class LSForce:
             Ndisp,
             traj_tvec,
         ) = self._integrate_acceleration(
-            Zforce, Eforce, Nforce, Mass, startidx, endidx, detrend
+            Zforce, Eforce, Nforce, mass, startidx, endidx, detrend
         )
 
-        return Za, Ea, Na, Zvel, Evel, Nvel, Zdisp, Edisp, Ndisp, Mass, traj_tvec
+        return Za, Ea, Na, Zvel, Evel, Nvel, Zdisp, Edisp, Ndisp, mass, traj_tvec
 
     def trajectory(
         self,
-        Mass=None,
+        mass=None,
         target_length=None,
         duration=None,
         elevation_profile=False,
@@ -1988,7 +1988,7 @@ class LSForce:
         _trajectory_automass().
 
         Args:
-            Mass: Landslide mass [kg]
+            mass: Landslide mass [kg]
             target_length: Horizontal runout length from groundtruth [m]
             duration: Clip time series to go from 0-duration [s]
             elevation_profile: If True, plot vertical displacement versus
@@ -2025,13 +2025,13 @@ class LSForce:
             self.Zdisp,
             self.Edisp,
             self.Ndisp,
-            self.Mass,
+            self.mass,
             self.traj_tvec,
         ) = self._trajectory_automass(
             self.Zforce,
             self.Eforce,
             self.Nforce,
-            Mass=Mass,
+            mass=mass,
             target_length=target_length,
             duration=duration,
             detrend=detrend_velocity,
@@ -2079,7 +2079,7 @@ class LSForce:
                     linewidth=2,
                 )
 
-        title = f'mass = {self.Mass:,} kg\nrunout length = {self.Hdist[-1]/1000:.2f} km'
+        title = f'mass = {self.mass:,} kg\nrunout length = {self.Hdist[-1]/1000:.2f} km'
         if target_length:
             title += f'\n(target length = {target_length:g} km)'
         ax.set_title(title)
@@ -2095,7 +2095,7 @@ class LSForce:
                     self.jackknife['Zforce_all'][i],
                     self.jackknife['Eforce_all'][i],
                     self.jackknife['Nforce_all'][i],
-                    Mass=Mass,
+                    mass=mass,
                     target_length=target_length,
                     duration=duration,
                     detrend=detrend_velocity,
