@@ -1,4 +1,3 @@
-#import obspy.signal as obsig
 import numpy as np
 from obspy import Trace, Stream, read, UTCDateTime
 from obspy.signal.util import next_pow_2
