@@ -280,7 +280,7 @@ class LSForce:
         weightpre=None,
         period_range=(30.0, 150.0),
         filter_order=2,
-        zeroPhase=False,
+        zerophase=False,
     ):
         """
         Loads in greens functions and creates all matrices needed
@@ -294,7 +294,7 @@ class LSForce:
                   determine weights)
             period_range (list or tuple): Range of periods to consider in inversion, in seconds
             filter_order (int): Order of filter applied over period_range
-            zeroPhase (bool): If True, zeroPhase filtering will be used
+            zerophase (bool): If True, zero-phase filtering will be used
         """
 
         # Create filter dictionary to keep track of filter used without
@@ -302,7 +302,7 @@ class LSForce:
         self.filter = {
             'freqmin': 1.0 / period_range[1],
             'freqmax': 1.0 / period_range[0],
-            'zeroPhase': zeroPhase,
+            'zerophase': zerophase,
             'periodmin': period_range[0],
             'periodmax': period_range[1],
             'order': filter_order,
@@ -346,7 +346,7 @@ class LSForce:
             freqmin=self.filter['freqmin'],
             freqmax=self.filter['freqmax'],
             corners=self.filter['order'],
-            zerophase=self.filter['zeroPhase'],
+            zerophase=self.filter['zerophase'],
         )
 
         # resample st to samplerate
@@ -419,7 +419,7 @@ class LSForce:
                         freqmin=self.filter['freqmin'],
                         freqmax=self.filter['freqmax'],
                         corners=self.filter['order'],
-                        zerophase=self.filter['zeroPhase'],
+                        zerophase=self.filter['zerophase'],
                     )
 
                     zhf.detrend()
@@ -429,7 +429,7 @@ class LSForce:
                         freqmin=self.filter['freqmin'],
                         freqmax=self.filter['freqmax'],
                         corners=self.filter['order'],
-                        zerophase=self.filter['zeroPhase'],
+                        zerophase=self.filter['zerophase'],
                     )
 
                     if self.domain == 'time':
@@ -465,7 +465,7 @@ class LSForce:
                         freqmin=self.filter['freqmin'],
                         freqmax=self.filter['freqmax'],
                         corners=self.filter['order'],
-                        zerophase=self.filter['zeroPhase'],
+                        zerophase=self.filter['zerophase'],
                     )
 
                     rhf.detrend()
@@ -475,7 +475,7 @@ class LSForce:
                         freqmin=self.filter['freqmin'],
                         freqmax=self.filter['freqmax'],
                         corners=self.filter['order'],
-                        zerophase=self.filter['zeroPhase'],
+                        zerophase=self.filter['zerophase'],
                     )
                     if self.domain == 'time':
                         RVF = makeconvmat(rvf.data, size=(n, n))
@@ -503,7 +503,7 @@ class LSForce:
                         freqmin=self.filter['freqmin'],
                         freqmax=self.filter['freqmax'],
                         corners=self.filter['order'],
-                        zerophase=self.filter['zeroPhase'],
+                        zerophase=self.filter['zerophase'],
                     )
                     if self.domain == 'time':
                         THF = makeconvmat(thf.data, size=(n, n))
@@ -582,14 +582,14 @@ class LSForce:
                     zvf.filter('bandpass', freqmin=self.filter['freqmin'],
                                freqmax=self.filter['freqmax'],
                                corners=self.filter['order'],
-                               zerophase=self.filter['zeroPhase'])
+                               zerophase=self.filter['zerophase'])
 
                     zhf.detrend()
                     zhf.taper(max_percentage=0.05)
                     zhf.filter('bandpass', freqmin=self.filter['freqmin'],
                                freqmax=self.filter['freqmax'],
                                corners=self.filter['order'],
-                               zerophase=self.filter['zeroPhase'])
+                               zerophase=self.filter['zerophase'])
                     """
                     ZVF = makeshiftmat(zvf.data, shiftby=fshiftby, size1=(n, Flen))
                     ZHF = makeshiftmat(zhf.data, shiftby=fshiftby, size1=(n, Flen))
@@ -616,14 +616,14 @@ class LSForce:
                     rvf.filter('bandpass', freqmin=self.filter['freqmin'],
                                freqmax=self.filter['freqmax'],
                                corners=self.filter['order'],
-                               zerophase=self.filter['zeroPhase'])
+                               zerophase=self.filter['zerophase'])
 
                     rhf.detrend()
                     rhf.taper(max_percentage=0.05)
                     rhf.filter('bandpass', freqmin=self.filter['freqmin'],
                                freqmax=self.filter['freqmax'],
                                corners=self.filter['order'],
-                               zerophase=self.filter['zeroPhase'])
+                               zerophase=self.filter['zerophase'])
                     """
                     RVF = makeshiftmat(rvf.data, shiftby=fshiftby, size1=(n, Flen))
                     RHF = makeshiftmat(rhf.data, shiftby=fshiftby, size1=(n, Flen))
@@ -644,7 +644,7 @@ class LSForce:
                     thf.filter('bandpass', freqmin=self.filter['freqmin'],
                                freqmax=self.filter['freqmax'],
                                corners=self.filter['order'],
-                               zerophase=self.filter['zeroPhase'])
+                               zerophase=self.filter['zerophase'])
                     """
                     THF = makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
                     TVF = 0.0 * THF.copy()
