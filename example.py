@@ -8,7 +8,7 @@ import numpy as np
 # Arbitrary run directory containing model file
 LSFORCE_RUN_DIR = os.path.join(os.getcwd(), 'meow')
 
-RUN_NAME = 'iliamna_2016'  # Nickname for this run
+RUN_NAME = 'iliamna_2016_paper'  # Nickname for this run
 
 PERIOD_RANGE = (15, 80)  # [s] Bandpass filter corners
 
