@@ -32,7 +32,6 @@ class LSForce:
         samplerate,
         domain='time',
         nickname=None,
-        event_id=None,
         mainfolder=None,
         source_lat=None,
         source_lon=None,
@@ -51,12 +50,11 @@ class LSForce:
                 'freq'
             nickname (str): Nickname for this event, used for convenient in
                 naming files
-            event_id (int): event id, if event id exists, used just for naming
             mainfolder (str): if None, will use current folder
             source_lat (float): Latitude in decimal degrees of centroid of
-                landslide location, only required if event_id is not defined
+                landslide location
             source_lon (float): Longitude in decimal degrees of centroid of
-                landslide location, only required if event_id is not defined
+                landslide location
             method (str): 'tik' = full waveform inversion using Tikhonov
                                 regularization (L2 norm minimization)
                           'lasso' = full waveform inversion using Lasso method
@@ -76,11 +74,6 @@ class LSForce:
         self.numsta = len(st)
         self.greens_computed = False
 
-        self.event_id = event_id
-        if self.event_id is None:
-            self.orphan = True
-        else:
-            self.orphan = False
         if source_lat is None or source_lon is None:
             raise Exception('source_lat and source_lon not defined')
         else:
@@ -127,12 +120,8 @@ class LSForce:
         if self.nickname is None:
             self.nickname = ''
 
-        if self.orphan:
-            self.evdir = os.path.join(self.mainfolder, self.nickname)
-        else:
-            self.evdir = os.path.join(self.mainfolder, 'EV%s' % self.event_id)
         self.moddir = os.path.join(
-            self.evdir,
+            self.mainfolder,
             ('%s_%s')
             % (self.nickname, os.path.splitext(os.path.basename(modelfile))[0]),
         )
@@ -142,8 +131,6 @@ class LSForce:
         # Make all the directories
         if not os.path.exists(self.mainfolder):
             os.mkdir(self.mainfolder)
-        if not os.path.exists(self.evdir):
-            os.mkdir(self.evdir)
         if not os.path.exists(self.moddir):
             os.mkdir(self.moddir)
         if not os.path.exists(self.sacodir):
@@ -231,20 +218,12 @@ class LSForce:
             indx = int(file1[1:4]) - 1
             GFt = file1[6:9]
             # rename
-            if self.orphan:
-                newname = ('GF_%s_%s_%1.0fkm_%s.sac') % (
-                    self.nickname,
-                    stacods[indx],
-                    dists[indx],
-                    GFt,
-                )
-            else:
-                newname = ('GF_ev%i_%s_%1.0fkm_%s.sac') % (
-                    self.event_id,
-                    stacods[indx],
-                    dists[indx],
-                    GFt,
-                )
+            newname = ('GF_%s_%s_%1.0fkm_%s.sac') % (
+                self.nickname,
+                stacods[indx],
+                dists[indx],
+                GFt,
+            )
             os.rename(
                 os.path.join(self.sacdir, file1), os.path.join(self.sacdir, newname)
             )
@@ -270,12 +249,8 @@ class LSForce:
         if self.nickname is None:
             self.nickname = ''
 
-        if self.orphan:
-            self.evdir = os.path.join(self.mainfolder, self.nickname)
-        else:
-            self.evdir = os.path.join(self.mainfolder, 'EV%s' % self.event_id)
         self.moddir = os.path.join(
-            self.evdir,
+            self.mainfolder,
             ('%s_%s')
             % (self.nickname, os.path.splitext(os.path.basename(modelfile))[0]),
         )
