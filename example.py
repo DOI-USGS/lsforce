@@ -70,7 +70,7 @@ if not os.path.exists(data_filename):
         network=','.join(NETWORKS),
         starttime=STARTTIME,
         endtime=ENDTIME,
-        level='channel'
+        level='channel',
     )
 
     # Assign additional info to Traces
@@ -140,8 +140,14 @@ st_hf.filter('bandpass', freqmin=0.5, freqmax=5)
 st_infra.filter('bandpass', freqmin=0.5, freqmax=10)
 
 # Add "rdist" to tr.stats
-ref_inv = client.get_stations(network='AV,TA', station='ILSW,O20K', starttime=STARTTIME,
-                              endtime=ENDTIME, level='channel')
+ref_inv = client.get_stations(
+    network='AV,TA',
+    station='ILSW,O20K',
+    starttime=STARTTIME,
+    endtime=ENDTIME,
+    level='channel',
+)
+
 for tr in st_hf + st_infra:
     coords = ref_inv.get_coordinates(tr.id, datetime=STARTTIME)
     tr.stats.latitude = coords['latitude']
