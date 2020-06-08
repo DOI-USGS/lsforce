@@ -701,7 +701,7 @@ class LSForce:
         self,
         zero_time=None,
         impose_zero=False,
-        addtoZero=False,
+        add_to_zero=False,
         maxduration=None,
         jackknife=False,
         num_iter=200,
@@ -718,7 +718,7 @@ class LSForce:
                 and also for impose_zero option
             impose_zero (bool): Will add weighting matrix to suggest forces tend towards zero prior
                 to zero_time (zero_time must be defined)
-            addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
+            add_to_zero (bool): Add weighting matrix to suggest that all components of force integrate
                 to zero.
             maxduration (float): Maximum duration allowed for the event, starting at zero_time if defined,
                 otherwise starting from beginning of seismic data. Points after this will tend towards
@@ -752,7 +752,7 @@ class LSForce:
 
         # Save input choices
         self.regr_param = kwargs  # regression parameters specific to method
-        self.addtoZero = addtoZero
+        self.add_to_zero = add_to_zero
         self.zero_time = zero_time
         self.impose_zero = impose_zero
         self.maxduration = maxduration
@@ -840,7 +840,7 @@ class LSForce:
         dl = self.datalength
         gl = int(n / 3)  # self.datalength
 
-        if self.addtoZero is True:  # constrain forces to add to zero
+        if self.add_to_zero is True:  # constrain forces to add to zero
             scaler = Ghatnorm
             first1 = np.hstack((np.ones(gl), np.zeros(2 * gl)))
             second1 = np.hstack((np.zeros(gl), np.ones(gl), np.zeros(gl)))
