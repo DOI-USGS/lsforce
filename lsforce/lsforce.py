@@ -1200,7 +1200,7 @@ class LSForce:
 
         """
 
-        raise Exception('Lasso not yet implemented yet in class structure')
+        raise NotImplementedError('Lasso not yet implemented yet in class structure')
 
         if W is not None:
             Ghat = W.dot(G)  # np.dot(W.tocsr(),G.tocsr())
