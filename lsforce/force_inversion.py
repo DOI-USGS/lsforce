@@ -21,12 +21,6 @@ import copy
 import cartopy.crs as ccrs
 
 
-def unique_list(seq):  # make a list only contain unique values and keep their order
-    seen = set()
-    seen_add = seen.add
-    return [x for x in seq if not (x in seen or seen_add(x))]
-
-
 class LSforce:
     """
     Class for single force inversions
@@ -169,12 +163,9 @@ class LSforce:
             with open(os.path.join(self.moddir, 'L.txt'), 'w') as f:
                 f.write(('%3.2f') % L)
 
-        # make sure there is only one occurrence of each station in list (ignore channels)
-        stas = [trace.stats.station for trace in self.st]
-        stacods = unique_list(stas)
+        # Make sure there is only one occurrence of each station in list (ignore channels)
+        stacods = np.unique([tr.stats.station for tr in self.st])
         dists = [self.st.select(station=sta)[0].stats.rdist for sta in stacods]
-
-        #stations, dist = list(zip(*sorted(zip(stas, dists))))
 
         # write stadistlist.txt
         f = open(os.path.join(self.moddir, 'stadistlist.txt'), 'w')
