@@ -715,7 +715,7 @@ class LSForce:
         Args:
             zero_time (float): Optional estimated start time of real part of signal, in seconds from
                 start time of seismic data. Useful for making figures showing selected start time
-                and also for imposeZero option
+                and also for impose_zero option
             impose_zero (bool): Will add weighting matrix to suggest forces tend towards zero prior
                 to zero_time (zero_time must be defined)
             addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
@@ -754,7 +754,7 @@ class LSForce:
         self.regr_param = kwargs  # regression parameters specific to method
         self.addtoZero = addtoZero
         self.zero_time = zero_time
-        self.imposeZero = impose_zero
+        self.impose_zero = impose_zero
         self.maxduration = maxduration
 
         # Initialize stuff (also serves to clear any previous results if this is a rerun)
@@ -852,7 +852,7 @@ class LSForce:
             A1 = None
 
         scaler = Ghatnorm / zeroScaler
-        if self.imposeZero:  # tell model when there should be no forces
+        if self.impose_zero:  # tell model when there should be no forces
             # TODO get this to work for triangle method (need to change len methods)
             len2 = int(np.floor(((self.zero_time + self.T0) * self.Fsamplerate)))
             if self.method == 'triangle':
@@ -1613,7 +1613,7 @@ class LSForce:
                 ax2.set_ylim(ylim)
                 ax3.set_ylim(ylim)
 
-            if self.imposeZero:
+            if self.impose_zero:
                 [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
             if self.maxduration is not None:
                 [
@@ -1692,7 +1692,7 @@ class LSForce:
             ax.grid(True)
             ax.set_ylabel('Force (N)')
             ax.set_ylim(ylim)
-            if self.imposeZero:
+            if self.impose_zero:
                 ax.axvline(0, color='gray', linestyle='solid', lw=3)
             if self.maxduration is not None:
                 ax.axvline(self.maxduration, color='gray', linestyle='solid', lw=3)
@@ -1857,7 +1857,7 @@ class LSForce:
             [axe.set_xlim(xlim) for axe in axes]
             [axe.grid(True) for axe in axes]
 
-        if self.imposeZero:
+        if self.impose_zero:
             [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
         if self.maxduration is not None:
             [
