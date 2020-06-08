@@ -34,7 +34,7 @@ The following has only been tested on macOS Mojave.
 2. Create a [conda](https://docs.conda.io/en/latest/) environment named `lsforce` and
    activate it:
    ```
-   conda create -n lsforce -c conda-forge black cartopy ipython obspy scikit-learn xarray
+   conda create -n lsforce -c conda-forge black cartopy ipython obspy pyqt scikit-learn xarray
    conda activate lsforce
    ```
 
