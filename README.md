@@ -31,26 +31,21 @@ The following has only been tested on macOS Mojave.
      export PATH="$PATH:/path/to/PROGRAMS.330/bin"
      ```
      
-2. Create a [conda](https://docs.conda.io/en/latest/) environment named `lsforce`:
+2. Create a [conda](https://docs.conda.io/en/latest/) environment named `lsforce` and
+   activate it:
    ```
    conda create -n lsforce -c conda-forge black cartopy ipython obspy scikit-learn xarray
-   ```
-
-3. Install [_waveform_collection_](https://github.com/uafgeotools/waveform_collection)
-   into the `lsforce` environment:
-   ```
    conda activate lsforce
-   pip install git+https://github.com/uafgeotools/waveform_collection.git
    ```
 
-4. Clone this repo and install it into the `lsforce` environment:
+3. Clone this repo and install it into the `lsforce` environment:
    ```
    git clone https://code.usgs.gov/ghsc/lhp/lsforce.git
    cd lsforce
    pip install -e .
    ```
 
-5. Set up an arbitrary run directory and grab model file:
+4. Set up an arbitrary run directory and grab model file:
    ```
    mkdir meow
    cd meow
