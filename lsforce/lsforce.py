@@ -1132,6 +1132,7 @@ class LSForce:
             )
 
     def Lasso(
+        self,
         G,
         d,
         samplerate,
