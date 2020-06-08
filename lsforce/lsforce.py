@@ -355,7 +355,6 @@ class LSForce:
         # make sure st data are all the same length
         lens = [len(trace.data) for trace in st]
         if len(set(lens)) != 1:
-            #raise Exception('traces in st are not all the same length')
             print(
                 'Resampled records are of differing lengths, interpolating all records to same start time and sampling rate'
             )
@@ -1823,7 +1822,6 @@ class LSForce:
         else:
             MagU = None
             MagL = None
-        #ax1.legend(loc='upper right')
         ax1.set_ylabel('Force (N)')
 
         # Plot the horizontal azimuth
@@ -1846,11 +1844,7 @@ class LSForce:
                     tempangL[i] = temp + 360
         # now flip to clockwise to get azimuth
         Haz = 360 - tempang
-        #HazU = 360-tempangU
-        #HazL = 360-tempangL
         ax2.plot(tvec, Haz)
-        #ax2.plot(tvec, HazU, 'r')
-        #ax2.plot(tvec, HazL, 'r')
         ax2.set_ylabel('Azimuth (deg CW from N)')
 
         # Plot the vertical angle
@@ -1858,12 +1852,8 @@ class LSForce:
         Vang = (180 / np.pi) * np.arctan(
             self.Zforce / np.sqrt(self.Nforce ** 2 + self.Eforce ** 2)
         )
-        #VangU = (180/np.pi)*np.arctan(Zlower/np.sqrt(Nupper**2+Elower**2))
-        #VangL = (180/np.pi)*np.arctan(Zupper/np.sqrt(Nlower**2+Eupper**2))
         ax3.plot(tvec, Vang)
         ax3.set_ylabel('Vertical angle (deg)')
-        #ax3.plot(tvec, VangU, 'r')
-        #ax3.plot(tvec, VangL, 'r')
 
         axes = fig.get_axes()
         if xlim:
