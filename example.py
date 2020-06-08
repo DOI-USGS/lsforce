@@ -178,7 +178,7 @@ if CALCULATE_GF:
 else:
     force.load_greens(modelfile=model_file)
 
-force.setup(period_range=PERIOD_RANGE, zeroPhase=True)
+force.setup(period_range=PERIOD_RANGE, zerophase=True)
 
 #%% INVERT
 
