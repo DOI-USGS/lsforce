@@ -122,7 +122,7 @@ class LSForce:
 
         self.moddir = os.path.join(
             self.mainfolder,
-            ('%s_%s')
+            '%s_%s'
             % (self.nickname, os.path.splitext(os.path.basename(modelfile))[0]),
         )
         self.sacodir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
@@ -140,12 +140,12 @@ class LSForce:
 
         # write T0 file
         with open(os.path.join(self.moddir, 'T0.txt'), 'w') as f:
-            f.write(('%3.2f') % T0)
+            f.write('%3.2f' % T0)
 
         # write L file, if applicable
         if self.method in ['triangle']:
             with open(os.path.join(self.moddir, 'L.txt'), 'w') as f:
-                f.write(('%3.2f') % L)
+                f.write('%3.2f' % L)
 
         # Make sure there is only one occurrence of each station in list (ignore channels)
         stacods = np.unique([tr.stats.station for tr in self.st])
@@ -154,7 +154,7 @@ class LSForce:
         # write stadistlist.txt
         f = open(os.path.join(self.moddir, 'stadistlist.txt'), 'w')
         for sta, dis in zip(stacods, dists):
-            f.write(('%s\t%5.1f\n') % (sta, dis))
+            f.write('%s\t%5.1f\n' % (sta, dis))
         f.close()
 
         # write dist file in free format
@@ -163,7 +163,7 @@ class LSForce:
         f = open(os.path.join(self.moddir, 'dist'), 'w')
         for dis in dists:
             f.write(
-                ('%0.1f %0.2f %i %i 0\n')
+                '%0.1f %0.2f %i %i 0\n'
                 % (dis, 1.0 / self.samplerate, samples, self.T0)
             )
         f.close()
@@ -218,7 +218,7 @@ class LSForce:
             indx = int(file1[1:4]) - 1
             GFt = file1[6:9]
             # rename
-            newname = ('GF_%s_%s_%1.0fkm_%s.sac') % (
+            newname = 'GF_%s_%s_%1.0fkm_%s.sac' % (
                 self.nickname,
                 stacods[indx],
                 dists[indx],
@@ -251,7 +251,7 @@ class LSForce:
 
         self.moddir = os.path.join(
             self.mainfolder,
-            ('%s_%s')
+            '%s_%s'
             % (self.nickname, os.path.splitext(os.path.basename(modelfile))[0]),
         )
         if os.path.exists(os.path.join(self.moddir, 'sacorig_%s' % self.method)):
@@ -1006,7 +1006,7 @@ class LSForce:
 
         # compute variance reduction
         self.VR = varred(self.dtorig, self.dtnew)
-        print(('variance reduction %f percent') % (self.VR,))
+        print('variance reduction %f percent' % (self.VR,))
         tvec = (
             np.arange(0, len(self.Zforce) * 1 / self.Fsamplerate, 1 / self.Fsamplerate)
             - self.T0
@@ -1228,7 +1228,7 @@ class LSForce:
         if imposeZero is True:  # tell model when there should be no forces
             if zeroTime is None:
                 raise Exception('imposeZero set to True but no zeroTime provided')
-            len2 = int(np.round((zeroTime) * samplerate))
+            len2 = int(np.round(zeroTime * samplerate))
             len3 = int(
                 np.round(0.2 * len2)
             )  # 20% taper overlapping into main event by x seconds
@@ -1345,7 +1345,7 @@ class LSForce:
 
         # compute variance reduction
         VR = varred(dt, dtnew)
-        print(('variance reduction %2.0f percent') % (VR,))
+        print('variance reduction %2.0f percent' % (VR,))
         tvec = np.arange(0, len(Zforce) * 1 / samplerate, 1 / samplerate) - T0
         if zeroTime is not None:
             tvec = tvec - zeroTime
