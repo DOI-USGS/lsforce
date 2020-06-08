@@ -2778,26 +2778,26 @@ def rotate2ZNE(
     return z, n, e
 
 
-def rotate(st, baz=None):
+def rotate(st, back_azimuth=None):
     """
     rotate all components of st that can be rotated, to radial and transverse
 
     Args:
         st: obspy stream object to rotate
-        baz (list): Not required if backaz already attached to st stats, list
+        back_azimuth (list): Not required if backaz already attached to st stats, list
             of backazimuths corresponding to st
     """
 
-    # implant baz in st's
-    if baz:
+    # implant back_azimuth in st's
+    if back_azimuth:
         for i, trace in enumerate(st):
-            trace.stats.back_azimuth = baz[i]
+            trace.stats.back_azimuth = back_azimuth[i]
             st[i] = trace
     else:
         try:
             st[0].stats.back_azimuth
         except:
-            print('need to attach baz')
+            print('need to attach back_azimuth')
             return
     # get list of station location code pairs present
     staloc = list(
@@ -2943,7 +2943,7 @@ def _dip_azimuth2ZSE_base_vector(dip, azimuth):
 
 def readrun(filename):
     """
-    Read in a saved LSforce object
+    Read in a saved LSForce object
     """
 
     with open(filename, 'rb') as f:
