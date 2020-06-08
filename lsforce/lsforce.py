@@ -278,7 +278,7 @@ class LSForce:
         self,
         weights=None,
         weightpre=None,
-        period_range=[30.0, 150.0],
+        period_range=(30.0, 150.0),
         filter_order=2,
         zeroPhase=False,
     ):
@@ -801,7 +801,7 @@ class LSForce:
         alpha_method='Lcurve',
         zeroScaler=15.0,
         zeroTaperlen=20.0,
-        Tikhratio=[1.0, 0.0, 0.0],
+        Tikhratio=(1.0, 0.0, 0.0),
     ):
         """
         Full waveform inversion using Tikhonov regularization
@@ -2305,7 +2305,7 @@ def findalpha(
     L1=0.0,
     L2=0.0,
     invmethod='lsq',
-    Tikhratio=[1.0, 0.0, 0.0],
+    Tikhratio=(1.0, 0.0, 0.0),
     rough=False,
 ):
     """
@@ -2435,7 +2435,7 @@ def findalphaD(
     tolerance=None,
     L1=0.0,
     L2=0.0,
-    Tikhratio=[1.0, 0.0, 0.0],
+    Tikhratio=(1.0, 0.0, 0.0),
 ):
     """
     Use discrepancy principle and noise window to find best alpha (tends to find value that
