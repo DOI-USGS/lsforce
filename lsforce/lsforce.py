@@ -163,14 +163,15 @@ class LSForce:
         f = open(os.path.join(self.moddir, 'dist'), 'w')
         for dis in dists:
             f.write(
-                '%0.1f %0.2f %i %i 0\n'
-                % (dis, 1.0 / self.samplerate, samples, self.T0)
+                '%0.1f %0.2f %i %i 0\n' % (dis, 1.0 / self.samplerate, samples, self.T0)
             )
         f.close()
         self.greenlength = samples
 
         # move copy of model_file to current directory for recordkeeping
-        shutil.copy2(model_file, os.path.join(self.moddir, os.path.basename(model_file)))
+        shutil.copy2(
+            model_file, os.path.join(self.moddir, os.path.basename(model_file))
+        )
 
         # write shell script to run Green's functions
         self.shellscript = os.path.join(self.moddir, 'CPScommands.sh')
@@ -179,7 +180,8 @@ class LSForce:
             f.write('rm %s\n' % os.path.join(self.sacodir, '*.sac'))
             f.write('rm %s\n' % os.path.join(self.sacdir, '*.sac'))
             f.write(
-                'hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n' % (self.model_file, 'dist')
+                'hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n'
+                % (self.model_file, 'dist')
             )
             f.write('hspec96 > hspec96.out\n')
             if self.method == 'triangle':
@@ -534,13 +536,13 @@ class LSForce:
                         weight[i] = weights[i]
                     elif weights == 'prenoise':
                         weight[i] = 1.0 / np.std(
-                            trace.data[0:int(weightpre * trace.stats.sampling_rate)]
+                            trace.data[0 : int(weightpre * trace.stats.sampling_rate)]
                         )
                     elif weights == 'distance':
                         weight[i] = trace.stats.rdist
 
-                    Wvec[indx:indx + self.datalength] = (
-                        Wvec[indx:indx + self.datalength] * weight[i]
+                    Wvec[indx : indx + self.datalength] = (
+                        Wvec[indx : indx + self.datalength] * weight[i]
                     )
                     indx += self.datalength
 
@@ -668,13 +670,13 @@ class LSForce:
                         weight[i] = weights[i]
                     elif weights == 'prenoise':
                         weight[i] = 1.0 / np.std(
-                            trace.data[0: int(weightpre * trace.stats.sampling_rate)]
+                            trace.data[0 : int(weightpre * trace.stats.sampling_rate)]
                         )
                     elif weights == 'distance':
                         weight[i] = trace.stats.rdist
 
-                    Wvec[indx:indx + self.datalength] = (
-                        Wvec[indx:indx + self.datalength] * weight[i]
+                    Wvec[indx : indx + self.datalength] = (
+                        Wvec[indx : indx + self.datalength] * weight[i]
                     )
                     indx += self.datalength
 
@@ -982,8 +984,8 @@ class LSForce:
             self.Zforce = -np.real(
                 np.fft.ifft(model[0:div]) / 10 ** 5
             )  # convert from dynes to newtons, flip so up is positive
-            self.Nforce = np.real(np.fft.ifft(model[div:2 * div]) / 10 ** 5)
-            self.Eforce = np.real(np.fft.ifft(model[2 * div:]) / 10 ** 5)
+            self.Nforce = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
+            self.Eforce = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
             # run forward model
             df_new = np.dot(self.G, model.T)  # forward_model(G,model)
             # convert d and df_new back to time domain
@@ -998,8 +1000,8 @@ class LSForce:
             self.Zforce = (
                 -model[0:div] / 10 ** 5
             )  # convert from dynes to netwons, flip so up is positive
-            self.Nforce = model[div:2 * div] / 10 ** 5
-            self.Eforce = model[2 * div:] / 10 ** 5
+            self.Nforce = model[div : 2 * div] / 10 ** 5
+            self.Eforce = model[2 * div :] / 10 ** 5
             dtnew = self.G.dot(model)  # forward_model(G,model)
             self.dtnew = np.reshape(dtnew, (self.numsta, dl))
             self.dtorig = np.reshape(self.d, (self.numsta, dl))
@@ -1074,8 +1076,8 @@ class LSForce:
                     Zf = -np.real(
                         np.fft.ifft(model[0:div]) / 10 ** 5
                     )  # convert from dynes to newtons, flip so up is positive
-                    Nf = np.real(np.fft.ifft(model[div:2 * div]) / 10 ** 5)
-                    Ef = np.real(np.fft.ifft(model[2 * div:]) / 10 ** 5)
+                    Nf = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
+                    Ef = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
                     # run forward model
                     df_new = np.dot(Gtemp, model.T)  # forward_model(G,model)
                     # convert d and df_new back to time domain
@@ -1087,8 +1089,8 @@ class LSForce:
                     Zf = (
                         -model[0:div] / 10 ** 5
                     )  # convert from dynes to netwons, flip so up is positive
-                    Nf = model[div: 2 * div] / 10 ** 5
-                    Ef = model[2 * div:] / 10 ** 5
+                    Nf = model[div : 2 * div] / 10 ** 5
+                    Ef = model[2 * div :] / 10 ** 5
                     dtnew = Gtemp.dot(model)  # forward_model(G,model)
                     dt = np.reshape(dtemp, (numkeep, dl))
 
@@ -1326,8 +1328,8 @@ class LSForce:
             Zforce = -np.real(
                 np.fft.ifft(model[0:div]) / 10 ** 5
             )  # convert from dynes to newtons, flip so up is positive
-            Nforce = np.real(np.fft.ifft(model[div:2 * div]) / 10 ** 5)
-            Eforce = np.real(np.fft.ifft(model[2 * div:]) / 10 ** 5)
+            Nforce = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
+            Eforce = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
             # run forward model
             df_new = np.dot(G, model.T)  # forward_model(G,model)
             # convert d and df_new back to time domain
@@ -1337,8 +1339,8 @@ class LSForce:
             Zforce = (
                 -model[0:div] / 10 ** 5
             )  # convert from dynes to netwons, flip so up is positive
-            Nforce = model[div:2 * div] / 10 ** 5
-            Eforce = model[2 * div:] / 10 ** 5
+            Nforce = model[div : 2 * div] / 10 ** 5
+            Eforce = model[2 * div :] / 10 ** 5
             dtnew = G.dot(model)  # forward_model(G,model)
             dtnew = np.reshape(dtnew, (numsta, datlenorig))
             dt = np.reshape(d, (numsta, datlenorig))
@@ -1704,9 +1706,7 @@ class LSForce:
         plt.show()
         return fig
 
-    def plotangmag(
-        self, xlim=None, ylim=None, tvecshift=0.0
-    ):
+    def plotangmag(self, xlim=None, ylim=None, tvecshift=0.0):
         """
         plot angles and magnitudes of inversion result and append results
         to object for further use
@@ -1876,12 +1876,12 @@ class LSForce:
         self, Zforce, Eforce, Nforce, mass, startidx, endidx, detrend=None
     ):
 
-        traj_tvec = self.tvec[startidx:endidx + 1]
+        traj_tvec = self.tvec[startidx : endidx + 1]
 
         dx = 1.0 / self.Fsamplerate
-        Za = -Zforce.copy()[startidx:endidx + 1] / mass
-        Ea = -Eforce.copy()[startidx:endidx + 1] / mass
-        Na = -Nforce.copy()[startidx:endidx + 1] / mass
+        Za = -Zforce.copy()[startidx : endidx + 1] / mass
+        Ea = -Eforce.copy()[startidx : endidx + 1] / mass
+        Na = -Nforce.copy()[startidx : endidx + 1] / mass
         Zvel = np.cumsum(Za) * dx
         Evel = np.cumsum(Ea) * dx
         Nvel = np.cumsum(Na) * dx
@@ -2639,7 +2639,7 @@ def makeconvmat(c, size=None):
                 zros = np.zeros(i + 1 - len(c))
                 p = np.concatenate((zros, cflip, np.zeros(2 * len(c))))
             else:
-                p = np.concatenate(((cflip[-(i + 1):]), np.zeros(2 * len(c))))
+                p = np.concatenate(((cflip[-(i + 1) :]), np.zeros(2 * len(c))))
             p = p[: 2 * len(c) - 1]
             C[i, :] = p.copy()
     else:
@@ -2650,7 +2650,7 @@ def makeconvmat(c, size=None):
                 zros = np.zeros(i + 1 - len(c))
                 p = np.concatenate((zros, cflip, np.zeros(size[1])))
             else:
-                p = np.concatenate(((cflip[-(i + 1):]), np.zeros(size[1])))
+                p = np.concatenate(((cflip[-(i + 1) :]), np.zeros(size[1])))
             p = p[: size[1]]  # cut p to the right size
             C[i, :] = p.copy()
     return C
@@ -2706,8 +2706,8 @@ def curvature(x, y):
         'inf'
     )  # end numbers should be infinity because is straight line
     for i in range(1, len(R_2) - 1):
-        xsub = x[i - 1:i + 2]
-        ysub = y[i - 1:i + 2]
+        xsub = x[i - 1 : i + 2]
+        ysub = y[i - 1 : i + 2]
         m1 = -1 / (
             (ysub[0] - ysub[1]) / (xsub[0] - xsub[1])
         )  # slope of bisector of first segment
