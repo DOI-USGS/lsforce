@@ -238,7 +238,7 @@ class LSForce:
         selection, this simply loads info about them needed for setup
 
         Args:
-            modefile (str): the name of hte model file used to compute the
+            modelfile (str): the name of the model file used to compute the
                 Greens functions. This is so they can be found because they
                 are saved in a folder referencing the model file name
 
@@ -1429,11 +1429,16 @@ class LSForce:
 
         Args:
             subplots (bool): True, make subplots, False, plot all one one plot
-            vline (array): plot vertical line at t=vline
+            xlim:
+            ylim:
+            sameY:
+            hfshift:
+            infra_shift:
             [ZEN]upper = upper limit of uncertainties (None if none)
             [ZEN]lower = ditto for lower limit
             highf_tr: obspy trace with a start time identical to the start time of the data used in the
                 inversion (otherwise won't line up right)
+            infra_tr:
             hfylabel (str): Label used for high frequency trace, if not
                 defined, will use station name
             tvecshift (float): shift time vector manually by this many seconds,
@@ -2231,6 +2236,7 @@ class LSForce:
             figs2save (list): list of figure handles to save
             figs2save_names (list): list of names of figures (appends to end)
             light (bool): to reduce size, does not save seismic data with object
+            filetype:
 
         """
         if filepath is None:
@@ -2447,6 +2453,16 @@ def findalphaD(
 
     Args:
         tolerance (float): how close you want to get to the noise level with the solution
+        Ghat:
+        dhat:
+        I:
+        zeroTime:
+        samplerate:
+        numsta:
+        datlenorig:
+        L1:
+        L2:
+        Tikhratio:
     """
 
     # Estimate the noise level (use signal before zeroTime)
@@ -2693,6 +2709,7 @@ def curvature(x, y, negslope=True):
     Args:
         x (array): x points
         y (array): y points
+        negslope:
 
     Returns:
         radius of curvature for each point (ends will be nan)
