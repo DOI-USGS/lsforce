@@ -190,7 +190,7 @@ force.invert(
     num_iter=20,
     frac_delete=0.3,
     alphaset=4.8e-20,
-    zeroScaler=2,
+    zero_scaler=2,
     Tikhratio=[0.4, 0.0, 0.6],
 )
 
