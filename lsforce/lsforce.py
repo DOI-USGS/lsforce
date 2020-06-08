@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 from matplotlib import cm
 import scipy as sp
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
 import random as rnd
 import pickle
 from sklearn import linear_model as lm
