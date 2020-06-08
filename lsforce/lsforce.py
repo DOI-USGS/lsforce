@@ -442,9 +442,7 @@ class LSForce:
                         zhff = np.fft.fft(zhf.data, self.NFFT)
                         ZVF = np.diag(zvff)
                         ZHF = np.diag(zhff)
-                    az = math.radians(
-                        trace.stats.azimuth
-                    )
+                    az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
                     )
@@ -596,15 +594,9 @@ class LSForce:
                                corners=self.filter['order'],
                                zerophase=self.filter['zeroPhase'])
                     """
-                    ZVF = makeshiftmat(
-                        zvf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )
-                    ZHF = makeshiftmat(
-                        zhf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )
-                    az = math.radians(
-                        trace.stats.azimuth
-                    )
+                    ZVF = makeshiftmat(zvf.data, shiftby=fshiftby, size1=(n, Flen))
+                    ZHF = makeshiftmat(zhf.data, shiftby=fshiftby, size1=(n, Flen))
+                    az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
                     )
@@ -636,12 +628,8 @@ class LSForce:
                                corners=self.filter['order'],
                                zerophase=self.filter['zeroPhase'])
                     """
-                    RVF = makeshiftmat(
-                        rvf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )
-                    RHF = makeshiftmat(
-                        rhf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )
+                    RVF = makeshiftmat(rvf.data, shiftby=fshiftby, size1=(n, Flen))
+                    RHF = makeshiftmat(rhf.data, shiftby=fshiftby, size1=(n, Flen))
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
@@ -661,9 +649,7 @@ class LSForce:
                                corners=self.filter['order'],
                                zerophase=self.filter['zeroPhase'])
                     """
-                    THF = makeshiftmat(
-                        thf.data, shiftby=fshiftby, size1=(n, Flen)
-                    )
+                    THF = makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
                     TVF = 0.0 * THF.copy()
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
@@ -868,9 +854,7 @@ class LSForce:
         else:
             A1 = None
 
-        scaler = (
-            Ghatnorm / zeroScaler
-        )
+        scaler = Ghatnorm / zeroScaler
         if self.imposeZero:  # tell model when there should be no forces
             # TODO get this to work for triangle method (need to change len methods)
             len2 = int(np.floor(((self.zeroTime + self.T0) * self.Fsamplerate)))
@@ -995,9 +979,7 @@ class LSForce:
         x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
 
         if self.domain == 'freq':
-            model, residuals, rank, s = sp.linalg.lstsq(
-                A, x
-            )
+            model, residuals, rank, s = sp.linalg.lstsq(A, x)
             self.model = model.copy()
             div = len(model) / 3
             self.Zforce = -np.real(
@@ -1090,9 +1072,7 @@ class LSForce:
                 xj = np.squeeze(np.asarray(np.dot(Ghat1.H, dhat1)))
 
                 if self.domain == 'freq':
-                    model, residuals, rank, s = sp.linalg.lstsq(
-                        Aj, xj
-                    )
+                    model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
                     div = len(model) / 3
                     Zf = -np.real(
                         np.fft.ifft(model[0:div]) / 10 ** 5
@@ -1246,9 +1226,7 @@ class LSForce:
             Ghat = np.vstack((Ghat, A))
             dhat = np.hstack((dhat, np.zeros(3)))
 
-        scaler = (
-            Ghatnorm / 15.0
-        )
+        scaler = Ghatnorm / 15.0
         if imposeZero is True:  # tell model when there should be no forces
             if zeroTime is None:
                 raise Exception('imposeZero set to True but no zeroTime provided')
@@ -2379,16 +2357,12 @@ def findalpha(
             Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
         )  # Combo of all regularization things
         if invmethod == 'lsq':
-            model, residuals, rank, s = sp.linalg.lstsq(
-                A, x
-            )
+            model, residuals, rank, s = sp.linalg.lstsq(A, x)
         elif invmethod == 'nnls':
             model, residuals = sp.optimize.nnls(A, x)
         else:
             raise Exception('inversion method %s not recognized' % invmethod)
-        temp1 = (
-            np.dot(Ghat, model.T) - dhat
-        )
+        temp1 = np.dot(Ghat, model.T) - dhat
         fit1.append(sp.linalg.norm(temp1))
         size1.append(
             sp.linalg.norm(Tikhratio[0] * model)
@@ -2404,9 +2378,7 @@ def findalpha(
     tempcurve = curves.copy()
     tempcurve[slp2 < 0] = np.max(curves)
     idx = np.argmin(tempcurve)
-    alpha = alphas[
-        idx
-    ]
+    alpha = alphas[idx]
 
     if not rough:
         # Then hone in
@@ -2420,15 +2392,11 @@ def findalpha(
                 Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
             )  # Combo of all regularization things
             if invmethod == 'lsq':
-                model, residuals, rank, s = sp.linalg.lstsq(
-                    A, x
-                )
+                model, residuals, rank, s = sp.linalg.lstsq(A, x)
             elif invmethod == 'nnls':
                 model, residuals = sp.optimize.nnls(A, x)
 
-            temp1 = (
-                np.dot(Ghat, model.T) - dhat
-            )
+            temp1 = np.dot(Ghat, model.T) - dhat
             fit1.append(sp.linalg.norm(temp1))
             size1.append(
                 sp.linalg.norm(Tikhratio[0] * model)
@@ -2444,9 +2412,7 @@ def findalpha(
         tempcurve = curves.copy()
         tempcurve[slp2 < 0] = np.max(curves)
         idx = np.argmin(tempcurve)
-        bestalpha = alphas[
-            idx
-        ]
+        bestalpha = alphas[idx]
     else:
         bestalpha = alpha
 
@@ -2705,9 +2671,7 @@ def makeshiftmat(c, shiftby, size1):
 
     diff = len(c) - size1[0]
     if diff < 0:
-        cpad = np.pad(
-            c, (0, -diff), mode='edge'
-        )
+        cpad = np.pad(c, (0, -diff), mode='edge')
     elif diff > 0:
         cpad = c[: size1[0]]
     else:
