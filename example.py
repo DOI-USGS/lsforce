@@ -5,6 +5,9 @@ from obspy.geodetics import gps2dist_azimuth
 import os
 import numpy as np
 
+# Arbitrary run directory containing model file
+LSFORCE_RUN_DIR = os.path.join(os.getcwd(), 'meow')
+
 RUN_NAME = 'iliamna_2016'  # Nickname for this run
 EVENT_ID = 1  # Provide this number so database-based code doesn't break
 
@@ -16,15 +19,14 @@ ORIGIN_TIME = UTCDateTime(2016, 5, 22, 7, 57, 34)
 STARTTIME = ORIGIN_TIME - 100
 ENDTIME = ORIGIN_TIME + 300
 
-MODEL_FILE = os.path.join(os.getcwd(), 'meow', 'tak135sph.mod')
-MAIN_FOLDER = os.path.join(os.getcwd(), 'meow', RUN_NAME)
-AUX_FOLDER = os.path.join(MAIN_FOLDER, f'EV{EVENT_ID}')
-
-# Make folders if they don't already exist
-if not os.path.exists(MAIN_FOLDER):
-    os.mkdir(MAIN_FOLDER)
-if not os.path.exists(AUX_FOLDER):
-    os.mkdir(AUX_FOLDER)
+# Set up folder structure
+model_file = os.path.join(LSFORCE_RUN_DIR, 'tak135sph.mod')
+main_folder = os.path.join(LSFORCE_RUN_DIR, RUN_NAME)
+aux_folder = os.path.join(main_folder, f'EV{EVENT_ID}')
+if not os.path.exists(main_folder):
+    os.mkdir(main_folder)
+if not os.path.exists(aux_folder):
+    os.mkdir(aux_folder)
 
 # If GF's don't exist yet, or if the Stream has been modified, this must be True
 CALCULATE_GF = True
@@ -33,7 +35,7 @@ CALCULATE_GF = True
 
 TONEY_ET_AL_NUM_CHANS = 32  # Number of channels used in paper's 2016 Iliamna inversion
 
-data_filename = os.path.join(AUX_FOLDER, f'{RUN_NAME}_data.pkl')
+data_filename = os.path.join(aux_folder, f'{RUN_NAME}_data.pkl')
 
 # Download data if it doesn't exist as a file
 if not os.path.exists(data_filename):
@@ -155,15 +157,15 @@ force = LSforce(
     samplerate=1,
     nickname=RUN_NAME,
     event_id=EVENT_ID,
-    mainfolder=MAIN_FOLDER,
+    mainfolder=main_folder,
     source_lat=LS_LAT,
     source_lon=LS_LON,
 )
 
 if CALCULATE_GF:
-    force.compute_greens(modelfile=MODEL_FILE, gfduration=200, T0=-10)
+    force.compute_greens(modelfile=model_file, gfduration=200, T0=-10)
 else:
-    force.load_greens(modelfile=MODEL_FILE)
+    force.load_greens(modelfile=model_file)
 
 force.setup(period_range=PERIOD_RANGE, zeroPhase=True)
 
