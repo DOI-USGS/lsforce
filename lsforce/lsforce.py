@@ -700,7 +700,7 @@ class LSForce:
     def invert(
         self,
         zero_time=None,
-        imposeZero=False,
+        impose_zero=False,
         addtoZero=False,
         maxduration=None,
         jackknife=False,
@@ -716,7 +716,7 @@ class LSForce:
             zero_time (float): Optional estimated start time of real part of signal, in seconds from
                 start time of seismic data. Useful for making figures showing selected start time
                 and also for imposeZero option
-            imposeZero (bool): Will add weighting matrix to suggest forces tend towards zero prior
+            impose_zero (bool): Will add weighting matrix to suggest forces tend towards zero prior
                 to zeroTime (zeroTime must be defined)
             addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
                 to zero.
@@ -747,14 +747,14 @@ class LSForce:
         """
 
         # Check inputs for consistency
-        if imposeZero and (zero_time is None or zero_time == 0.0):
-            raise Exception('imposeZero set to True but no zero_time provided')
+        if impose_zero and (zero_time is None or zero_time == 0.0):
+            raise Exception('impose_zero set to True but no zero_time provided')
 
         # Save input choices
         self.regr_param = kwargs  # regression parameters specific to method
         self.addtoZero = addtoZero
         self.zeroTime = zero_time
-        self.imposeZero = imposeZero
+        self.imposeZero = impose_zero
         self.maxduration = maxduration
 
         # Initialize stuff (also serves to clear any previous results if this is a rerun)
@@ -1168,7 +1168,7 @@ class LSForce:
                 NOTE ABOUT HOW LASSO HANDLES REG FOR L1 and L2
             zeroTime (float): Optional estimated start time of real part of signal, in seconds from
                 start time of seismic data. Useful for making figures showing selected start time
-                and also for imposeZero option
+                and also for impose_zero option
             imposeZero (bool): Will add weighting matrix to suggest forces tend towards zero prior
                 to zero_time (zero_time must be defined)
             addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
@@ -1227,7 +1227,7 @@ class LSForce:
         scaler = Ghatnorm / 15.0
         if imposeZero is True:  # tell model when there should be no forces
             if zeroTime is None:
-                raise Exception('imposeZero set to True but no zero_time provided')
+                raise Exception('impose_zero set to True but no zero_time provided')
             len2 = int(np.round(zeroTime * samplerate))
             len3 = int(
                 np.round(0.2 * len2)
