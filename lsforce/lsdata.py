@@ -75,10 +75,14 @@ def _rotate_to_rtz(st):
 
     # Grab inventory for orientation info (relying only on IRIS FDSN here!)
     client = Client('IRIS')
-    inv = client.get_stations(network=','.join(networks), station=','.join(stations),
-                              channel=','.join(channels),
-                              starttime=st_rot[0].stats.starttime,
-                              endtime=st_rot[0].stats.endtime, level='channel')
+    inv = client.get_stations(
+        network=','.join(networks),
+        station=','.join(stations),
+        channel=','.join(channels),
+        starttime=st_rot[0].stats.starttime,
+        endtime=st_rot[0].stats.endtime,
+        level='channel',
+    )
 
     # Rotate on a station-by-station basis
     for station in stations:
@@ -89,18 +93,18 @@ def _rotate_to_rtz(st):
 
         # ENZ case (or subset of ENZ)
         if components in (
-                ['E', 'N', 'Z'],
-                ['E', 'N'],
-                ['E', 'Z'],
-                ['N', 'Z'],
-                ['E'],
-                ['N'],
-                ['Z']
+            ['E', 'N', 'Z'],
+            ['E', 'N'],
+            ['E', 'Z'],
+            ['N', 'Z'],
+            ['E'],
+            ['N'],
+            ['Z'],
         ):
             # Just check for expected orientation, don't do any rotation
             for component in components:
 
-                id = st_sta.select(component=component)[0].id  # Only expecting one Trace here!
+                id = st_sta.select(component=component)[0].id  # Only one Trace here!
                 msg = f'Unexpected orientation for {id}'
                 orient = inv.get_orientation(id)
                 if component == 'E':
@@ -112,7 +116,7 @@ def _rotate_to_rtz(st):
 
         # 12Z and 123 cases
         elif components in (['1', '2', 'Z'], ['1', '2', '3']):
-            st_sta.rotate('->ZNE', inventory=inv)  # Rotate to ENZ (in-place modification!)
+            st_sta.rotate('->ZNE', inventory=inv)  # Rotate to ENZ (in-place change!)
 
         # Error out since we don't know how to handle this (yet)!
         else:
