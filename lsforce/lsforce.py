@@ -800,7 +800,7 @@ class LSForce:
         alpha_method='Lcurve',
         zero_scaler=15.0,
         zero_taper_length=20.0,
-        Tikhratio=(1.0, 0.0, 0.0),
+        tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
         """
         Full waveform inversion using Tikhonov regularization
@@ -816,11 +816,11 @@ class LSForce:
                 oscillations due to a sudden release of the constraint
             zero_taper_length (float): length of taper for zero_scaler, in seconds.
                 shorter tapers can result in sharp artifacts, longer is better
-            Tikhratio (array): Proportion each regularization method contributes, where values correspond
+            tikhonov_ratios (array): Proportion each regularization method contributes, where values correspond
                 to [zeroth, first order, second order]. Must add to 1. Only used if method = 'tikh'
         """
 
-        if np.sum(Tikhratio) != 1.0:
+        if np.sum(tikhonov_ratios) != 1.0:
             raise Exception('Tikhonov ratios must add to 1')
         self.parameters = {}
 
@@ -924,14 +924,14 @@ class LSForce:
 
         # Build roughening matrix
         I = np.eye(n, n)
-        if Tikhratio[1] != 0.0:
+        if tikhonov_ratios[1] != 0.0:
             # Build L1 (first order) roughening matrix
             L1 = np.diag(-1 * np.ones(n)) + np.diag(np.ones(n - 1), k=1)
             L1part = np.dot(L1.T, L1)
         else:
             L1part = 0.0
             L1 = 0.0
-        if Tikhratio[2] != 0.0:
+        if tikhonov_ratios[2] != 0.0:
             # Build L2 (second order) roughening matrix
             L2 = (
                 np.diag(np.ones(n))
@@ -946,7 +946,7 @@ class LSForce:
         if alphaset is None:
             if alpha_method == 'Lcurve':
                 alpha, fit1, size1, alphas = findalpha(
-                    Ghat, dhat, I, L1, L2, Tikhratio=Tikhratio, invmethod='lsq'
+                    Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq'
                 )
             else:
                 alpha, fit1, size1, alphas = findalphaD(
@@ -959,7 +959,7 @@ class LSForce:
                     dl,
                     L1=L1,
                     L2=L2,
-                    Tikhratio=Tikhratio,
+                    tikhonov_ratios=tikhonov_ratios,
                 )  # , tolerance=0.5)
             print('best alpha is %6.1e' % alpha)
             self.alpha = alpha
@@ -973,7 +973,7 @@ class LSForce:
         Apart = np.dot(Ghat.H, Ghat)
 
         A = Apart + alpha ** 2 * (
-            Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
+                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
         )  # Combo of all regularization things (if any are zero they won't matter)
         x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
 
@@ -1066,7 +1066,7 @@ class LSForce:
                 Apart = np.dot(Ghat1.H, Ghat1)
 
                 Aj = Apart + self.alpha ** 2 * (
-                    Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
+                        tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
                 )  # Combo of all regularization things (if any are zero they won't matter)
                 xj = np.squeeze(np.asarray(np.dot(Ghat1.H, dhat1)))
 
@@ -2298,7 +2298,7 @@ def findalpha(
     L1=0.0,
     L2=0.0,
     invmethod='lsq',
-    Tikhratio=(1.0, 0.0, 0.0),
+    tikhonov_ratios=(1.0, 0.0, 0.0),
     rough=False,
 ):
     """
@@ -2313,7 +2313,7 @@ def findalpha(
         L2 (array): Second order roughening matrix, if 0., will use only zeroth order Tikhonov reg.
         invmethod (str): if 'lsq' will use least squares (regular tikhonov), 'nnls' will use non-negative
             least squares
-        Tikhratio (list): Proportion each regularization method contributes, where values correspond
+        tikhonov_ratios (list): Proportion each regularization method contributes, where values correspond
             to [zeroth, first order, second order]. Must add to 1.
         rough (bool): If False (default), will do two iterations to fine tune the alpha parameter,
             if True, time will be saved because it will only do one round of searching
@@ -2347,7 +2347,7 @@ def findalpha(
     # rough first iteration
     for alpha in alphas:
         A = Apart + alpha ** 2 * (
-            Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
+                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
         )  # Combo of all regularization things
         if invmethod == 'lsq':
             model, residuals, rank, s = sp.linalg.lstsq(A, x)
@@ -2358,9 +2358,9 @@ def findalpha(
         temp1 = np.dot(Ghat, model.T) - dhat
         fit1.append(sp.linalg.norm(temp1))
         size1.append(
-            sp.linalg.norm(Tikhratio[0] * model)
-            + sp.linalg.norm(Tikhratio[1] * np.dot(L1part, model))
-            + sp.linalg.norm(Tikhratio[2] * np.dot(L2part, model))
+            sp.linalg.norm(tikhonov_ratios[0] * model)
+            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, model))
+            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, model))
         )
     fit1 = np.array(fit1)
     size1 = np.array(size1)
@@ -2382,7 +2382,7 @@ def findalpha(
         size1 = []
         for newalpha in alphas:
             A = Apart + newalpha ** 2 * (
-                Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
+                    tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
             )  # Combo of all regularization things
             if invmethod == 'lsq':
                 model, residuals, rank, s = sp.linalg.lstsq(A, x)
@@ -2392,9 +2392,9 @@ def findalpha(
             temp1 = np.dot(Ghat, model.T) - dhat
             fit1.append(sp.linalg.norm(temp1))
             size1.append(
-                sp.linalg.norm(Tikhratio[0] * model)
-                + sp.linalg.norm(Tikhratio[1] * np.dot(L1part, model))
-                + sp.linalg.norm(Tikhratio[2] * np.dot(L2part, model))
+                sp.linalg.norm(tikhonov_ratios[0] * model)
+                + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, model))
+                + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, model))
             )
         fit1 = np.array(fit1)
         size1 = np.array(size1)
@@ -2428,7 +2428,7 @@ def findalphaD(
     tolerance=None,
     L1=0.0,
     L2=0.0,
-    Tikhratio=(1.0, 0.0, 0.0),
+    tikhonov_ratios=(1.0, 0.0, 0.0),
 ):
     """
     Use discrepancy principle and noise window to find best alpha (tends to find value that
@@ -2449,7 +2449,7 @@ def findalphaD(
         datlenorig:
         L1:
         L2:
-        Tikhratio:
+        tikhonov_ratios:
     """
 
     # Estimate the noise level (use signal before zero_time)
@@ -2492,11 +2492,11 @@ def findalphaD(
         print(('ak = %s' % (ak,)))
         print(('bk = %s' % (bk,)))
         Aa = Apart + ak ** 2 * (
-            Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
+                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
         )
         modelak, residuals, rank, s = sp.linalg.lstsq(Aa, x)
         Ab = Apart + bk ** 2 * (
-            Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
+                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
         )
         modelbk, residuals, rank, s = sp.linalg.lstsq(Ab, x)
         fitak = sp.linalg.norm(np.dot(Ghat, modelak.T) - dhat)
@@ -2505,16 +2505,16 @@ def findalphaD(
         fit1.append(fitak)
         alphas.append(ak)
         size1.append(
-            sp.linalg.norm(Tikhratio[0] * modelak)
-            + sp.linalg.norm(Tikhratio[1] * np.dot(L1part, modelak))
-            + sp.linalg.norm(Tikhratio[2] * np.dot(L2part, modelak))
+            sp.linalg.norm(tikhonov_ratios[0] * modelak)
+            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, modelak))
+            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, modelak))
         )
         fit1.append(fitbk)
         alphas.append(bk)
         size1.append(
-            sp.linalg.norm(Tikhratio[0] * modelbk)
-            + sp.linalg.norm(Tikhratio[1] * np.dot(L1part, modelbk))
-            + sp.linalg.norm(Tikhratio[2] * np.dot(L2part, modelbk))
+            sp.linalg.norm(tikhonov_ratios[0] * modelbk)
+            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, modelbk))
+            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, modelbk))
         )
         fak = fitak - noise  # should be negative
         fbk = fitbk - noise  # should be positive
@@ -2537,16 +2537,16 @@ def findalphaD(
         # Compute midpoint (in log units)
         ck = 10 ** (0.5 * (np.log10(ak) + np.log10(bk)))
         Ac = Apart + ck ** 2 * (
-            Tikhratio[0] * I + Tikhratio[1] * L1part + Tikhratio[2] * L2part
+                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
         )
         modelck, residuals, rank, s = sp.linalg.lstsq(Ac, x)
         fitck = sp.linalg.norm(np.dot(Ghat, modelck.T) - dhat)
         fit1.append(fitck)
         alphas.append(ck)
         size1.append(
-            sp.linalg.norm(Tikhratio[0] * modelck)
-            + sp.linalg.norm(Tikhratio[1] * np.dot(L1part, modelck))
-            + sp.linalg.norm(Tikhratio[2] * np.dot(L2part, modelck))
+            sp.linalg.norm(tikhonov_ratios[0] * modelck)
+            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, modelck))
+            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, modelck))
         )
         fck = fitck - noise
         print(('ck = %s' % (ck,)))
