@@ -3,6 +3,8 @@ from obspy.clients.fdsn import Client
 import numpy as np
 import warnings
 
+DETREND_POLY_ORDER = 2
+WATER_LEVEL = 60  # [dB]
 KM_PER_M = 1 / 1000  # [km/m]
 
 
@@ -16,15 +18,17 @@ class LSData:
         source_lon: See below
     """
 
-    def __init__(self, st, source_lat, source_lon):
+    def __init__(self, st, source_lat, source_lon, remove_response=True):
         """
         Args:
             st: ObsPy Stream object with ``tr.stats.latitude`` and
-                ``tr.stats.longitude`` defined
+                ``tr.stats.longitude`` defined and response attached
             source_lat (int or float): Latitude in decimal degrees of centroid of
                 landslide source location
             source_lon (int or float): Longitude in decimal degrees of centroid of
                 landslide source location
+            remove_response (bool): Toggle response removal to displacement units. Set
+                to `False` if you want to handle response removal yourself
         """
 
         # Before we do anything, verify that tr.stats.latitude/longitude are defined
@@ -50,7 +54,13 @@ class LSData:
         # Rotate into RTZ
         self.st_proc = _rotate_to_rtz(self.st_proc)
 
+        # Now that we're rotated, sort
         self.st_proc.sort(keys=['distance', 'channel'])
+
+        if remove_response:
+            self.st_proc.detrend('polynomial', order=DETREND_POLY_ORDER)
+            self.st_proc.remove_response(output='DISP', water_level=WATER_LEVEL,
+                                         zero_mean=False)
 
 
 def _rotate_to_rtz(st):
