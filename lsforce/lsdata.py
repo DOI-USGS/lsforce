@@ -100,8 +100,12 @@ class LSData:
         if period_range:
             assert np.atleast_1d(period_range).size == 2, 'len(period_range) must be 2'
             period_range = sorted(period_range)  # Ensure minimum period is first
-            st_plot.filter('bandpass', freqmin=1 / period_range[1],
-                           freqmax=1 / period_range[0], zerophase=True)
+            st_plot.filter(
+                'bandpass',
+                freqmin=1 / period_range[1],
+                freqmax=1 / period_range[0],
+                zerophase=True,
+            )
             filter_string = '{}–{} s bandpass'.format(*period_range)
         else:
             filter_string = 'Unfiltered'
@@ -122,16 +126,19 @@ class LSData:
         yticklabels = []
 
         for tr in st_plot:
-            ax.plot(tr.times('matplotlib'), tr.data + offset, color='black',
-                    linewidth=1)
+            ax.plot(
+                tr.times('matplotlib'), tr.data + offset, color='black', linewidth=1
+            )
             label = f'{tr.stats.network}.{tr.stats.station} ({tr.stats.channel[-1]}) – {tr.stats.distance:.1f} km'
             yticklabels.append(label)
             yticks.append(offset)
             offset -= spacing
 
         # Misc. tweaks
-        ax.set_xlim(st_plot[0].stats.starttime.matplotlib_date,
-                    st_plot[0].stats.endtime.matplotlib_date)
+        ax.set_xlim(
+            st_plot[0].stats.starttime.matplotlib_date,
+            st_plot[0].stats.endtime.matplotlib_date,
+        )
         ax.set_ylim(yticks[-1] - spacing / 2, yticks[0] + spacing / 2)
         ax.set_yticks(yticks)
         ax.set_yticklabels(yticklabels)
