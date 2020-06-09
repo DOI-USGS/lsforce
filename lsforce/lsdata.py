@@ -11,8 +11,8 @@ class LSData:
     Attributes:
         st_orig: Original input Stream `st`
         st_proc: Stream rotated into RTZ w.r.t. `source_lat`, `source_lon`
-        source_lat:
-        source_lon:
+        source_lat: See below
+        source_lon: See below
     """
 
     def __init__(self, st, source_lat, source_lon):
