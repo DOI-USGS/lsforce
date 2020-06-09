@@ -1,6 +1,7 @@
 from obspy.geodetics import gps2dist_azimuth
 from obspy.clients.fdsn import Client
 import numpy as np
+import warnings
 
 KM_PER_M = 1 / 1000  # [km/m]
 
@@ -104,15 +105,21 @@ def _rotate_to_rtz(st):
             # Just check for expected orientation, don't do any rotation
             for component in components:
 
+                # Get orientation
                 tr_id = st_sta.select(component=component)[0].id  # Only one Trace here!
-                msg = f'Unexpected orientation for {tr_id}'
                 orient = inv.get_orientation(tr_id)
-                if component == 'E':
-                    assert orient['azimuth'] == 90.0 and orient['dip'] == 0.0, msg
-                elif component == 'N':
-                    assert orient['azimuth'] == 0.0 and orient['dip'] == 0.0, msg
-                else:  # component == 'Z'
-                    assert orient['azimuth'] == 0.0 and orient['dip'] == -90.0, msg
+                azimuth = orient['azimuth']
+                dip = orient['dip']
+
+                # Define what it means to be "bad"
+                bad_e = component == 'E' and not (azimuth == 90.0 and dip == 0.0)
+                bad_n = component == 'N' and not (azimuth == 0.0 and dip == 0.0)
+                bad_z = component == 'Z' and not (azimuth == 0.0 and dip == -90.0)
+
+                # Warn!
+                if bad_e or bad_n or bad_z:
+                    warnings.warn(f'Bad orientation for {tr_id}\n\tazimuth = '
+                                  f'{azimuth}\n\tdip = {dip}')
 
         # 12Z and 123 cases
         elif components in (['1', '2', 'Z'], ['1', '2', '3']):
