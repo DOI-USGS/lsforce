@@ -29,7 +29,7 @@ class LSForce:
     def __init__(
         self,
         st,
-        samplerate,
+        sampling_rate,
         domain='time',
         nickname=None,
         mainfolder=None,
@@ -43,7 +43,7 @@ class LSForce:
                 distance and azimuth must be attached in stats as tr.stats.rdist [km],
                 tr.stats.back_azimuth, tr.stats.azimuth. Should be corrected for station
                 response but otherwise unfiltered
-            samplerate (float): Number of samples per second (Hz) to use in inversion.
+            sampling_rate (float): Number of samples per second (Hz) to use in inversion.
                 All data will be resampled to this rate and Greens functions
                 will be created with this sample rate.
             domain (str): domain in which to do inversion, 'time' (default) or
@@ -69,7 +69,7 @@ class LSForce:
         # General
         self.st = st
         self.domain = domain
-        self.samplerate = samplerate
+        self.sampling_rate = sampling_rate
         self.nickname = nickname
         self.numsta = len(st)
         self.greens_computed = False
@@ -159,11 +159,11 @@ class LSForce:
 
         # write dist file in free format
         # figure out how many samples
-        samples = next_pow_2(gf_duration * self.samplerate)
+        samples = next_pow_2(gf_duration * self.sampling_rate)
         f = open(os.path.join(self.moddir, 'dist'), 'w')
         for dis in dists:
             f.write(
-                '%0.1f %0.2f %i %i 0\n' % (dis, 1.0 / self.samplerate, samples, self.T0)
+                '%0.1f %0.2f %i %i 0\n' % (dis, 1.0 / self.sampling_rate, samples, self.T0)
             )
         f.close()
         self.greenlength = samples
@@ -187,7 +187,7 @@ class LSForce:
             if self.method == 'triangle':
                 f.write(
                     'hpulse96 -d %s -V -D -t -l %d > Green\n'
-                    % ('dist', int(self.L / self.samplerate))
+                    % ('dist', int(self.L / self.sampling_rate))
                 )
             else:
                 f.write('hpulse96 -d %s -V -OD -p > Green\n' % 'dist')
@@ -334,9 +334,9 @@ class LSForce:
                 self.weightpre = weightpre
 
         # check if sampling rate specified is compatible with period_range
-        if 2.0 * self.filter['freqmax'] > self.samplerate:
+        if 2.0 * self.filter['freqmax'] > self.sampling_rate:
             raise Exception(
-                'samplerate and period_range are not compatible, ' 'violates Nyquist'
+                'sampling_rate and period_range are not compatible, ' 'violates Nyquist'
             )
 
         # Always work on copy of data
@@ -351,8 +351,8 @@ class LSForce:
             zerophase=self.filter['zerophase'],
         )
 
-        # resample st to samplerate
-        st.resample(self.samplerate)
+        # resample st to sampling_rate
+        st.resample(self.sampling_rate)
 
         # make sure st data are all the same length
         lens = [len(trace.data) for trace in st]
@@ -363,7 +363,7 @@ class LSForce:
             stts = [tr.stats.starttime for tr in st]
             lens = [tr.stats.npts for tr in st]
             st.interpolate(
-                self.samplerate, starttime=np.max(stts), npts=np.min(lens) - 1
+                self.sampling_rate, starttime=np.max(stts), npts=np.min(lens) - 1
             )
 
         K = 1.0e-15  # CPS variable needed for conversion to meaningful units
@@ -389,7 +389,7 @@ class LSForce:
 
         if self.method in ['tik', 'lasso']:
 
-            self.Fsamplerate = self.samplerate
+            self.force_sampling_rate = self.sampling_rate
 
             # initialize weighting matrices
             Wvec = np.ones(self.lenUall)
@@ -555,12 +555,12 @@ class LSForce:
 
             n = self.datalength
             fshiftby = int(
-                self.L / self.samplerate
+                self.L / self.sampling_rate
             )  # Number of samples to shift each triangle by
             Flen = int(
                 np.floor(self.datalength / fshiftby)
             )  # Number of shifts, corresponds to length of force time function
-            self.Fsamplerate = 1.0 / fshiftby
+            self.force_sampling_rate = 1.0 / fshiftby
 
             for i, trace in enumerate(st):
                 # find component of st
@@ -691,7 +691,7 @@ class LSForce:
         if np.shape(G)[0] != len(d):
             raise Exception('G and d sizes are not compatible, fix something somewhere')
         self.G = (
-            G * 1.0 / self.samplerate
+            G * 1.0 / self.sampling_rate
         )  # need to multiply G by sample interval (sec) since convolution is an integral
         self.d = d * 100.0  # WHY?convert data from m to cm
         if weights is not None:
@@ -856,13 +856,13 @@ class LSForce:
         scaler = Ghatnorm / zero_scaler
         if self.impose_zero:  # tell model when there should be no forces
             # TODO get this to work for triangle method (need to change len methods)
-            len2 = int(np.floor(((self.zero_time + self.T0) * self.Fsamplerate)))
+            len2 = int(np.floor(((self.zero_time + self.T0) * self.force_sampling_rate)))
             if self.method == 'triangle':
                 len2 = int(
-                    np.floor(((self.zero_time - self.L) * self.Fsamplerate))
+                    np.floor(((self.zero_time - self.L) * self.force_sampling_rate))
                 )  # Potentially need to adjust for T0 here too?
             if self.method == 'tik':
-                len3 = int(zero_taper_length * self.Fsamplerate)  # make it constant
+                len3 = int(zero_taper_length * self.force_sampling_rate)  # make it constant
                 temp = np.hanning(2 * len3)
                 temp = temp[len3:]
                 vals2 = np.hstack((np.ones(len2 - len3), temp))
@@ -891,7 +891,7 @@ class LSForce:
                 zerotime = 0.0
             else:
                 zerotime = self.zero_time
-            startind = int((zerotime + self.T0 + self.maxduration) * self.Fsamplerate)
+            startind = int((zerotime + self.T0 + self.maxduration) * self.force_sampling_rate)
             len2 = int(gl - startind)
             len3 = int(
                 np.round(0.2 * len2)
@@ -954,7 +954,7 @@ class LSForce:
                     dhat,
                     I,
                     self.zero_time,
-                    self.samplerate,
+                    self.sampling_rate,
                     self.numsta,
                     dl,
                     L1=L1,
@@ -1010,7 +1010,7 @@ class LSForce:
         self.VR = varred(self.dtorig, self.dtnew)
         print('variance reduction %f percent' % (self.VR,))
         tvec = (
-            np.arange(0, len(self.Zforce) * 1 / self.Fsamplerate, 1 / self.Fsamplerate)
+            np.arange(0, len(self.Zforce) * 1 / self.force_sampling_rate, 1 / self.force_sampling_rate)
             - self.T0
         )
         if self.zero_time is not None:
@@ -1021,7 +1021,7 @@ class LSForce:
             tvec += self.L
         self.tvec = tvec
         self.dtvec = np.arange(
-            0, self.datalength / self.samplerate, 1 / self.samplerate
+            0, self.datalength / self.sampling_rate, 1 / self.sampling_rate
         )
         if self.zero_time is not None:
             self.dtvec -= self.zero_time
@@ -1134,7 +1134,7 @@ class LSForce:
         self,
         G,
         d,
-        samplerate,
+        sampling_rate,
         numsta,
         datlenorig,
         W=None,
@@ -1157,7 +1157,7 @@ class LSForce:
         Args:
             G (array): model matrix (m x n)
             d (array): vector of concatenated data (m x 1)
-            samplerate (float): samplerate in Hz of seismic data and green's functions (the two must be equal)
+            sampling_rate (float): sample rate in Hz of seismic data and green's functions (the two must be equal)
             numsta (int): number of channels used
             datlenorig (int): length, in samples, or original data prior to zero padding etc.
             W: optional weighting matrix, same size as G
@@ -1230,7 +1230,7 @@ class LSForce:
         if imposeZero is True:  # tell model when there should be no forces
             if zeroTime is None:
                 raise Exception('impose_zero set to True but no zero_time provided')
-            len2 = int(np.round(zeroTime * samplerate))
+            len2 = int(np.round(zeroTime * sampling_rate))
             len3 = int(
                 np.round(0.2 * len2)
             )  # 20% taper overlapping into main event by x seconds
@@ -1255,7 +1255,7 @@ class LSForce:
         if maxduration is not None:
             if zeroTime is None:
                 zeroTime = 0.0
-            startind = int((zeroTime + maxduration) * samplerate)
+            startind = int((zeroTime + maxduration) * sampling_rate)
             len2 = int(datlenorig - startind)
             len3 = int(
                 np.round(0.2 * len2)
@@ -1348,7 +1348,7 @@ class LSForce:
         # compute variance reduction
         VR = varred(dt, dtnew)
         print('variance reduction %2.0f percent' % (VR,))
-        tvec = np.arange(0, len(Zforce) * 1 / samplerate, 1 / samplerate) - T0
+        tvec = np.arange(0, len(Zforce) * 1 / sampling_rate, 1 / sampling_rate) - T0
         if zeroTime is not None:
             tvec = tvec - zeroTime
         return (
@@ -1878,7 +1878,7 @@ class LSForce:
 
         traj_tvec = self.tvec[startidx : endidx + 1]
 
-        dx = 1.0 / self.Fsamplerate
+        dx = 1.0 / self.force_sampling_rate
         Za = -Zforce.copy()[startidx : endidx + 1] / mass
         Ea = -Eforce.copy()[startidx : endidx + 1] / mass
         Na = -Nforce.copy()[startidx : endidx + 1] / mass
@@ -2422,7 +2422,7 @@ def findalphaD(
     dhat,
     I,
     zeroTime,
-    samplerate,
+    sampling_rate,
     numsta,
     datlenorig,
     tolerance=None,
@@ -2444,7 +2444,7 @@ def findalphaD(
         dhat:
         I:
         zeroTime:
-        samplerate:
+        sampling_rate:
         numsta:
         datlenorig:
         L1:
@@ -2459,7 +2459,7 @@ def findalphaD(
         print('zero_time not defined, noise estimated from first 100 samples')
         samps = 100
     else:
-        samps = int(zeroTime * samplerate)
+        samps = int(zeroTime * sampling_rate)
     temp = dtemp[:, :samps]
     noise = np.sum(np.sqrt(datlenorig * np.std(temp, axis=1) ** 2))
 

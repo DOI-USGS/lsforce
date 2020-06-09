@@ -166,7 +166,7 @@ infra_shift = st_infra[0].stats.rdist / INFRA_VELO
 
 force = LSForce(
     st=st,
-    samplerate=1,
+    sampling_rate=1,
     nickname=RUN_NAME,
     mainfolder=main_folder,
     source_lat=LS_LAT,
