@@ -78,9 +78,6 @@ if not os.path.exists(data_filename):
         tr.stats.latitude = coords['latitude']
         tr.stats.longitude = coords['longitude']
 
-    st.detrend('polynomial', order=2)
-    st.remove_response(output='DISP', water_level=60, zero_mean=False)
-
     st.write(data_filename, format='PICKLE')
 
 # Use file if it exists, for speed
