@@ -1,4 +1,5 @@
 from obspy.geodetics import gps2dist_azimuth
+from obspy.signal.rotate import _dip_azimuth2zne_base_vector
 from obspy import Stream, Trace
 import urllib
 import numpy as np
@@ -82,9 +83,9 @@ def rotate2ZNE(
     # Internally works in Vertical, South, and East components; a right handed
     # coordinate system.
     # Define the base vectors of the old base in terms of the new base vectors.
-    base_vector_1 = _dip_azimuth2ZSE_base_vector(dip_1, azimuth_1)
-    base_vector_2 = _dip_azimuth2ZSE_base_vector(dip_2, azimuth_2)
-    base_vector_3 = _dip_azimuth2ZSE_base_vector(dip_3, azimuth_3)
+    base_vector_1 = _dip_azimuth2zne_base_vector(dip_1, azimuth_1)
+    base_vector_2 = _dip_azimuth2zne_base_vector(dip_2, azimuth_2)
+    base_vector_3 = _dip_azimuth2zne_base_vector(dip_3, azimuth_3)
     # Build transformation matrix.
     T = np.matrix([base_vector_1, base_vector_2, base_vector_3]).transpose()
     # Apply it.
@@ -209,56 +210,3 @@ def rotate(st, back_azimuth=None):
     st_rotated.pop(0)  # pop off the placeholder
 
     return st_rotated
-
-
-def _dip_azimuth2ZSE_base_vector(dip, azimuth):
-    """
-    Taken from https://github.com/obspy/obspy/blob/a8cf88bfc28b7d06b88427ca626f67418922aa52/obspy/signal/rotate.py#L188-251
-
-    Helper function converting a vector described with azimuth and dip of unit
-    length to a vector in the ZSE (Vertical, South, East) base.
-    The definition of azimuth and dip is according to the SEED reference
-    manual, as are the following examples (they use rounding for small
-    numerical inaccuracies - also positive and negative zero are treated as
-    equal):
-    """
-
-    # Convert both to radian.
-    dip = np.deg2rad(dip)
-    azimuth = np.deg2rad(azimuth)
-    # Define the rotation axis for the dip.
-    c1 = 0.0
-    c2 = 0.0
-    c3 = -1.0
-    # Now the dip rotation matrix.
-    dip_rotation_matrix = (
-        np.cos(dip) * np.matrix(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-        + (1 - np.cos(dip))
-        * np.matrix(
-            (
-                (c1 * c1, c1 * c2, c1 * c3),
-                (c2 * c1, c2 * c2, c2 * c3),
-                (c3 * c1, c3 * c2, c3 * c3),
-            )
-        )
-        + np.sin(dip) * np.matrix(((0, -c3, c2), (c3, 0, -c1), (-c2, c1, 0)))
-    )
-    # Do the same for the azimuth.
-    c1 = -1.0
-    c2 = 0.0
-    c3 = 0.0
-    azimuth_rotation_matrix = (
-        np.cos(azimuth) * np.matrix(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-        + (1 - np.cos(azimuth))
-        * np.matrix(
-            (
-                (c1 * c1, c1 * c2, c1 * c3),
-                (c2 * c1, c2 * c2, c2 * c3),
-                (c3 * c1, c3 * c2, c3 * c3),
-            )
-        )
-        + np.sin(azimuth) * np.matrix(((0, -c3, c2), (c3, 0, -c1), (-c2, c1, 0)))
-    )
-    # Now simply rotate a north pointing unit vector with both matrixes.
-    temp = np.dot(azimuth_rotation_matrix, [[0.0], [-1.0], [0.0]])
-    return np.array(np.dot(dip_rotation_matrix, temp)).ravel()
