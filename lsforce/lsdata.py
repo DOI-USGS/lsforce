@@ -4,6 +4,7 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects
+import matplotlib.dates as mdates
 import numpy as np
 import warnings
 
@@ -80,6 +81,75 @@ class LSData:
             self.st_proc.remove_response(
                 output='DISP', water_level=WATER_LEVEL, zero_mean=False
             )
+
+    def plot_data(self, equal_scale=True, period_range=None):
+        """Create a record section plot of waveforms in `st_proc`, with optional
+        preview filtering.
+
+        Args:
+            equal_scale: If `True`, all plots will share the same y-axis scale
+            period_range: If not `None`, filter the data between period_range[0] and
+                period_range[1], given in seconds
+
+        Returns:
+            The figure handle
+        """
+
+        st_plot = self.st_proc.copy()  # Make a copy to manipulate
+
+        if period_range:
+            assert np.atleast_1d(period_range).size == 2, 'len(period_range) must be 2'
+            period_range = sorted(period_range)  # Ensure minimum period is first
+            st_plot.filter('bandpass', freqmin=1 / period_range[1],
+                           freqmax=1 / period_range[0], zerophase=True)
+            filter_string = '{}–{} s bandpass'.format(*period_range)
+        else:
+            filter_string = 'Unfiltered'
+
+        if not equal_scale:
+            st_plot.normalize()
+            amp_string = 'normalized'
+        else:
+            amp_string = 'equal scale'
+
+        # Spacing between traces is twice the max amp encountered
+        spacing = np.max([np.abs(tr.data).max() for tr in st_plot]) * 2
+
+        fig, ax = plt.subplots(figsize=(8, 12))
+
+        offset = 0
+        yticks = []
+        yticklabels = []
+
+        for tr in st_plot:
+            ax.plot(tr.times('matplotlib'), tr.data + offset, color='black',
+                    linewidth=1)
+            label = f'{tr.stats.network}.{tr.stats.station} ({tr.stats.channel[-1]}) – {tr.stats.distance:.1f} km'
+            yticklabels.append(label)
+            yticks.append(offset)
+            offset -= spacing
+
+        # Misc. tweaks
+        ax.set_xlim(st_plot[0].stats.starttime.matplotlib_date,
+                    st_plot[0].stats.endtime.matplotlib_date)
+        ax.set_ylim(yticks[-1] - spacing / 2, yticks[0] + spacing / 2)
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticklabels)
+        ax.tick_params(left=False, top=True, which='both')
+        ax.yaxis.set_tick_params(length=0, pad=4)
+
+        # Time axis stuff
+        locator = mdates.AutoDateLocator()
+        formatter = mdates.ConciseDateFormatter(locator)
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(formatter)
+
+        ax.set_title(f'{filter_string} ({amp_string})', pad=10)
+
+        fig.tight_layout()
+        fig.show()
+
+        return fig
 
     def plot_stations(self, region=None, label_stations=False):
         """Create a map showing stations and event location.
