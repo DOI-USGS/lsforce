@@ -253,6 +253,7 @@ class LSData:
         ax.gridlines(draw_labels=True, zorder=3)
         ax.legend()
 
+        fig.tight_layout(pad=2)
         fig.show()
 
         return fig
