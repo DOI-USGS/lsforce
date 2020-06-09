@@ -28,21 +28,16 @@ class LSForce:
 
     def __init__(
         self,
-        st,
+        data,
         sampling_rate,
         domain='time',
         nickname=None,
         main_folder=None,
-        source_lat=None,
-        source_lon=None,
         method='tik',
     ):
         """
         Args:
-            st (Stream): obspy stream with event data , source to station
-                distance and azimuth must be attached in stats as tr.stats.rdist [km],
-                tr.stats.back_azimuth, tr.stats.azimuth. Should be corrected for station
-                response but otherwise unfiltered
+            data (LSData): LSData object, corrected for station response but not filtered
             sampling_rate (float): Number of samples per second (Hz) to use in inversion.
                 All data will be resampled to this rate and Greens functions
                 will be created with this sample rate.
@@ -51,10 +46,6 @@ class LSForce:
             nickname (str): Nickname for this event, used for convenient in
                 naming files
             main_folder (str): if None, will use current folder
-            source_lat (float): Latitude in decimal degrees of centroid of
-                landslide location
-            source_lon (float): Longitude in decimal degrees of centroid of
-                landslide location
             method (str): 'tik' = full waveform inversion using Tikhonov
                                 regularization (L2 norm minimization)
                           'lasso' = full waveform inversion using Lasso method
@@ -67,18 +58,14 @@ class LSForce:
         """
 
         # General
-        self.st = st
+        self.st = data.st_proc.copy()
         self.domain = domain
         self.sampling_rate = sampling_rate
         self.nickname = nickname
-        self.numsta = len(st)
+        self.numsta = len(self.st)
         self.greens_computed = False
-
-        if source_lat is None or source_lon is None:
-            raise Exception('source_lat and source_lon not defined')
-        else:
-            self.lat = source_lat
-            self.lon = source_lon
+        self.lat = data.source_lat
+        self.lon = data.source_lon
 
         if main_folder is None:
             self.main_folder = os.getcwd()
@@ -149,7 +136,7 @@ class LSForce:
 
         # Make sure there is only one occurrence of each station in list (ignore channels)
         stacods = np.unique([tr.stats.station for tr in self.st])
-        dists = [self.st.select(station=sta)[0].stats.rdist for sta in stacods]
+        dists = [self.st.select(station=sta)[0].stats.distance for sta in stacods]
 
         # write stadistlist.txt
         f = open(os.path.join(self.moddir, 'stadistlist.txt'), 'w')
@@ -540,7 +527,7 @@ class LSForce:
                             trace.data[0 : int(weightpre * trace.stats.sampling_rate)]
                         )
                     elif weights == 'distance':
-                        weight[i] = trace.stats.rdist
+                        weight[i] = trace.stats.distance
 
                     Wvec[indx : indx + self.datalength] = (
                         Wvec[indx : indx + self.datalength] * weight[i]
@@ -674,7 +661,7 @@ class LSForce:
                             trace.data[0 : int(weightpre * trace.stats.sampling_rate)]
                         )
                     elif weights == 'distance':
-                        weight[i] = trace.stats.rdist
+                        weight[i] = trace.stats.distance
 
                     Wvec[indx : indx + self.datalength] = (
                         Wvec[indx : indx + self.datalength] * weight[i]
@@ -1402,7 +1389,7 @@ class LSForce:
                 addmat = oneline
             else:
                 addmat = np.vstack((addmat, oneline * (i + 1)))
-            label = f'{trace.stats.network}.{trace.stats.station} ({trace.stats.channel[-1]}) – {trace.stats.rdist:.1f} km'
+            label = f'{trace.stats.network}.{trace.stats.station} ({trace.stats.channel[-1]}) – {trace.stats.distance:.1f} km'
             labels.append(label)
             yticks1.append(-(i + 1) * offset)
 

@@ -1,9 +1,8 @@
-from lsforce import LSForce
+from lsforce import LSData, LSForce
 from obspy import read, UTCDateTime
 from obspy.clients.fdsn import Client
 from obspy.geodetics import gps2dist_azimuth
 import os
-import numpy as np
 
 # Arbitrary run directory containing model file
 LSFORCE_RUN_DIR = os.path.join(os.getcwd(), 'meow')
@@ -73,22 +72,11 @@ if not os.path.exists(data_filename):
         level='channel',
     )
 
-    # Assign additional info to Traces
+    # Assign coordinates to Traces
     for tr in st:
         coords = inv.get_coordinates(tr.id, datetime=STARTTIME)
         tr.stats.latitude = coords['latitude']
         tr.stats.longitude = coords['longitude']
-        tr.stats.elevation = coords['elevation']
-        dist, az, baz = gps2dist_azimuth(
-            LS_LAT, LS_LON, tr.stats.latitude, tr.stats.longitude
-        )
-        tr.stats.rdist = dist / 1000  # [km]
-        tr.stats.azimuth = az  # [deg]
-        tr.stats.back_azimuth = baz  # [deg]
-
-    # Rotate (on a station-by-station basis!)
-    for station in np.unique([tr.stats.station for tr in st]):
-        st.select(station=station).rotate('NE->RT')
 
     st.detrend('polynomial', order=2)
     st.remove_response(output='DISP', water_level=60, zero_mean=False)
@@ -102,7 +90,8 @@ else:
 # Verify that the correct number of channels has been retrieved from IRIS
 assert st.count() == TONEY_ET_AL_NUM_CHANS, 'Not the correct number of channels.'
 
-st.sort(keys=['rdist', 'channel'])
+# Create LSData object
+data = LSData(st, source_lat=LS_LAT, source_lon=LS_LON)
 
 #%% GATHER REFERENCE WAVEFORMS
 
@@ -141,7 +130,7 @@ st_infra = client.get_waveforms(
 st_hf.filter('bandpass', freqmin=0.5, freqmax=5)
 st_infra.filter('bandpass', freqmin=0.5, freqmax=10)
 
-# Add "rdist" to tr.stats
+# Add "distance" to tr.stats
 ref_inv = client.get_stations(
     network='AV,TA',
     station='ILSW,O20K',
@@ -154,23 +143,20 @@ for tr in st_hf + st_infra:
     coords = ref_inv.get_coordinates(tr.id, datetime=STARTTIME)
     tr.stats.latitude = coords['latitude']
     tr.stats.longitude = coords['longitude']
-    tr.stats.elevation = coords['elevation']
     dist = gps2dist_azimuth(LS_LAT, LS_LON, tr.stats.latitude, tr.stats.longitude)[0]
-    tr.stats.rdist = dist / 1000  # [km]
+    tr.stats.distance = dist / 1000  # [km]
 
 # Approximate correction for travel time
-hf_shift = st_hf[0].stats.rdist / RAYLEIGH_VELO
-infra_shift = st_infra[0].stats.rdist / INFRA_VELO
+hf_shift = st_hf[0].stats.distance / RAYLEIGH_VELO
+infra_shift = st_infra[0].stats.distance / INFRA_VELO
 
 #%% SETUP
 
 force = LSForce(
-    st=st,
+    data=data,
     sampling_rate=1,
     nickname=RUN_NAME,
     main_folder=main_folder,
-    source_lat=LS_LAT,
-    source_lon=LS_LON,
 )
 
 if CALCULATE_GF:
