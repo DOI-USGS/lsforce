@@ -32,7 +32,7 @@ class LSForce:
         sampling_rate,
         domain='time',
         nickname=None,
-        mainfolder=None,
+        main_folder=None,
         source_lat=None,
         source_lon=None,
         method='tik',
@@ -50,7 +50,7 @@ class LSForce:
                 'freq'
             nickname (str): Nickname for this event, used for convenient in
                 naming files
-            mainfolder (str): if None, will use current folder
+            main_folder (str): if None, will use current folder
             source_lat (float): Latitude in decimal degrees of centroid of
                 landslide location
             source_lon (float): Longitude in decimal degrees of centroid of
@@ -80,10 +80,10 @@ class LSForce:
             self.lat = source_lat
             self.lon = source_lon
 
-        if mainfolder is None:
-            self.mainfolder = os.getcwd()
+        if main_folder is None:
+            self.main_folder = os.getcwd()
         else:
-            self.mainfolder = mainfolder
+            self.main_folder = main_folder
 
         if method not in ['tik', 'lasso', 'triangle']:
             raise Exception('%s method not yet implemented.' % method.upper())
@@ -121,7 +121,7 @@ class LSForce:
             self.nickname = ''
 
         self.moddir = os.path.join(
-            self.mainfolder,
+            self.main_folder,
             '%s_%s'
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
@@ -129,8 +129,8 @@ class LSForce:
         self.sacdir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
 
         # Make all the directories
-        if not os.path.exists(self.mainfolder):
-            os.mkdir(self.mainfolder)
+        if not os.path.exists(self.main_folder):
+            os.mkdir(self.main_folder)
         if not os.path.exists(self.moddir):
             os.mkdir(self.moddir)
         if not os.path.exists(self.sacodir):
@@ -252,7 +252,7 @@ class LSForce:
             self.nickname = ''
 
         self.moddir = os.path.join(
-            self.mainfolder,
+            self.main_folder,
             '%s_%s'
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
@@ -2217,7 +2217,7 @@ class LSForce:
         """
         Args:
             filepath (str): full filepath where all files should be saved
-                if None, will use self.mainfolder
+                if None, will use self.main_folder
             timestamp (bool): will stamp results with current time so as not
                 to overwrite previous results
             figs2save (list): list of figure handles to save
@@ -2227,7 +2227,7 @@ class LSForce:
 
         """
         if filepath is None:
-            filepath = self.mainfolder
+            filepath = self.main_folder
 
         obj = copy.copy(self)
         if light:
