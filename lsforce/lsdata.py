@@ -3,7 +3,7 @@ from obspy import Stream, Trace
 import urllib
 import numpy as np
 
-KM_PER_M = 1/1000  # [km/m]
+KM_PER_M = 1 / 1000  # [km/m]
 
 
 class LSData:
