@@ -104,9 +104,9 @@ def _rotate_to_rtz(st):
             # Just check for expected orientation, don't do any rotation
             for component in components:
 
-                id = st_sta.select(component=component)[0].id  # Only one Trace here!
-                msg = f'Unexpected orientation for {id}'
-                orient = inv.get_orientation(id)
+                tr_id = st_sta.select(component=component)[0].id  # Only one Trace here!
+                msg = f'Unexpected orientation for {tr_id}'
+                orient = inv.get_orientation(tr_id)
                 if component == 'E':
                     assert orient['azimuth'] == 90.0 and orient['dip'] == 0.0, msg
                 elif component == 'N':
@@ -122,7 +122,7 @@ def _rotate_to_rtz(st):
         else:
             raise ValueError(f'Unable to rotate station {station}')
 
-        # Now the data are ostensibly in correct ENZ orientation - do the actual rotation to RTZ
+        # Now the data are ostensibly in correct ENZ orientation - do rotation to RTZ
         st_sta.rotate('NE->RT')
 
     return st_rot
