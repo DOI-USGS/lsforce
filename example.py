@@ -90,6 +90,10 @@ assert st.count() == TONEY_ET_AL_NUM_CHANS, 'Not the correct number of channels.
 # Create LSData object
 data = LSData(st, source_lat=LS_LAT, source_lon=LS_LON)
 
+# Create plots
+data.plot_stations(label_stations=True)
+data.plot_data(equal_scale=False, period_range=PERIOD_RANGE)
+
 #%% GATHER REFERENCE WAVEFORMS
 
 RAYLEIGH_VELO = 0.9  # [km/s] Surface-wave group velocity @ 1 Hz
