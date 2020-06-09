@@ -1,11 +1,27 @@
 from obspy.geodetics import gps2dist_azimuth
 from obspy.clients.fdsn import Client
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
 import numpy as np
 import warnings
 
+
 DETREND_POLY_ORDER = 2
+
 WATER_LEVEL = 60  # [dB]
+
 KM_PER_M = 1 / 1000  # [km/m]
+
+# Map channel sets to colors for station map
+CHANNEL_COLORS = dict(Z='red',
+                      R='salmon',
+                      T='darkred',
+                      ZR='blue',
+                      ZT='skyblue',
+                      RT='darkblue',
+                      ZRT='green')
 
 
 class LSData:
@@ -61,6 +77,80 @@ class LSData:
             self.st_proc.detrend('polynomial', order=DETREND_POLY_ORDER)
             self.st_proc.remove_response(output='DISP', water_level=WATER_LEVEL,
                                          zero_mean=False)
+
+    def plot_stations(self, region=None, label_stations=False):
+        """Create a map showing stations and event location.
+
+        Args:
+            region: [lonmin, lonmax, latmin, latmax] Desired map region. If `None`, we
+                automatically pick one that includes the event and stations
+            label_stations (bool): If `True`, label stations with their codes
+
+        Returns:
+            The figure handle
+        """
+
+        # Automatically determine a nice region, if one not explicitly provided
+        if not region:
+            lons = [tr.stats.longitude for tr in self.st_proc] + [self.source_lon]
+            lats = [tr.stats.latitude for tr in self.st_proc] + [self.source_lat]
+            region = [np.floor(np.min(lons)), np.ceil(np.max(lons)),
+                      np.floor(np.min(lats)), np.ceil(np.max(lats))]
+
+        proj = ccrs.AlbersEqualArea(central_longitude=np.mean(region[:2]),
+                                    central_latitude=np.mean(region[2:]),
+                                    standard_parallels=[np.min(region[2:]),
+                                                        np.max(region[2:])])
+
+        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection=proj))
+
+        # Add geographic context
+        ax.add_feature(cfeature.GSHHSFeature(), facecolor=cfeature.COLORS['land'],
+                       zorder=1)
+        ax.background_patch.set_facecolor(cfeature.COLORS['water'])
+        ax.add_feature(cfeature.LAKES, facecolor=cfeature.COLORS['water'],
+                       edgecolor='black', zorder=2)
+
+        # Universal scatter properties
+        scatter_kwargs = dict(s=100, zorder=4, transform=ccrs.PlateCarree())
+
+        # Plot event location
+        ax.scatter(self.source_lon, self.source_lat, color='black',
+                   label='Event', **scatter_kwargs)
+
+        # Plot stations, colored by channels
+        for channel_set, color in CHANNEL_COLORS.items():
+            station_lons = []
+            station_lats = []
+            station_labels = []
+            for station in np.unique([tr.stats.station for tr in self.st_proc]):
+                station_st = self.st_proc.select(station=station)
+                # If this station's set of channels match the channel set we're on
+                if sorted([tr.stats.channel[-1] for tr in station_st]) == sorted(channel_set):
+                    station_lons.append(station_st[0].stats.longitude)
+                    station_lats.append(station_st[0].stats.latitude)
+                    station_labels.append(station_st[0].stats.station)
+            if len(station_lons) > 0:
+                # Plot and label according to CHANNEL_COLORS
+                ax.scatter(station_lons, station_lats, color=color, marker='v',
+                           edgecolors='black', label=channel_set, **scatter_kwargs)
+                if label_stations:
+                    for lon, lat, label in zip(station_lons, station_lats, station_labels):
+                        t = ax.text(lon, lat, '   ' + label, va='center', color='white',
+                                    transform=ccrs.PlateCarree())
+                        # Outline text
+                        t.set_path_effects(
+                            [path_effects.Stroke(linewidth=2, foreground='black'),
+                             path_effects.Normal()]
+                        )
+
+        ax.set_extent(region, crs=ccrs.PlateCarree())
+        ax.gridlines(draw_labels=True, zorder=3)
+        ax.legend()
+
+        fig.show()
+
+        return fig
 
 
 def _rotate_to_rtz(st):
