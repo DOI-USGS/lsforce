@@ -152,12 +152,7 @@ infra_shift = st_infra[0].stats.distance / INFRA_VELO
 
 #%% SETUP
 
-force = LSForce(
-    data=data,
-    sampling_rate=1,
-    nickname=RUN_NAME,
-    main_folder=main_folder,
-)
+force = LSForce(data=data, sampling_rate=1, nickname=RUN_NAME, main_folder=main_folder)
 
 if CALCULATE_GF:
     force.compute_greens(model_file=model_file, gf_duration=200, T0=-10)
