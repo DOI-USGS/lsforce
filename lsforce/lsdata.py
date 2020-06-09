@@ -1,5 +1,5 @@
 from obspy.geodetics import gps2dist_azimuth
-from obspy.signal.rotate import _dip_azimuth2zne_base_vector
+from obspy.signal.rotate import rotate2zne
 from obspy import Stream, Trace
 import urllib
 import numpy as np
@@ -53,53 +53,6 @@ class LSData:
             self.st_proc.select(station=station).rotate('NE->RT')
 
         self.st_proc.sort(keys=['distance', 'channel'])
-
-
-def rotate2ZNE(
-    data_1, azimuth_1, dip_1, data_2, azimuth_2, dip_2, data_3, azimuth_3, dip_3
-):
-    """
-    taken from https://github.com/obspy/obspy/blob/a8cf88bfc28b7d06b88427ca626f67418922aa52/obspy/signal/rotate.py#L188-251Rotates an arbitrarily oriented three-component vector to ZNE.
-    Each components orientation is described with a azimuth and a dip. The
-    azimuth is defined as the degrees from North, clockwise and the dip is the
-    defined as the number of degrees, down from horizontal. Both definitions
-    are according to the SEED standard.
-    The three components need not be orthogonal to each other but the
-    components have to be linearly independent. The function performs a full
-    base change to orthogonal Vertical, North, and East orientations.
-    :param data_1: Data component 1.
-    :param azimuth_1: The azimuth of component 1.
-    :param dip_1: The dip of component 1.
-    :param data_2: Data component 2.
-    :param azimuth_2: The azimuth of component 2.
-    :param dip_2: The dip of component 2.
-    :param data_3: Data component 3.
-    :param azimuth_3: The azimuth of component 3.
-    :param dip_3: The dip of component 3.
-    :rtype: Tuple of three NumPy arrays.
-    :returns: The three rotated components, oriented in Z, N, and E.
-    """
-
-    # Internally works in Vertical, South, and East components; a right handed
-    # coordinate system.
-    # Define the base vectors of the old base in terms of the new base vectors.
-    base_vector_1 = _dip_azimuth2zne_base_vector(dip_1, azimuth_1)
-    base_vector_2 = _dip_azimuth2zne_base_vector(dip_2, azimuth_2)
-    base_vector_3 = _dip_azimuth2zne_base_vector(dip_3, azimuth_3)
-    # Build transformation matrix.
-    T = np.matrix([base_vector_1, base_vector_2, base_vector_3]).transpose()
-    # Apply it.
-    z, s, e = np.dot(T, [data_1, data_2, data_3])
-    # Replace all negative zeros. These might confuse some further processing
-    # programs.
-    z = np.array(z).ravel()
-    z[z == -0.0] = 0
-    # Return a North pointing array.
-    n = -1.0 * np.array(s).ravel()
-    n[n == -0.0] = 0
-    e = np.array(e).ravel()
-    e[e == -0.0] = 0
-    return z, n, e
 
 
 def rotate(st, back_azimuth=None):
@@ -164,7 +117,7 @@ def rotate(st, back_azimuth=None):
                             trace.stats.cmpaz = float(lines[0][8])
                             st_temp[k] = trace
 
-                        z1, n1, e1 = rotate2ZNE(
+                        z1, n1, e1 = rotate2zne(
                             z[0].data,
                             0,
                             -90,
