@@ -163,7 +163,8 @@ class LSForce:
         f = open(os.path.join(self.moddir, 'dist'), 'w')
         for dis in dists:
             f.write(
-                '%0.1f %0.2f %i %i 0\n' % (dis, 1.0 / self.sampling_rate, samples, self.T0)
+                '%0.1f %0.2f %i %i 0\n'
+                % (dis, 1.0 / self.sampling_rate, samples, self.T0)
             )
         f.close()
         self.greenlength = samples
@@ -856,13 +857,17 @@ class LSForce:
         scaler = Ghatnorm / zero_scaler
         if self.impose_zero:  # tell model when there should be no forces
             # TODO get this to work for triangle method (need to change len methods)
-            len2 = int(np.floor(((self.zero_time + self.T0) * self.force_sampling_rate)))
+            len2 = int(
+                np.floor(((self.zero_time + self.T0) * self.force_sampling_rate))
+            )
             if self.method == 'triangle':
                 len2 = int(
                     np.floor(((self.zero_time - self.L) * self.force_sampling_rate))
                 )  # Potentially need to adjust for T0 here too?
             if self.method == 'tik':
-                len3 = int(zero_taper_length * self.force_sampling_rate)  # make it constant
+                len3 = int(
+                    zero_taper_length * self.force_sampling_rate
+                )  # make it constant
                 temp = np.hanning(2 * len3)
                 temp = temp[len3:]
                 vals2 = np.hstack((np.ones(len2 - len3), temp))
@@ -891,7 +896,9 @@ class LSForce:
                 zerotime = 0.0
             else:
                 zerotime = self.zero_time
-            startind = int((zerotime + self.T0 + self.maxduration) * self.force_sampling_rate)
+            startind = int(
+                (zerotime + self.T0 + self.maxduration) * self.force_sampling_rate
+            )
             len2 = int(gl - startind)
             len3 = int(
                 np.round(0.2 * len2)
@@ -946,7 +953,13 @@ class LSForce:
         if alphaset is None:
             if alpha_method == 'Lcurve':
                 alpha, fit1, size1, alphas = findalpha(
-                    Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq'
+                    Ghat,
+                    dhat,
+                    I,
+                    L1,
+                    L2,
+                    tikhonov_ratios=tikhonov_ratios,
+                    invmethod='lsq',
                 )
             else:
                 alpha, fit1, size1, alphas = findalphaD(
@@ -973,7 +986,9 @@ class LSForce:
         Apart = np.dot(Ghat.H, Ghat)
 
         A = Apart + alpha ** 2 * (
-                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
+            tikhonov_ratios[0] * I
+            + tikhonov_ratios[1] * L1part
+            + tikhonov_ratios[2] * L2part
         )  # Combo of all regularization things (if any are zero they won't matter)
         x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
 
@@ -1010,7 +1025,11 @@ class LSForce:
         self.VR = varred(self.dtorig, self.dtnew)
         print('variance reduction %f percent' % (self.VR,))
         tvec = (
-            np.arange(0, len(self.Zforce) * 1 / self.force_sampling_rate, 1 / self.force_sampling_rate)
+            np.arange(
+                0,
+                len(self.Zforce) * 1 / self.force_sampling_rate,
+                1 / self.force_sampling_rate,
+            )
             - self.T0
         )
         if self.zero_time is not None:
@@ -1066,7 +1085,9 @@ class LSForce:
                 Apart = np.dot(Ghat1.H, Ghat1)
 
                 Aj = Apart + self.alpha ** 2 * (
-                        tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
+                    tikhonov_ratios[0] * I
+                    + tikhonov_ratios[1] * L1part
+                    + tikhonov_ratios[2] * L2part
                 )  # Combo of all regularization things (if any are zero they won't matter)
                 xj = np.squeeze(np.asarray(np.dot(Ghat1.H, dhat1)))
 
@@ -2347,7 +2368,9 @@ def findalpha(
     # rough first iteration
     for alpha in alphas:
         A = Apart + alpha ** 2 * (
-                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
+            tikhonov_ratios[0] * I
+            + tikhonov_ratios[1] * L1part
+            + tikhonov_ratios[2] * L2part
         )  # Combo of all regularization things
         if invmethod == 'lsq':
             model, residuals, rank, s = sp.linalg.lstsq(A, x)
@@ -2382,7 +2405,9 @@ def findalpha(
         size1 = []
         for newalpha in alphas:
             A = Apart + newalpha ** 2 * (
-                    tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
+                tikhonov_ratios[0] * I
+                + tikhonov_ratios[1] * L1part
+                + tikhonov_ratios[2] * L2part
             )  # Combo of all regularization things
             if invmethod == 'lsq':
                 model, residuals, rank, s = sp.linalg.lstsq(A, x)
@@ -2492,11 +2517,15 @@ def findalphaD(
         print(('ak = %s' % (ak,)))
         print(('bk = %s' % (bk,)))
         Aa = Apart + ak ** 2 * (
-                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
+            tikhonov_ratios[0] * I
+            + tikhonov_ratios[1] * L1part
+            + tikhonov_ratios[2] * L2part
         )
         modelak, residuals, rank, s = sp.linalg.lstsq(Aa, x)
         Ab = Apart + bk ** 2 * (
-                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
+            tikhonov_ratios[0] * I
+            + tikhonov_ratios[1] * L1part
+            + tikhonov_ratios[2] * L2part
         )
         modelbk, residuals, rank, s = sp.linalg.lstsq(Ab, x)
         fitak = sp.linalg.norm(np.dot(Ghat, modelak.T) - dhat)
@@ -2537,7 +2566,9 @@ def findalphaD(
         # Compute midpoint (in log units)
         ck = 10 ** (0.5 * (np.log10(ak) + np.log10(bk)))
         Ac = Apart + ck ** 2 * (
-                tikhonov_ratios[0] * I + tikhonov_ratios[1] * L1part + tikhonov_ratios[2] * L2part
+            tikhonov_ratios[0] * I
+            + tikhonov_ratios[1] * L1part
+            + tikhonov_ratios[2] * L2part
         )
         modelck, residuals, rank, s = sp.linalg.lstsq(Ac, x)
         fitck = sp.linalg.norm(np.dot(Ghat, modelck.T) - dhat)
