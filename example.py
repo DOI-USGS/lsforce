@@ -168,7 +168,7 @@ force = LSForce(
     st=st,
     sampling_rate=1,
     nickname=RUN_NAME,
-    mainfolder=main_folder,
+    main_folder=main_folder,
     source_lat=LS_LAT,
     source_lon=LS_LON,
 )
