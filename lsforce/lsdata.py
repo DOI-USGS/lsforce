@@ -15,13 +15,15 @@ WATER_LEVEL = 60  # [dB]
 KM_PER_M = 1 / 1000  # [km/m]
 
 # Map channel sets to colors for station map
-CHANNEL_COLORS = dict(Z='red',
-                      R='salmon',
-                      T='darkred',
-                      ZR='blue',
-                      ZT='skyblue',
-                      RT='darkblue',
-                      ZRT='green')
+CHANNEL_COLORS = dict(
+    Z='red',
+    R='salmon',
+    T='darkred',
+    ZR='blue',
+    ZT='skyblue',
+    RT='darkblue',
+    ZRT='green',
+)
 
 
 class LSData:
@@ -75,8 +77,9 @@ class LSData:
 
         if remove_response:
             self.st_proc.detrend('polynomial', order=DETREND_POLY_ORDER)
-            self.st_proc.remove_response(output='DISP', water_level=WATER_LEVEL,
-                                         zero_mean=False)
+            self.st_proc.remove_response(
+                output='DISP', water_level=WATER_LEVEL, zero_mean=False
+            )
 
     def plot_stations(self, region=None, label_stations=False):
         """Create a map showing stations and event location.
@@ -94,29 +97,44 @@ class LSData:
         if not region:
             lons = [tr.stats.longitude for tr in self.st_proc] + [self.source_lon]
             lats = [tr.stats.latitude for tr in self.st_proc] + [self.source_lat]
-            region = [np.floor(np.min(lons)), np.ceil(np.max(lons)),
-                      np.floor(np.min(lats)), np.ceil(np.max(lats))]
+            region = [
+                np.floor(np.min(lons)),
+                np.ceil(np.max(lons)),
+                np.floor(np.min(lats)),
+                np.ceil(np.max(lats)),
+            ]
 
-        proj = ccrs.AlbersEqualArea(central_longitude=np.mean(region[:2]),
-                                    central_latitude=np.mean(region[2:]),
-                                    standard_parallels=[np.min(region[2:]),
-                                                        np.max(region[2:])])
+        proj = ccrs.AlbersEqualArea(
+            central_longitude=np.mean(region[:2]),
+            central_latitude=np.mean(region[2:]),
+            standard_parallels=[np.min(region[2:]), np.max(region[2:])],
+        )
 
         fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection=proj))
 
         # Add geographic context
-        ax.add_feature(cfeature.GSHHSFeature(), facecolor=cfeature.COLORS['land'],
-                       zorder=1)
+        ax.add_feature(
+            cfeature.GSHHSFeature(), facecolor=cfeature.COLORS['land'], zorder=1
+        )
         ax.background_patch.set_facecolor(cfeature.COLORS['water'])
-        ax.add_feature(cfeature.LAKES, facecolor=cfeature.COLORS['water'],
-                       edgecolor='black', zorder=2)
+        ax.add_feature(
+            cfeature.LAKES,
+            facecolor=cfeature.COLORS['water'],
+            edgecolor='black',
+            zorder=2,
+        )
 
         # Universal scatter properties
         scatter_kwargs = dict(s=100, zorder=4, transform=ccrs.PlateCarree())
 
         # Plot event location
-        ax.scatter(self.source_lon, self.source_lat, color='black',
-                   label='Event', **scatter_kwargs)
+        ax.scatter(
+            self.source_lon,
+            self.source_lat,
+            color='black',
+            label='Event',
+            **scatter_kwargs,
+        )
 
         # Plot stations, colored by channels
         for channel_set, color in CHANNEL_COLORS.items():
@@ -132,16 +150,33 @@ class LSData:
                     station_labels.append(station_st[0].stats.station)
             if len(station_lons) > 0:
                 # Plot and label according to CHANNEL_COLORS
-                ax.scatter(station_lons, station_lats, color=color, marker='v',
-                           edgecolors='black', label=channel_set, **scatter_kwargs)
+                ax.scatter(
+                    station_lons,
+                    station_lats,
+                    color=color,
+                    marker='v',
+                    edgecolors='black',
+                    label=channel_set,
+                    **scatter_kwargs,
+                )
                 if label_stations:
-                    for lon, lat, label in zip(station_lons, station_lats, station_labels):
-                        t = ax.text(lon, lat, '   ' + label, va='center', color='white',
-                                    transform=ccrs.PlateCarree())
+                    for lon, lat, label in zip(
+                        station_lons, station_lats, station_labels
+                    ):
+                        t = ax.text(
+                            lon,
+                            lat,
+                            '   ' + label,
+                            va='center',
+                            color='white',
+                            transform=ccrs.PlateCarree(),
+                        )
                         # Outline text
                         t.set_path_effects(
-                            [path_effects.Stroke(linewidth=2, foreground='black'),
-                             path_effects.Normal()]
+                            [
+                                path_effects.Stroke(linewidth=2, foreground='black'),
+                                path_effects.Normal(),
+                            ]
                         )
 
         ax.set_extent(region, crs=ccrs.PlateCarree())
@@ -218,8 +253,10 @@ def _rotate_to_rtz(st):
 
                 # Warn!
                 if bad_e or bad_n or bad_z:
-                    warnings.warn(f'Bad orientation for {tr_id}\n\tazimuth = '
-                                  f'{azimuth}\n\tdip = {dip}')
+                    warnings.warn(
+                        f'Bad orientation for {tr_id}\n\tazimuth = '
+                        f'{azimuth}\n\tdip = {dip}'
+                    )
 
         # 12Z and 123 cases
         elif components in (['1', '2', 'Z'], ['1', '2', '3']):
