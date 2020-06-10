@@ -53,7 +53,7 @@ else
 fi
 
 # Add source command to profile file if it isn't already there
-grep "/etc/profile.d/conda.sh" $prof
+grep -q "/etc/profile.d/conda.sh" $prof
 if [ $? -ne 0 ]; then
     echo ". $_CONDA_ROOT/etc/profile.d/conda.sh" >> $prof
 fi
@@ -124,5 +124,7 @@ if [ $? -ne 0 ];then
     exit 1
 fi
 
-# Tell the user they have to activate this environment
-echo "Type 'conda activate ${ENV_NAME}' to use this new environment."
+# Tell user to install CPS
+echo "This code requires Computer Programs in Seismology (CPS), available at:"
+echo "http://www.eas.slu.edu/eqc/eqccps.html"
+echo "You'll need to add it to your PATH after installing."
