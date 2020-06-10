@@ -86,8 +86,7 @@ fi
 
 # Create a conda environment
 echo "Creating the $ENV_NAME environment"
-conda create -y -n $ENV_NAME -c defaults -c conda-forge \
-      --strict-channel-priority ${package_list[*]}
+conda create -y -n $ENV_NAME -c conda-forge ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
 # Clean up zip files we've downloaded
