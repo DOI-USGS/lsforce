@@ -14,8 +14,10 @@ fi
 
 source $prof
 
+# Name of package
+PACKAGE_NAME=lsforce
 # Name of new environment
-VENV=lsforce
+ENV_NAME=$PACKAGE_NAME
 # Python version
 py_ver=3.8
 
@@ -47,7 +49,7 @@ if [ $? -ne 0 ]; then
 
     . $HOME/miniconda/etc/profile.d/conda.sh
 else
-    echo "conda detected, installing $VENV environment..."
+    echo "conda detected, installing $ENV_NAME environment..."
 fi
 
 # add source command to profile file if it isn't already there
@@ -57,11 +59,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # Start in conda base environment
-echo "Activate base virtual environment"
+echo "Activate base environment"
 conda activate base
 
 # Remove existing environment if it exists
-conda remove -y -n $VENV --all
+conda remove -y -n $ENV_NAME --all
 
 dev_list=(
     "black"
@@ -82,9 +84,9 @@ if [ $developer == 1 ]; then
     echo ${package_list[*]}
 fi
 
-# Create a conda virtual environment
-echo "Creating the $VENV virtual environment"
-conda create -y -n $VENV -c defaults -c conda-forge \
+# Create a conda environment
+echo "Creating the $ENV_NAME environment"
+conda create -y -n $ENV_NAME -c defaults -c conda-forge \
       --strict-channel-priority ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
@@ -95,12 +97,12 @@ if [ $? -ne 0 ]; then
 fi
 
 # Activate the new environment
-echo "Activating the $VENV virtual environment"
-conda activate $VENV
+echo "Activating the $ENV_NAME environment"
+conda activate $ENV_NAME
 
 # if conda activate fails, bow out gracefully
 if [ $? -ne 0 ];then
-    echo "Failed to activate ${VENV} conda environment. Exiting."
+    echo "Failed to activate $ENV_NAME conda environment. Exiting."
     exit 1
 fi
 
@@ -114,7 +116,7 @@ if [ $? -ne 0 ];then
 fi
 
 # This package
-echo "Installing $VENV"
+echo "Installing $PACKAGE_NAME"
 pip install -e .
 
 # if pip install fails, bow out gracefully
@@ -124,4 +126,4 @@ if [ $? -ne 0 ];then
 fi
 
 # Tell the user they have to activate this environment
-echo "Type 'conda activate $VENV' to use this new virtual environment."
+echo "Type 'conda activate $ENV_NAME' to use this new environment."
