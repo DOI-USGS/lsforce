@@ -14,12 +14,12 @@ fi
 
 source $prof
 
-# Name of new environment (must also change this in .yml files)
+# Name of new environment
 VENV=lsforce
 # Python version
 py_ver=3.8
 
-# Set to 1 if you are a developer and want ipython etc. installed
+# Set to 1 if you are a developer and want Black etc. installed
 developer=0
 
 # Is conda installed?
@@ -50,17 +50,11 @@ else
     echo "conda detected, installing $VENV environment..."
 fi
 
-# echo "PATH:"
-# echo $PATH
-# echo ""
-
 # add source command to profile file if it isn't already there
 grep "/etc/profile.d/conda.sh" $prof
 if [ $? -ne 0 ]; then
     echo ". $_CONDA_ROOT/etc/profile.d/conda.sh" >> $prof
 fi
-
-#env_file=environment.yml
 
 # Start in conda base environment
 echo "Activate base virtual environment"
@@ -70,35 +64,17 @@ conda activate base
 conda remove -y -n $VENV --all
 
 dev_list=(
-    "ipython"
-    "spyder"
-    "sphinx"
-    "sphinx-argparse"
+    "black"
 )
 
 # Package list:
 package_list=(
       "python=$py_ver"
-      "basemap"
-      "basemap-data-hires"
-      "configobj"
-      "descartes"
-      "fiona"
-      "folium"
-      "gdal"
-      "impactutils"
-      "libcomcat"
-      "mapio"
-      "matplotlib-base"
-      "numpy"
-      "pytables"
-      "pytest"
-      "pytest-cov"
-      "pytest-faulthandler"
-      "rasterio"
-      "scikit-image"
-      "scipy"
-      "simplekml"
+      "cartopy"
+      "ipython"
+      "pyqt"
+      "scikit-learn"
+      "xarray"
 )
 
 if [ $developer == 1 ]; then
@@ -108,7 +84,6 @@ fi
 
 # Create a conda virtual environment
 echo "Creating the $VENV virtual environment"
-# conda env create -f $env_file --force
 conda create -y -n $VENV -c defaults -c conda-forge \
       --strict-channel-priority ${package_list[*]}
 
@@ -118,7 +93,6 @@ if [ $? -ne 0 ]; then
     echo "Failed to create conda environment.  Resolve any conflicts, then try again."
     exit
 fi
-
 
 # Activate the new environment
 echo "Activating the $VENV virtual environment"
