@@ -82,7 +82,8 @@ package_list=(
 
 if [ $DEVELOPER == 1 ]; then
     package_list=( "${package_list[@]}" "${dev_list[@]}" )
-    echo ${package_list[*]}
+    echo "Installing developer packages:"
+    echo ${dev_list[*]}
 fi
 
 # Create a conda environment
