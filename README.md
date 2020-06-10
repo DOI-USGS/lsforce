@@ -31,18 +31,11 @@ The following has only been tested on macOS Mojave.
      export PATH="$PATH:/path/to/PROGRAMS.330/bin"
      ```
      
-2. Create a [conda](https://docs.conda.io/en/latest/) environment named `lsforce` and
-   activate it:
-   ```
-   conda create -n lsforce -c conda-forge black cartopy ipython obspy pyqt scikit-learn xarray
-   conda activate lsforce
-   ```
-
-3. Clone this repo and install it into the `lsforce` environment:
+2. Clone this repo and run the installation script:
    ```
    git clone https://code.usgs.gov/ghsc/lhp/lsforce.git
    cd lsforce
-   pip install -e .
+   bash install.sh
    ```
 
 4. Set up an arbitrary run directory and grab model file:
