@@ -21,7 +21,7 @@ ENV_NAME=$PACKAGE_NAME
 # Python version
 PYTHON_VERSION=3.8
 
-# Set to 1 if you are a developer and want Black etc. installed
+# Set to 1 if you are a developer and want Black, IPython, etc. installed
 DEVELOPER=0
 
 # Is conda installed?
@@ -67,16 +67,16 @@ conda remove --yes --name $ENV_NAME --all
 
 dev_list=(
     "black"
+    "ipython"
 )
 
 # Package list:
 package_list=(
-      "python=$PYTHON_VERSION"
-      "cartopy"
-      "ipython"
-      "pyqt"
-      "scikit-learn"
-      "xarray"
+    "python=$PYTHON_VERSION"
+    "cartopy"
+    "pyqt"
+    "scikit-learn"
+    "xarray"
 )
 
 if [ $DEVELOPER == 1 ]; then
