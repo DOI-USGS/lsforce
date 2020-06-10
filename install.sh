@@ -63,7 +63,7 @@ echo "Activate base environment"
 conda activate base
 
 # Remove existing environment if it exists
-conda remove -y -n $ENV_NAME --all
+conda remove --yes --name $ENV_NAME --all
 
 dev_list=(
     "black"
@@ -86,7 +86,7 @@ fi
 
 # Create a conda environment
 echo "Creating the $ENV_NAME environment"
-conda create -y -n $ENV_NAME -c conda-forge ${package_list[*]}
+conda create --yes --name $ENV_NAME --channel conda-forge ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
 # Clean up zip files we've downloaded
@@ -116,7 +116,7 @@ fi
 
 # This package
 echo "Installing $PACKAGE_NAME"
-pip install -e .
+pip install --editable .
 
 # if pip install fails, bow out gracefully
 if [ $? -ne 0 ];then
