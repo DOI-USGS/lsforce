@@ -15,9 +15,9 @@ fi
 source $prof
 
 # Name of new environment (must also change this in .yml files)
-VENV=gf
+VENV=lsforce
 # Python version
-py_ver=3.6
+py_ver=3.8
 
 # Set to 1 if you are a developer and want ipython etc. installed
 developer=0
@@ -66,7 +66,7 @@ fi
 echo "Activate base virtual environment"
 conda activate base
 
-# Remove existing shakemap environment if it exists
+# Remove existing environment if it exists
 conda remove -y -n $VENV --all
 
 dev_list=(
