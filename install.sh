@@ -4,11 +4,9 @@ unamestr=`uname`
 if [ "$unamestr" == 'Linux' ]; then
     prof=~/.bashrc
     mini_conda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-    matplotlibdir=~/.config/matplotlib
 elif [ "$unamestr" == 'FreeBSD' ] || [ "$unamestr" == 'Darwin' ]; then
     prof=~/.bash_profile
     mini_conda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
-    matplotlibdir=~/.matplotlib
 else
     echo "Unsupported environment. Exiting."
     exit
@@ -23,32 +21,6 @@ py_ver=3.6
 
 # Set to 1 if you are a developer and want ipython etc. installed
 developer=0
-
-# create a matplotlibrc file with the non-interactive backend "Agg" in it.
-if [ ! -d "$matplotlibdir" ]; then
-    mkdir -p $matplotlibdir
-    # if mkdir fails, bow out gracefully
-    if [ $? -ne 0 ];then
-        echo "Failed to create matplotlib configuration file. Exiting."
-        exit 1
-    fi
-fi
-matplotlibrc=$matplotlibdir/matplotlibrc
-if [ ! -e "$matplotlibrc" ]; then
-    echo "backend : Agg" > "$matplotlibrc"
-    echo "NOTE: A non-interactive matplotlib backend (Agg) has been set for this user."
-elif grep -Fxq "backend : Agg" $matplotlibrc ; then
-    :
-elif [ ! grep -Fxq "backend" $matplotlibrc ]; then
-    echo "backend : Agg" >> $matplotlibrc
-    echo "NOTE: A non-interactive matplotlib backend (Agg) has been set for this user."
-else
-    sed -i '' 's/backend.*/backend : Agg/' $matplotlibrc
-    echo "###############"
-    echo "NOTE: $matplotlibrc has been changed to set 'backend : Agg'"
-    echo "###############"
-fi
-
 
 # Is conda installed?
 conda --version
