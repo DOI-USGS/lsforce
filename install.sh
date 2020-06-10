@@ -74,6 +74,7 @@ dev_list=(
 package_list=(
     "python=$PYTHON_VERSION"
     "cartopy"
+    "obspy"
     "pyqt"
     "scikit-learn"
     "xarray"
