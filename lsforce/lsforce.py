@@ -926,13 +926,7 @@ class LSForce:
 
         if alphaset is None:
             alpha, fit1, size1, alphas = findalpha(
-                Ghat,
-                dhat,
-                I,
-                L1,
-                L2,
-                tikhonov_ratios=tikhonov_ratios,
-                invmethod='lsq',
+                Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq',
             )
             print('best alpha is %6.1e' % alpha)
             self.alpha = alpha
