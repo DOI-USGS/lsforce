@@ -975,7 +975,7 @@ class LSForce:
             self.dtorig = np.reshape(self.d, (self.numsta, dl))
 
         # compute variance reduction
-        self.VR = varred(self.dtorig, self.dtnew)
+        self.VR = _varred(self.dtorig, self.dtnew)
         print('variance reduction %f percent' % (self.VR,))
         tvec = (
             np.arange(
@@ -1067,7 +1067,7 @@ class LSForce:
                     dtnew = Gtemp.dot(model)
                     dt = np.reshape(dtemp, (numkeep, dl))
 
-                VR = varred(dt, dtnew)
+                VR = _varred(dt, dtnew)
                 self.jackknife['Zforce_all'].append(Zf.copy())
                 self.jackknife['Nforce_all'].append(Nf.copy())
                 self.jackknife['Eforce_all'].append(Ef.copy())
@@ -2172,7 +2172,7 @@ def Lcurve(fit1, size1, alphas):
     plt.draw()
 
 
-def varred(dt, dtnew):
+def _varred(dt, dtnew):
     """
     compute variance reduction in time domain (%)
     """
