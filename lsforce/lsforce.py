@@ -955,7 +955,7 @@ class LSForce:
             self.Nforce = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
             self.Eforce = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
             # run forward model
-            df_new = self.G @ model.T  # forward_model(G,model)
+            df_new = self.G @ model.T
             # convert d and df_new back to time domain
             dt, dtnew = back2time(self.d, df_new, self.numsta, dl)
             self.dtorig = dt
@@ -970,7 +970,7 @@ class LSForce:
             )  # convert from dynes to netwons, flip so up is positive
             self.Nforce = model[div : 2 * div] / 10 ** 5
             self.Eforce = model[2 * div :] / 10 ** 5
-            dtnew = self.G.dot(model)  # forward_model(G,model)
+            dtnew = self.G.dot(model)
             self.dtnew = np.reshape(dtnew, (self.numsta, dl))
             self.dtorig = np.reshape(self.d, (self.numsta, dl))
 
@@ -1052,7 +1052,7 @@ class LSForce:
                     Nf = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
                     Ef = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
                     # run forward model
-                    df_new = Gtemp @ model.T  # forward_model(G,model)
+                    df_new = Gtemp @ model.T
                     # convert d and df_new back to time domain
                     dt, dtnew = back2time(dtemp, df_new, numkeep, dl)
 
@@ -1064,7 +1064,7 @@ class LSForce:
                     )  # convert from dynes to netwons, flip so up is positive
                     Nf = model[div : 2 * div] / 10 ** 5
                     Ef = model[2 * div :] / 10 ** 5
-                    dtnew = Gtemp.dot(model)  # forward_model(G,model)
+                    dtnew = Gtemp.dot(model)
                     dt = np.reshape(dtemp, (numkeep, dl))
 
                 VR = varred(dt, dtnew)
@@ -2200,15 +2200,6 @@ def back2time(d, df_new, numsta, datlenorig):
     dtnew = np.real(np.fft.ifft(dfnrsp, axis=1))
     dtnew = dtnew[0:, 0:datlenorig]
     return dt, dtnew
-
-
-def forward_model(G, model):
-    """
-    run the forward model (without weights in order to compare to unweighted data)
-    """
-
-    dnew = G @ model.T
-    return dnew
 
 
 def makeconvmat(c, size=None):
