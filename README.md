@@ -21,7 +21,7 @@ The following has only been tested on macOS Mojave.
      the resulting archive, and unzip
    * Move the directory `PROGRAMS.330/` to where you'd like to install, then:
      ```
-     cd PROGRAMS.330
+     cd PROGRAMS.330/
      ./Setup OSX40
      ./C
      ```
@@ -31,17 +31,19 @@ The following has only been tested on macOS Mojave.
      export PATH="$PATH:/path/to/PROGRAMS.330/bin"
      ```
      
-2. Clone this repo and run the installation script:
+2. Clone this repo and run the installation script, which creates a
+   [conda](https://docs.conda.io/en/latest/) environment named `lsforce` and installs
+   the _lsforce_ package into the environment:
    ```
    git clone https://code.usgs.gov/ghsc/lhp/lsforce.git
-   cd lsforce
+   cd lsforce/
    bash install.sh
    ```
 
 4. Set up an arbitrary run directory and grab model file:
    ```
    mkdir meow
-   cd meow
+   cd meow/
    curl -O http://www.eas.slu.edu/eqc/eqc_cps/TUTORIAL/SPHERICITY/AK135/tak135sph.mod
    ```
 
@@ -49,3 +51,13 @@ Usage
 -----
 
 A usage example is given in `example.py`.
+
+Testing
+-------
+
+A test script is provided in the `tests/` directory. To run the script:
+```
+conda activate lsforce
+cd tests/
+python test_inversion.py
+```
