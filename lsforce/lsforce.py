@@ -9,7 +9,6 @@ from matplotlib import cm
 import scipy as sp
 import random as rnd
 import pickle
-from sklearn import linear_model as lm
 import xarray as xr
 import warnings
 import os
@@ -47,8 +46,6 @@ class LSForce:
             main_folder (str): if None, will use current folder
             method (str): 'tik' = full waveform inversion using Tikhonov
                                 regularization (L2 norm minimization)
-                          'lasso' = full waveform inversion using Lasso method
-                                (L1 norm minimization with smoothing)
                           'triangle' = parameterized inversion using overlapping
                                   triangles (variation of method of Ekstrom et al., 2013)
                           'basis' = parameterized using many hanning basis functions
@@ -71,7 +68,7 @@ class LSForce:
         else:
             self.main_folder = main_folder
 
-        if method not in ['tik', 'lasso', 'triangle']:
+        if method not in ['tik', 'triangle']:
             raise Exception('%s method not yet implemented.' % method.upper())
 
         self.method = method
@@ -374,7 +371,7 @@ class LSForce:
         else:
             raise Exception('domain not recognized. Must be time or freq')
 
-        if self.method in ['tik', 'lasso']:
+        if self.method == 'tik':
 
             self.force_sampling_rate = self.sampling_rate
 
@@ -533,7 +530,7 @@ class LSForce:
                     )
                     indx += self.datalength
 
-        elif self.method in ['triangle']:
+        elif self.method == 'triangle':
 
             # initialize weighting matrices
             Wvec = np.ones(self.lenUall)
@@ -668,8 +665,7 @@ class LSForce:
                     indx += self.datalength
 
         else:
-            # TODO setup for other methods
-            print('Put setup for other methods here')
+            raise ValueError(f'Method {self.method} not supported.')
 
         # Normalize Wvec so largest weight is 1.
         self.Wvec = Wvec / np.max(np.abs(Wvec))
@@ -776,10 +772,7 @@ class LSForce:
         else:
             self.jackknife = None
 
-        if self.method in ['tik', 'triangle']:
-            self.Tikinvert(**kwargs)
-        elif self.method == 'lasso':
-            self.Lasso(**kwargs)
+        self.Tikinvert(**kwargs)
 
     def Tikinvert(
         self,
@@ -1136,242 +1129,6 @@ class LSForce:
                     np.median(self.jackknife['VR_all']),
                 )
             )
-
-    def Lasso(
-        self,
-        G,
-        d,
-        sampling_rate,
-        numsta,
-        datlenorig,
-        W=None,
-        T0=0,
-        alpharatio=10.0,
-        domain='time',
-        alphaset=None,
-        zeroTime=None,
-        imposeZero=False,
-        addtoZero=False,
-        alpha_method='Lcurve',
-        maxduration=None,
-    ):
-
-        """
-        NOT YET UPDATED FOR CLASS STRUCTURE, WONT RUN AS IS
-        Wrapper function to perform single force inversion of long-period landslide seismic signal
-        using scikit learn's Lasso function (L1 norm minimization) with smoothing added on top
-
-        Args:
-            G (array): model matrix (m x n)
-            d (array): vector of concatenated data (m x 1)
-            sampling_rate (float): sample rate in Hz of seismic data and green's functions (the two must be equal)
-            numsta (int): number of channels used
-            datlenorig (int): length, in samples, or original data prior to zero padding etc.
-            W: optional weighting matrix, same size as G
-            T0 (float): Reference time T0 used in Green's function computation (usually 0.)
-            alpharatio (float): Alpha for Lasso will be larger than the alpha for smoothing by a factor
-                of alphadiv. If None, only Lasso regularization will be done.
-            domain (str): specifies whether calculations are in time domain ('time', default) or
-                freq domain ('freq')
-            alphaset (float): Set regularization parameter, if None, will search for best alpha
-                NOTE ABOUT HOW LASSO HANDLES REG FOR L1 and L2
-            zeroTime (float): Optional estimated start time of real part of signal, in seconds from
-                start time of seismic data. Useful for making figures showing selected start time
-                and also for impose_zero option
-            imposeZero (bool): Will add weighting matrix to suggest forces tend towards zero prior
-                to zero_time (zero_time must be defined)
-            addtoZero (bool): Add weighting matrix to suggest that all components of force integrate
-                to zero.
-            alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
-                'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on
-                discrepancy principle and noise calculated from data from before zero_time.
-            maxduration (float): Maximum duration allowed for the event, starting at zero_time if defined,
-                otherwise starting from beginning of seismic data. Points after this will tend towards
-                zero. This helps tamp down artifacts due to edge effects.
-
-        Returns: (model, Zforce, Nforce, Eforce, tvec, VR, dt, dtnew, alpha, fit1, size1, alphas, curves)
-            model (array): model vector of concatated components (n x 1) of solution using
-                regularization parameter alpha
-            Zforce (array): vertical force time series extracted from model
-            Nforce (array): same as above for north force
-            Eforce (array): same as above for east force
-            tvec (array): Time vector, referenced using zero_time (if specified) and corrected for T0
-                time shift
-            VR (float): Variance reduction (%), rule of thumb, this should be ~50%-80%, if 100%,
-                solution is fitting data exactly and results are suspect. If ~5%, model may be wrong or
-                something else may be wrong with setup.
-            dt (array): original data vector
-            dtnew (array): modeled data vector (Gm-d)
-            alpha (float): regularization parameter that was used
-            fit1 (array):
-            size1 (array):
-            curves (array):
-
-        """
-
-        raise NotImplementedError('Lasso not yet implemented yet in class structure')
-
-        if W is not None:
-            Ghat = W.dot(G)  # np.dot(W.tocsr(),G.tocsr())
-            dhat = W.dot(d)
-        else:
-            Ghat = G  # G.tocsr()
-            dhat = d
-
-        m, n = np.shape(Ghat)
-
-        Ghatnorm = np.linalg.norm(Ghat)
-
-        if addtoZero is True:  # constrain forces to add to zero
-            scaler = Ghatnorm
-            first1 = np.hstack((np.ones(datlenorig), np.zeros(2 * datlenorig)))
-            second1 = np.hstack(
-                (np.zeros(datlenorig), np.ones(datlenorig), np.zeros(datlenorig))
-            )
-            third1 = np.hstack((np.zeros(2 * datlenorig), np.ones(datlenorig)))
-            A = np.vstack((first1, second1, third1)) * scaler
-            Ghat = np.vstack((Ghat, A))
-            dhat = np.hstack((dhat, np.zeros(3)))
-
-        scaler = Ghatnorm / 15.0
-        if imposeZero is True:  # tell model when there should be no forces
-            if zeroTime is None:
-                raise Exception('impose_zero set to True but no zero_time provided')
-            len2 = int(np.round(zeroTime * sampling_rate))
-            len3 = int(
-                np.round(0.2 * len2)
-            )  # 20% taper overlapping into main event by x seconds
-            temp = np.hanning(2 * len3)
-            temp = temp[len3:]
-            vals = np.hstack((np.ones(len2 - len3), temp))
-            for i, val in enumerate(vals):
-                first1 = np.zeros(3 * datlenorig)
-                second1 = first1.copy()
-                third1 = first1.copy()
-                first1[i] = val
-                second1[i + datlenorig] = val
-                third1[i + 2 * datlenorig] = val
-                if i == 0:
-                    A = np.vstack((first1, second1, third1))
-                else:
-                    A = np.vstack((A, first1, second1, third1))
-            A = A * scaler
-            Ghat = np.vstack((Ghat, A))
-            dhat = np.hstack((dhat, np.zeros(len(vals) * 3)))
-
-        if maxduration is not None:
-            if zeroTime is None:
-                zeroTime = 0.0
-            startind = int((zeroTime + maxduration) * sampling_rate)
-            len2 = int(datlenorig - startind)
-            len3 = int(
-                np.round(0.2 * len2)
-            )  # 20% taper so zero imposition isn't sudden
-            temp = np.hanning(2 * len3)
-            temp = temp[:len3]
-            vals = np.hstack((temp, np.ones(len2 - len3)))
-            for i, val in enumerate(vals):
-                place = i + startind
-                first1 = np.zeros(3 * datlenorig)
-                second1 = first1.copy()
-                third1 = first1.copy()
-                first1[place] = val
-                second1[place + datlenorig] = val
-                third1[place + 2 * datlenorig] = val
-                if i == 0:
-                    A = np.vstack((first1, second1, third1))
-                else:
-                    A = np.vstack((A, first1, second1, third1))
-            A = A * scaler
-            Ghat = np.vstack((Ghat, A))
-            dhat = np.hstack((dhat, np.zeros(len(vals) * 3)))
-
-        if alphaset is not None:
-            alpha = alphaset
-        dhat = dhat.T
-
-        # Build roughening matrix
-        if alpharatio is not None:
-            # Build L2 (second order) roughening matrix
-            L2 = (
-                np.diag(np.ones(n))
-                + np.diag(-2 * np.ones(n - 1), k=1)
-                + np.diag(np.ones(n - 2), k=2)
-            )
-
-        if alphaset is None:
-            if alpharatio is None:
-                # Use just LassoCV
-                lasso = lm.LassoCV(normalize=False)
-                lasso.fit(Ghat, dhat)
-                alpha = lasso.alpha_
-                fit1 = None
-                size1 = None
-                alphas = None
-                print('best alpha is %6.1e' % alpha)
-            else:
-                # INSERT STUFF HERE TO FIND ALPHA
-                raise Exception(
-                    'alphaset=None not implemented yet for smoothed Lasso. Must assign alpha'
-                )
-        else:
-            if alpharatio is not None:
-                Ghat2 = np.vstack((Ghat, alphaset * L2))
-                dhat2 = np.hstack((dhat, np.zeros(np.shape(L2[0]))))
-            else:
-                Ghat2 = Ghat
-                dhat2 = dhat
-                alpharatio = 1.0
-            lasso = lm.Lasso(alpha=(alphaset * alpharatio) ** 2)
-            lasso.fit(Ghat2, dhat2)
-            fit1 = None
-            size1 = None
-            alphas = None
-
-        model = lasso.coef_
-        div = int(len(model) / 3)
-
-        if domain == 'freq':
-            Zforce = -np.real(
-                np.fft.ifft(model[0:div]) / 10 ** 5
-            )  # convert from dynes to newtons, flip so up is positive
-            Nforce = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
-            Eforce = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
-            # run forward model
-            df_new = np.dot(G, model.T)  # forward_model(G,model)
-            # convert d and df_new back to time domain
-            dt, dtnew = back2time(d, df_new, numsta, datlenorig)
-
-        else:  # domain is time
-            Zforce = (
-                -model[0:div] / 10 ** 5
-            )  # convert from dynes to netwons, flip so up is positive
-            Nforce = model[div : 2 * div] / 10 ** 5
-            Eforce = model[2 * div :] / 10 ** 5
-            dtnew = G.dot(model)  # forward_model(G,model)
-            dtnew = np.reshape(dtnew, (numsta, datlenorig))
-            dt = np.reshape(d, (numsta, datlenorig))
-
-        # compute variance reduction
-        VR = varred(dt, dtnew)
-        print('variance reduction %2.0f percent' % (VR,))
-        tvec = np.arange(0, len(Zforce) * 1 / sampling_rate, 1 / sampling_rate) - T0
-        if zeroTime is not None:
-            tvec = tvec - zeroTime
-        return (
-            model,
-            Zforce,
-            Nforce,
-            Eforce,
-            tvec,
-            VR,
-            dt,
-            dtnew,
-            alpha,
-            fit1,
-            size1,
-            alphas,
-        )
 
     def plotdatafit(self):
         """
