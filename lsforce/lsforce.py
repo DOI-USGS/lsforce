@@ -957,7 +957,7 @@ class LSForce:
             # run forward model
             df_new = self.G @ model.T
             # convert d and df_new back to time domain
-            dt, dtnew = back2time(self.d, df_new, self.numsta, dl)
+            dt, dtnew = _back2time(self.d, df_new, self.numsta, dl)
             self.dtorig = dt
             self.dtnew = dtnew
 
@@ -1054,7 +1054,7 @@ class LSForce:
                     # run forward model
                     df_new = Gtemp @ model.T
                     # convert d and df_new back to time domain
-                    dt, dtnew = back2time(dtemp, df_new, numkeep, dl)
+                    dt, dtnew = _back2time(dtemp, df_new, numkeep, dl)
 
                 else:  # domain is time
                     model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
@@ -2187,7 +2187,7 @@ def varred(dt, dtnew):
     return VR
 
 
-def back2time(d, df_new, numsta, datlenorig):
+def _back2time(d, df_new, numsta, datlenorig):
     """
     convert data back to the time domain and cut off zero padding
     """
