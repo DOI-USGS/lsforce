@@ -2100,7 +2100,7 @@ def findalpha(
         )
     fit1 = np.array(fit1)
     size1 = np.array(size1)
-    curves = curvature(np.log10(fit1), np.log10(size1))
+    curves = _curvature(np.log10(fit1), np.log10(size1))
     # Zero out any points where function is concave so avoid picking points form dropoff at end
     slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
     alphas = np.array(alphas)
@@ -2136,7 +2136,7 @@ def findalpha(
             )
         fit1 = np.array(fit1)
         size1 = np.array(size1)
-        curves = curvature(np.log10(fit1), np.log10(size1))
+        curves = _curvature(np.log10(fit1), np.log10(size1))
         # Zero out any points where function is concave so avoid picking points form dropoff at end
         slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
         alphas = np.array(alphas)
@@ -2267,7 +2267,7 @@ def makeshiftmat(c, shiftby, size1):
     return C
 
 
-def curvature(x, y):
+def _curvature(x, y):
     """
     Estimate the radius of curvature for each point on line to find corner of L-curve
 
