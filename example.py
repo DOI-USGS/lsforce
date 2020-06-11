@@ -42,12 +42,41 @@ if not os.path.exists(data_filename):
 
     # Gather vertical components (most of the waveforms!)
     NETWORKS = (
-        'AK', 'AT', 'AV', 'TA', 'ZE',
+        'AK',
+        'AT',
+        'AV',
+        'TA',
+        'ZE',
     )
     STATIONS = (
-        'KALN', 'HOM',  'HLC5', 'CLAM', 'SALA', 'LTUY', 'N19K', 'CNP',  'NSKI', 'LTUX',
-        'BRLK', 'Q19K', 'LTUW', 'BRSE', 'WFLS', 'P18K', 'BING', 'CONG', 'WFLW', 'MPEN',
-        'BULG', 'SLK',  'N18K', 'JOES', 'SVW2', 'JUDD', 'O22K', 'FIRE',
+        'KALN',
+        'HOM',
+        'HLC5',
+        'CLAM',
+        'SALA',
+        'LTUY',
+        'N19K',
+        'CNP',
+        'NSKI',
+        'LTUX',
+        'BRLK',
+        'Q19K',
+        'LTUW',
+        'BRSE',
+        'WFLS',
+        'P18K',
+        'BING',
+        'CONG',
+        'WFLW',
+        'MPEN',
+        'BULG',
+        'SLK',
+        'N18K',
+        'JOES',
+        'SVW2',
+        'JUDD',
+        'O22K',
+        'FIRE',
     )
     st = client.get_waveforms(
         network=','.join(NETWORKS),
@@ -97,7 +126,7 @@ data.plot_data(equal_scale=False, period_range=PERIOD_RANGE)
 #%% GATHER REFERENCE WAVEFORMS
 
 RAYLEIGH_VELO = 0.9  # [km/s] Surface-wave group velocity @ 1 Hz
-INFRA_VELO = 0.337   # [km/s] Reasonable given air temp of 50 degrees F
+INFRA_VELO = 0.337  # [km/s] Reasonable given air temp of 50 degrees F
 
 client = Client('IRIS')
 
@@ -196,10 +225,7 @@ force.plotangmag(xlim=XLIM)
 
 # Calculate/plot trajectories
 force.trajectory(
-    target_length=L,
-    plot_jackknife=True,
-    duration=XLIM[1],
-    detrend_velocity=XLIM[1]
+    target_length=L, plot_jackknife=True, duration=XLIM[1], detrend_velocity=XLIM[1]
 )
 force.trajectory(
     target_length=L,
