@@ -128,7 +128,10 @@ class LSData:
             ax.plot(
                 tr.times('matplotlib'), tr.data + offset, color='black', linewidth=1
             )
-            label = f'{tr.stats.network}.{tr.stats.station} ({tr.stats.channel[-1]}) – {tr.stats.distance:.1f} km'
+            label = (
+                f'{tr.stats.network}.{tr.stats.station} ({tr.stats.channel[-1]}) '
+                f'– {tr.stats.distance:.1f} km'
+            )
             yticklabels.append(label)
             yticks.append(offset)
             offset -= spacing
