@@ -2307,14 +2307,3 @@ def curvature(x, y):
         )  # get distance from any point to intercept of bisectors to get radius
 
     return R_2
-
-
-def readrun(filename):
-    """
-    Read in a saved LSForce object
-    """
-
-    with open(filename, 'rb') as f:
-        result = pickle.load(f)
-
-    return result
