@@ -800,10 +800,10 @@ class LSForce:
         self.parameters = {}
 
         if self.W is not None:
-            Ghat = self.W.dot(self.G)  # np.dot(W.tocsr(),G.tocsr())
+            Ghat = self.W.dot(self.G)
             dhat = self.W.dot(self.d)
         else:
-            Ghat = self.G  # G.tocsr()
+            Ghat = self.G
             dhat = self.d
 
         if self.jackknife is not None:  # save version at this point for use later
@@ -908,7 +908,7 @@ class LSForce:
         if tikhonov_ratios[1] != 0.0:
             # Build L1 (first order) roughening matrix
             L1 = np.diag(-1 * np.ones(n)) + np.diag(np.ones(n - 1), k=1)
-            L1part = np.dot(L1.T, L1)
+            L1part = L1.T @ L1
         else:
             L1part = 0.0
             L1 = 0.0
@@ -919,7 +919,7 @@ class LSForce:
                 + np.diag(-2 * np.ones(n - 1), k=1)
                 + np.diag(np.ones(n - 2), k=2)
             )
-            L2part = np.dot(L2.T, L2)
+            L2part = L2.T @ L2
         else:
             L2 = 0.0
             L2part = 0.0
@@ -936,15 +936,14 @@ class LSForce:
         else:
             self.alpha = alpha
 
-        Ghat = np.matrix(Ghat)
-        Apart = np.dot(Ghat.H, Ghat)
+        Apart = Ghat.conj().T @ Ghat
 
         A = Apart + alpha ** 2 * (
             tikhonov_ratios[0] * I
             + tikhonov_ratios[1] * L1part
             + tikhonov_ratios[2] * L2part
         )  # Combo of all regularization things (if any are zero they won't matter)
-        x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
+        x = np.squeeze(Ghat.conj().T @ dhat)
 
         if self.domain == 'freq':
             model, residuals, rank, s = sp.linalg.lstsq(A, x)
@@ -956,7 +955,7 @@ class LSForce:
             self.Nforce = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
             self.Eforce = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
             # run forward model
-            df_new = np.dot(self.G, model.T)  # forward_model(G,model)
+            df_new = self.G @ model.T  # forward_model(G,model)
             # convert d and df_new back to time domain
             dt, dtnew = back2time(self.d, df_new, self.numsta, dl)
             self.dtorig = dt
@@ -1035,15 +1034,14 @@ class LSForce:
                     dhat1 = np.hstack((dhat1, np.zeros(len(vals3) * 3)))
 
                 dhat1 = dhat1.T
-                Ghat1 = np.matrix(Ghat1)
-                Apart = np.dot(Ghat1.H, Ghat1)
+                Apart = Ghat1.conj().T @ Ghat1
 
                 Aj = Apart + self.alpha ** 2 * (
                     tikhonov_ratios[0] * I
                     + tikhonov_ratios[1] * L1part
                     + tikhonov_ratios[2] * L2part
                 )  # Combo of all regularization things (if any are zero they won't matter)
-                xj = np.squeeze(np.asarray(np.dot(Ghat1.H, dhat1)))
+                xj = np.squeeze(Ghat1.conj().T @ dhat1)
 
                 if self.domain == 'freq':
                     model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
@@ -1054,7 +1052,7 @@ class LSForce:
                     Nf = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
                     Ef = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
                     # run forward model
-                    df_new = np.dot(Gtemp, model.T)  # forward_model(G,model)
+                    df_new = Gtemp @ model.T  # forward_model(G,model)
                     # convert d and df_new back to time domain
                     dt, dtnew = back2time(dtemp, df_new, numkeep, dl)
 
@@ -2068,20 +2066,17 @@ def findalpha(
     fit1 = []
     size1 = []
 
-    # Convert to matrix so can use complex conjugate .H (so this code will work for both time and freq domains)
-    Ghat = np.matrix(Ghat)
-
-    Apart = np.dot(Ghat.H, Ghat)
+    Apart = Ghat.conj().T @ Ghat
     if type(L2) == float or type(L2) == int:
         L2part = 0.0
     else:
-        L2part = np.dot(L2.T, L2)
+        L2part = L2.T @ L2
     if type(L1) == float or type(L1) == int:
         L1part = 0.0
     else:
-        L1part = np.dot(L1.T, L1)
+        L1part = L1.T @ L1
 
-    x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
+    x = np.squeeze(Ghat.conj().T @ dhat)
 
     # rough first iteration
     for alpha in alphas:
@@ -2096,12 +2091,12 @@ def findalpha(
             model, residuals = sp.optimize.nnls(A, x)
         else:
             raise Exception('inversion method %s not recognized' % invmethod)
-        temp1 = np.dot(Ghat, model.T) - dhat
+        temp1 = Ghat @ model.T - dhat
         fit1.append(sp.linalg.norm(temp1))
         size1.append(
             sp.linalg.norm(tikhonov_ratios[0] * model)
-            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, model))
-            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, model))
+            + sp.linalg.norm(tikhonov_ratios[1] * L1part @ model)
+            + sp.linalg.norm(tikhonov_ratios[2] * L2part @ model)
         )
     fit1 = np.array(fit1)
     size1 = np.array(size1)
@@ -2132,12 +2127,12 @@ def findalpha(
             elif invmethod == 'nnls':
                 model, residuals = sp.optimize.nnls(A, x)
 
-            temp1 = np.dot(Ghat, model.T) - dhat
+            temp1 = Ghat @ model.T - dhat
             fit1.append(sp.linalg.norm(temp1))
             size1.append(
                 sp.linalg.norm(tikhonov_ratios[0] * model)
-                + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, model))
-                + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, model))
+                + sp.linalg.norm(tikhonov_ratios[1] * L1part @ model)
+                + sp.linalg.norm(tikhonov_ratios[2] * L2part @ model)
             )
         fit1 = np.array(fit1)
         size1 = np.array(size1)
@@ -2212,7 +2207,7 @@ def forward_model(G, model):
     run the forward model (without weights in order to compare to unweighted data)
     """
 
-    dnew = np.dot(G, model.T)
+    dnew = G @ model.T
     return dnew
 
 
