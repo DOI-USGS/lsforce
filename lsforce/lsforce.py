@@ -772,9 +772,9 @@ class LSForce:
         else:
             self.jackknife = None
 
-        self.tikinvert(**kwargs)
+        self._tikinvert(**kwargs)
 
-    def tikinvert(
+    def _tikinvert(
         self,
         alphaset=None,
         zero_scaler=15.0,
