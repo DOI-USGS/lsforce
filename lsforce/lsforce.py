@@ -925,7 +925,7 @@ class LSForce:
             L2part = 0.0
 
         if alphaset is None:
-            alpha, fit1, size1, alphas = _findalpha(
+            alpha, fit1, size1, alphas = _find_alpha(
                 Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq',
             )
             print('best alpha is %6.1e' % alpha)
@@ -2028,7 +2028,7 @@ def _calculate_Hdist(Edisp, Ndisp):
     return np.hstack([0, np.cumsum(np.linalg.norm([dx, dy], axis=0))])
 
 
-def _findalpha(
+def _find_alpha(
     Ghat,
     dhat,
     I,
