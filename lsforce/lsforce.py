@@ -777,7 +777,6 @@ class LSForce:
     def Tikinvert(
         self,
         alphaset=None,
-        alpha_method='Lcurve',
         zero_scaler=15.0,
         zero_taper_length=20.0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
@@ -786,11 +785,7 @@ class LSForce:
         Full waveform inversion using Tikhonov regularization
 
         Args:
-            alphaset (float): Set regularization parameter, if None, will search for best alpha
-
-            alpha_method (str): Method used to find best regularization parameter (alpha) if not defined.
-                'Lcurve' chooses based on steepest part of curve and 'Discrepancy' choose based on
-                discrepancy principle and noise calculated from data from before zero_time.
+            alphaset (float): Set regularization parameter, if None, will search for best alpha using L-curve method
             zero_scaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
                 The lower the number, teh stronger the constraint, but the higher the risk of high freq.
                 oscillations due to a sudden release of the constraint
@@ -930,29 +925,15 @@ class LSForce:
             L2part = 0.0
 
         if alphaset is None:
-            if alpha_method == 'Lcurve':
-                alpha, fit1, size1, alphas = findalpha(
-                    Ghat,
-                    dhat,
-                    I,
-                    L1,
-                    L2,
-                    tikhonov_ratios=tikhonov_ratios,
-                    invmethod='lsq',
-                )
-            else:
-                alpha, fit1, size1, alphas = findalphaD(
-                    Ghat,
-                    dhat,
-                    I,
-                    self.zero_time,
-                    self.sampling_rate,
-                    self.numsta,
-                    dl,
-                    L1=L1,
-                    L2=L2,
-                    tikhonov_ratios=tikhonov_ratios,
-                )  # , tolerance=0.5)
+            alpha, fit1, size1, alphas = findalpha(
+                Ghat,
+                dhat,
+                I,
+                L1,
+                L2,
+                tikhonov_ratios=tikhonov_ratios,
+                invmethod='lsq',
+            )
             print('best alpha is %6.1e' % alpha)
             self.alpha = alpha
             self.alphafit['alphas'] = alphas
@@ -2182,163 +2163,6 @@ def findalpha(
         if len(bestalpha) > 1:
             raise Exception('Returned more than one alpha value, check codes')
         bestalpha = bestalpha[0]
-    return bestalpha, fit1, size1, alphas
-
-
-def findalphaD(
-    Ghat,
-    dhat,
-    I,
-    zeroTime,
-    sampling_rate,
-    numsta,
-    datlenorig,
-    tolerance=None,
-    L1=0.0,
-    L2=0.0,
-    tikhonov_ratios=(1.0, 0.0, 0.0),
-):
-    """
-    Use discrepancy principle and noise window to find best alpha (tends to find value that
-    is too large such that amplitudes are damped)
-
-    Uses Mozorokov discrepancy principle (and bisection method in log-log space?) to find an
-    appropriate value of alpha that results in a solution with a fit that is slightly larger than
-    the estimated noise level
-
-    Args:
-        tolerance (float): how close you want to get to the noise level with the solution
-        Ghat:
-        dhat:
-        I:
-        zeroTime:
-        sampling_rate:
-        numsta:
-        datlenorig:
-        L1:
-        L2:
-        tikhonov_ratios:
-    """
-
-    # Estimate the noise level (use signal before zero_time)
-    dtemp = dhat.copy()[: numsta * datlenorig]  # Trim off any extra zeros
-    dtemp = np.reshape(dtemp, (numsta, datlenorig))
-    if zeroTime is None:
-        print('zero_time not defined, noise estimated from first 100 samples')
-        samps = 100
-    else:
-        samps = int(zeroTime * sampling_rate)
-    temp = dtemp[:, :samps]
-    noise = np.sum(np.sqrt(datlenorig * np.std(temp, axis=1) ** 2))
-
-    # Find ak and bk that yield f(alpha) = ||Gm-d|| - ||noise|| that have f(alpha) values with
-    # opposite signs
-    templ1 = np.floor(np.log10(np.linalg.norm(Ghat)))
-    templ2 = np.arange(templ1 - 6, templ1)
-    ak = 10 ** templ2[0]
-    bk = 10 ** templ2[-1]
-    opposite = False
-    fit1 = []
-    size1 = []
-    alphas = []
-
-    Ghat = np.matrix(Ghat)
-
-    Apart = np.dot(Ghat.H, Ghat)
-    if type(L2) == float or type(L2) == int:
-        L2part = 0.0
-    else:
-        L2part = np.dot(L2.T, L2)
-    if type(L1) == float or type(L2) == int:
-        L1part = 0.0
-    else:
-        L1part = np.dot(L1.T, L1)
-
-    x = np.squeeze(np.asarray(np.dot(Ghat.H, dhat)))
-
-    while opposite is False:
-        print(('ak = %s' % (ak,)))
-        print(('bk = %s' % (bk,)))
-        Aa = Apart + ak ** 2 * (
-            tikhonov_ratios[0] * I
-            + tikhonov_ratios[1] * L1part
-            + tikhonov_ratios[2] * L2part
-        )
-        modelak, residuals, rank, s = sp.linalg.lstsq(Aa, x)
-        Ab = Apart + bk ** 2 * (
-            tikhonov_ratios[0] * I
-            + tikhonov_ratios[1] * L1part
-            + tikhonov_ratios[2] * L2part
-        )
-        modelbk, residuals, rank, s = sp.linalg.lstsq(Ab, x)
-        fitak = sp.linalg.norm(np.dot(Ghat, modelak.T) - dhat)
-        fitbk = sp.linalg.norm(np.dot(Ghat, modelbk.T) - dhat)
-        # Save info on these runs for Lcurve later if desired
-        fit1.append(fitak)
-        alphas.append(ak)
-        size1.append(
-            sp.linalg.norm(tikhonov_ratios[0] * modelak)
-            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, modelak))
-            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, modelak))
-        )
-        fit1.append(fitbk)
-        alphas.append(bk)
-        size1.append(
-            sp.linalg.norm(tikhonov_ratios[0] * modelbk)
-            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, modelbk))
-            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, modelbk))
-        )
-        fak = fitak - noise  # should be negative
-        fbk = fitbk - noise  # should be positive
-        print(('fak = %s' % (fak,)))
-        print(('fbk = %s' % (fbk,)))
-        if fak * fbk < 0:
-            opposite = True
-        if fak > 0:
-            ak = 10 ** (np.log10(ak) - 1)
-        if fbk < 0:
-            bk = 10 ** (np.log10(bk) + 1)
-
-    if tolerance is None:
-        tolerance = noise / 10.0
-
-    # Now use bisection method to find the best alpha value within tolerance
-    tol = noise + 100.0
-    while tol > tolerance:
-        # Figure out whether to change ak or bk
-        # Compute midpoint (in log units)
-        ck = 10 ** (0.5 * (np.log10(ak) + np.log10(bk)))
-        Ac = Apart + ck ** 2 * (
-            tikhonov_ratios[0] * I
-            + tikhonov_ratios[1] * L1part
-            + tikhonov_ratios[2] * L2part
-        )
-        modelck, residuals, rank, s = sp.linalg.lstsq(Ac, x)
-        fitck = sp.linalg.norm(np.dot(Ghat, modelck.T) - dhat)
-        fit1.append(fitck)
-        alphas.append(ck)
-        size1.append(
-            sp.linalg.norm(tikhonov_ratios[0] * modelck)
-            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, modelck))
-            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, modelck))
-        )
-        fck = fitck - noise
-        print(('ck = %s' % (ck,)))
-        print(('fitck = %s' % (fitck,)))
-        print(('fck = %s' % (fck,)))
-        tol = np.abs(fck)
-        if fck * fak < 0:
-            bk = ck
-        else:
-            ak = ck
-        print(('ak = %s' % (ak,)))
-        print(('bk = %s' % (bk,)))
-
-    bestalpha = ck
-    print(('best alpha = %s' % (bestalpha,)))
-    fit1 = np.array(fit1)
-    size1 = np.array(size1)
-    Lcurve(fit1, size1, alphas)
     return bestalpha, fit1, size1, alphas
 
 
