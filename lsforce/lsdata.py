@@ -52,8 +52,7 @@ class LSData:
 
         # Before we do anything, verify that tr.stats.latitude/longitude are defined
         for tr in st:
-            assert hasattr(tr.stats, 'latitude') and hasattr(tr.stats, 'longitude'),\
-                f'tr.stats.latitude/longitude not present for {tr.id}'
+            assert hasattr(tr.stats, 'latitude') and hasattr(tr.stats, 'longitude')
 
         self.st_orig = st.copy()  # Save a copy of the original input Stream
         self.st_proc = st.copy()  # Work on a copy of the input Stream
@@ -214,14 +213,15 @@ class LSData:
         )
 
         # Plot stations, colored by channels
-        for channel_set, color in CHANNEL_COLORS.items():
+        for current_channel_set, color in CHANNEL_COLORS.items():
             station_lons = []
             station_lats = []
             station_labels = []
             for station in np.unique([tr.stats.station for tr in self.st_proc]):
                 station_st = self.st_proc.select(station=station)
                 # If this station's set of channels match the channel set we're on
-                if sorted([tr.stats.channel[-1] for tr in station_st]) == sorted(channel_set):
+                station_channel_set = [tr.stats.channel[-1] for tr in station_st]
+                if sorted(station_channel_set) == sorted(current_channel_set):
                     station_lons.append(station_st[0].stats.longitude)
                     station_lats.append(station_st[0].stats.latitude)
                     station_labels.append(station_st[0].stats.station)
@@ -233,7 +233,7 @@ class LSData:
                     color=color,
                     marker='v',
                     edgecolors='black',
-                    label=channel_set,
+                    label=current_channel_set,
                     **scatter_kwargs,
                 )
                 if label_stations:
