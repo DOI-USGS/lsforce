@@ -2040,7 +2040,7 @@ def findalpha(
 ):
     """
     Find best regularization (trade-off) parameter, alpha, by computing model with many values of
-    alpha, plotting Lcurve, and finding point of steepest curvature where slope is negative.
+    alpha, plotting L-curve, and finding point of steepest curvature where slope is negative.
 
     Args:
         Ghat (array): m x n matrix of
@@ -2147,7 +2147,7 @@ def findalpha(
     else:
         bestalpha = alpha
 
-    Lcurve(fit1, size1, alphas)
+    _Lcurve(fit1, size1, alphas)
     if type(bestalpha) == list:
         if len(bestalpha) > 1:
             raise Exception('Returned more than one alpha value, check codes')
@@ -2155,9 +2155,9 @@ def findalpha(
     return bestalpha, fit1, size1, alphas
 
 
-def Lcurve(fit1, size1, alphas):
+def _Lcurve(fit1, size1, alphas):
     """
-    Plot Lcurve
+    Plot L-curve
     """
 
     fig = plt.figure(figsize=(6, 6))
