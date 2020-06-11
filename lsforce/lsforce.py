@@ -2095,8 +2095,8 @@ def findalpha(
         fit1.append(sp.linalg.norm(temp1))
         size1.append(
             sp.linalg.norm(tikhonov_ratios[0] * model)
-            + sp.linalg.norm(tikhonov_ratios[1] * L1part @ model)
-            + sp.linalg.norm(tikhonov_ratios[2] * L2part @ model)
+            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, model))
+            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, model))
         )
     fit1 = np.array(fit1)
     size1 = np.array(size1)
@@ -2131,8 +2131,8 @@ def findalpha(
             fit1.append(sp.linalg.norm(temp1))
             size1.append(
                 sp.linalg.norm(tikhonov_ratios[0] * model)
-                + sp.linalg.norm(tikhonov_ratios[1] * L1part @ model)
-                + sp.linalg.norm(tikhonov_ratios[2] * L2part @ model)
+                + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, model))
+                + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, model))
             )
         fit1 = np.array(fit1)
         size1 = np.array(size1)
