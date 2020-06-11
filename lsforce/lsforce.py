@@ -577,8 +577,8 @@ class LSForce:
                                corners=self.filter['order'],
                                zerophase=self.filter['zerophase'])
                     """
-                    ZVF = makeshiftmat(zvf.data, shiftby=fshiftby, size1=(n, Flen))
-                    ZHF = makeshiftmat(zhf.data, shiftby=fshiftby, size1=(n, Flen))
+                    ZVF = _makeshiftmat(zvf.data, shiftby=fshiftby, size1=(n, Flen))
+                    ZHF = _makeshiftmat(zhf.data, shiftby=fshiftby, size1=(n, Flen))
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
@@ -611,8 +611,8 @@ class LSForce:
                                corners=self.filter['order'],
                                zerophase=self.filter['zerophase'])
                     """
-                    RVF = makeshiftmat(rvf.data, shiftby=fshiftby, size1=(n, Flen))
-                    RHF = makeshiftmat(rhf.data, shiftby=fshiftby, size1=(n, Flen))
+                    RVF = _makeshiftmat(rvf.data, shiftby=fshiftby, size1=(n, Flen))
+                    RHF = _makeshiftmat(rhf.data, shiftby=fshiftby, size1=(n, Flen))
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
                         (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
@@ -632,7 +632,7 @@ class LSForce:
                                corners=self.filter['order'],
                                zerophase=self.filter['zerophase'])
                     """
-                    THF = makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
+                    THF = _makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
                     TVF = 0.0 * THF.copy()
                     az = math.radians(trace.stats.azimuth)
                     newline = np.hstack(
@@ -2234,7 +2234,7 @@ def makeconvmat(c, size=None):
     return C
 
 
-def makeshiftmat(c, shiftby, size1):
+def _makeshiftmat(c, shiftby, size1):
     """
     Build matrix that can be used for shifting of overlapping triangles for
     triangle method, signal goes across rows and each shift is a new column
