@@ -19,9 +19,9 @@ The following has only been tested on macOS Mojave.
    * Complete the
      [CPS license form](http://www.eas.slu.edu/eqc/eqc_cps/CPS/cpslisc.html), download
      the resulting archive, and unzip
-   * Move the directory `PROGRAMS.330/` to where you'd like to install, then:
+   * Move the directory `PROGRAMS.330` to where you'd like to install, then:
      ```
-     cd PROGRAMS.330/
+     cd PROGRAMS.330
      ./Setup OSX40
      ./C
      ```
@@ -36,14 +36,14 @@ The following has only been tested on macOS Mojave.
    the _lsforce_ package into the environment:
    ```
    git clone https://code.usgs.gov/ghsc/lhp/lsforce.git
-   cd lsforce/
+   cd lsforce
    bash install.sh
    ```
 
 4. Set up an arbitrary run directory and grab model file:
    ```
    mkdir meow
-   cd meow/
+   cd meow
    curl -O http://www.eas.slu.edu/eqc/eqc_cps/TUTORIAL/SPHERICITY/AK135/tak135sph.mod
    ```
 
@@ -55,9 +55,9 @@ A usage example is given in `example.py`.
 Testing
 -------
 
-A test script is provided in the `tests/` directory. To run the script:
+A test script is provided in the `tests` directory. To run the script:
 ```
 conda activate lsforce
-cd tests/
+cd tests
 python test_inversion.py
 ```
