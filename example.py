@@ -3,7 +3,6 @@ from obspy import read, UTCDateTime
 from obspy.clients.fdsn import Client
 from obspy.geodetics import gps2dist_azimuth
 import os
-import numpy as np
 
 # Arbitrary run directory containing model file
 LSFORCE_RUN_DIR = os.path.join(os.getcwd(), 'meow')
@@ -205,14 +204,6 @@ force.invert(
     zero_scaler=2,
     tikhonov_ratios=[0.4, 0.0, 0.6],
 )
-
-# Test that the force time series is numerically consistent with test data
-TEST_DATA_TEMPLATE = 'tests/data/iliamna_2016_paper_{}_force.npy'
-print('Testing...')
-np.testing.assert_allclose(np.load(TEST_DATA_TEMPLATE.format('E')), force.Eforce)
-np.testing.assert_allclose(np.load(TEST_DATA_TEMPLATE.format('N')), force.Nforce)
-np.testing.assert_allclose(np.load(TEST_DATA_TEMPLATE.format('Z')), force.Zforce)
-print('Tests passed.')
 
 #%% PLOT
 
