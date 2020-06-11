@@ -419,8 +419,8 @@ class LSForce:
                     )
 
                     if self.domain == 'time':
-                        ZVF = makeconvmat(zvf.data, size=(n, n))
-                        ZHF = makeconvmat(zhf.data, size=(n, n))
+                        ZVF = _makeconvmat(zvf.data, size=(n, n))
+                        ZHF = _makeconvmat(zhf.data, size=(n, n))
                     else:
                         zvff = np.fft.fft(zvf.data, self.NFFT)
                         zhff = np.fft.fft(zhf.data, self.NFFT)
@@ -464,8 +464,8 @@ class LSForce:
                         zerophase=self.filter['zerophase'],
                     )
                     if self.domain == 'time':
-                        RVF = makeconvmat(rvf.data, size=(n, n))
-                        RHF = makeconvmat(rhf.data, size=(n, n))
+                        RVF = _makeconvmat(rvf.data, size=(n, n))
+                        RHF = _makeconvmat(rhf.data, size=(n, n))
                     else:
                         rvff = np.fft.fft(rvf.data, self.NFFT)
                         rhff = np.fft.fft(rhf.data, self.NFFT)
@@ -492,7 +492,7 @@ class LSForce:
                         zerophase=self.filter['zerophase'],
                     )
                     if self.domain == 'time':
-                        THF = makeconvmat(thf.data, size=(n, n))
+                        THF = _makeconvmat(thf.data, size=(n, n))
                     else:
                         thff = np.fft.fft(thf.data, self.NFFT)
                         THF = np.diag(thff)
@@ -2202,7 +2202,7 @@ def back2time(d, df_new, numsta, datlenorig):
     return dt, dtnew
 
 
-def makeconvmat(c, size=None):
+def _makeconvmat(c, size=None):
     """
     Build matrix that can be used for convolution as implemented by matrix multiplication
     size is optional input for desired size as (rows,cols), this will just shift cflip until it
@@ -2238,7 +2238,7 @@ def _makeshiftmat(c, shiftby, size1):
     """
     Build matrix that can be used for shifting of overlapping triangles for
     triangle method, signal goes across rows and each shift is a new column
-    (opposite orientation to makeconvmat)
+    (opposite orientation to _makeconvmat)
 
     Args:
         c (array): vector of data (usually greens function)
