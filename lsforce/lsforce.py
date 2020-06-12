@@ -1278,25 +1278,15 @@ class LSForce:
 
         if subplots:
             if highf_tr is None:
-                fig = plt.figure(figsize=(10, 8))
-                ax1 = fig.add_subplot(311)
-                ax2 = fig.add_subplot(312)
-                ax3 = fig.add_subplot(313)
+                fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, figsize=(10, 8))
             else:
-                fig = plt.figure(figsize=(10, 10))
-                ax1 = fig.add_subplot(411)
-                ax2 = fig.add_subplot(412)
-                ax3 = fig.add_subplot(413)
-                ax4 = fig.add_subplot(414)
+                fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows=4, figsize=(10, 10))
 
                 if infra_tr is not None:
                     plt.close(fig)
-                    fig = plt.figure(figsize=(10, 12))
-                    ax1 = fig.add_subplot(511)
-                    ax2 = fig.add_subplot(512)
-                    ax3 = fig.add_subplot(513)
-                    ax4 = fig.add_subplot(514)
-                    ax5 = fig.add_subplot(515)
+                    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(
+                        nrows=5, figsize=(10, 12)
+                    )
 
             ax1.plot(tvec, self.Zforce, 'b', linewidth=1)
             ax1.set_ylabel('Up force (N)')
@@ -1406,12 +1396,9 @@ class LSForce:
 
         else:
             if highf_tr is None:
-                fig = plt.figure(figsize=(10, 4))
-                ax = fig.add_subplot(111)
+                fig, ax = plt.subplots(figsize=(10, 4))
             else:
-                fig = plt.figure(figsize=(10, 6))
-                ax = fig.add_subplot(211)
-                ax4 = fig.add_subplot(212)
+                fig, (ax, ax4) = plt.subplots(nrows=2, figsize=(10, 6))
                 if type(highf_tr) != Trace:
                     raise TypeError('highf_tr is not an ObsPy Trace.')
                 tvec2 = np.linspace(
