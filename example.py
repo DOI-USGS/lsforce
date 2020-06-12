@@ -221,7 +221,7 @@ force.plot_forces(
     xlim=XLIM,
     subplots=True,
 )
-force.plotangmag(xlim=XLIM)
+force.plot_angle_magnitude(xlim=XLIM)
 
 #%% COMPUTE TRAJECTORY & PLOT
 
