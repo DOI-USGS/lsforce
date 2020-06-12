@@ -2,7 +2,6 @@ from lsforce import LSData, LSForce
 from obspy import read
 import numpy as np
 import os
-import shutil
 import time
 import tempfile
 
