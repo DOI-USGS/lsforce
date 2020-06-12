@@ -56,73 +56,6 @@ class LSTrajectory:
 
         self._compute_trajectory(**compute_kwargs)
 
-    def _compute_trajectory(
-        self, mass=None, target_length=None, duration=None, detrend_velocity=None,
-    ):
-        """
-        Integrate force time series to velocity and then displacement. Either
-        provide a mass or a target horizontal runout length. If a length is
-        provided, the code will find the mass that achieves this length. Calls
-        _trajectory_automass().
-
-        Args:
-            mass: Landslide mass [kg]
-            target_length: Horizontal runout length from groundtruth [m]
-            duration: Clip time series to go from 0-duration [s]
-            detrend_velocity: If provided, force velocity to linearly go to
-                              zero at this time [s]. If None, don't detrend
-        """
-
-        # For the full inversion (all channels) result
-        (
-            self.Za,
-            self.Ea,
-            self.Na,
-            self.Zvel,
-            self.Evel,
-            self.Nvel,
-            self.Zdisp,
-            self.Edisp,
-            self.Ndisp,
-            self.mass_actual,
-            self.traj_tvec,
-        ) = self._trajectory_automass(
-            self.force.Zforce,
-            self.force.Eforce,
-            self.force.Nforce,
-            mass=mass,
-            target_length=target_length,
-            duration=duration,
-            detrend=detrend_velocity,
-        )
-        self.Hdist = _calculate_Hdist(self.Edisp, self.Ndisp)
-
-        # Compute jackknife trajectories as well if the inversion was jackknifed
-        if self.force.jackknife:
-            self.jackknife = dict(num_iter=self.force.jackknife['num_iter'])
-            self.jackknife['Zdisp_all'] = []
-            self.jackknife['Edisp_all'] = []
-            self.jackknife['Ndisp_all'] = []
-            self.jackknife['Hdist_all'] = []
-            for i in range(self.jackknife['num_iter']):
-                *_, Zdisp_i, Edisp_i, Ndisp_i, _, _ = self._trajectory_automass(
-                    self.force.jackknife['Zforce_all'][i],
-                    self.force.jackknife['Eforce_all'][i],
-                    self.force.jackknife['Nforce_all'][i],
-                    mass=mass,
-                    target_length=target_length,
-                    duration=duration,
-                    detrend=detrend_velocity,
-                )
-
-                Hdist_i = _calculate_Hdist(Edisp_i, Ndisp_i)
-
-                # Store jackknifed trajectories
-                self.jackknife['Zdisp_all'].append(Zdisp_i)
-                self.jackknife['Edisp_all'].append(Edisp_i)
-                self.jackknife['Ndisp_all'].append(Ndisp_i)
-                self.jackknife['Hdist_all'].append(Hdist_i)
-
     def plot_trajectory(
         self,
         elevation_profile=False,
@@ -236,6 +169,73 @@ class LSTrajectory:
         plt.show()
 
         return fig
+
+    def _compute_trajectory(
+        self, mass=None, target_length=None, duration=None, detrend_velocity=None,
+    ):
+        """
+        Integrate force time series to velocity and then displacement. Either
+        provide a mass or a target horizontal runout length. If a length is
+        provided, the code will find the mass that achieves this length. Calls
+        _trajectory_automass().
+
+        Args:
+            mass: Landslide mass [kg]
+            target_length: Horizontal runout length from groundtruth [m]
+            duration: Clip time series to go from 0-duration [s]
+            detrend_velocity: If provided, force velocity to linearly go to
+                              zero at this time [s]. If None, don't detrend
+        """
+
+        # For the full inversion (all channels) result
+        (
+            self.Za,
+            self.Ea,
+            self.Na,
+            self.Zvel,
+            self.Evel,
+            self.Nvel,
+            self.Zdisp,
+            self.Edisp,
+            self.Ndisp,
+            self.mass_actual,
+            self.traj_tvec,
+        ) = self._trajectory_automass(
+            self.force.Zforce,
+            self.force.Eforce,
+            self.force.Nforce,
+            mass=mass,
+            target_length=target_length,
+            duration=duration,
+            detrend=detrend_velocity,
+        )
+        self.Hdist = _calculate_Hdist(self.Edisp, self.Ndisp)
+
+        # Compute jackknife trajectories as well if the inversion was jackknifed
+        if self.force.jackknife:
+            self.jackknife = dict(num_iter=self.force.jackknife['num_iter'])
+            self.jackknife['Zdisp_all'] = []
+            self.jackknife['Edisp_all'] = []
+            self.jackknife['Ndisp_all'] = []
+            self.jackknife['Hdist_all'] = []
+            for i in range(self.jackknife['num_iter']):
+                *_, Zdisp_i, Edisp_i, Ndisp_i, _, _ = self._trajectory_automass(
+                    self.force.jackknife['Zforce_all'][i],
+                    self.force.jackknife['Eforce_all'][i],
+                    self.force.jackknife['Nforce_all'][i],
+                    mass=mass,
+                    target_length=target_length,
+                    duration=duration,
+                    detrend=detrend_velocity,
+                )
+
+                Hdist_i = _calculate_Hdist(Edisp_i, Ndisp_i)
+
+                # Store jackknifed trajectories
+                self.jackknife['Zdisp_all'].append(Zdisp_i)
+                self.jackknife['Edisp_all'].append(Edisp_i)
+                self.jackknife['Ndisp_all'].append(Ndisp_i)
+                self.jackknife['Hdist_all'].append(Hdist_i)
 
     def _integrate_acceleration(
         self, Zforce, Eforce, Nforce, mass, startidx, endidx, detrend=None
