@@ -204,9 +204,9 @@ class LSTrajectory:
             self.mass_actual,
             self.traj_tvec,
         ) = self._trajectory_automass(
-            self.force.Zforce,
-            self.force.Eforce,
-            self.force.Nforce,
+            self.force.z_force,
+            self.force.e_force,
+            self.force.n_force,
             mass=mass,
             target_length=target_length,
             duration=duration,
@@ -223,9 +223,9 @@ class LSTrajectory:
             self.jackknife['horiz_dist_all'] = []
             for i in range(self.jackknife['num_iter']):
                 *_, z_disp_i, e_disp_i, n_disp_i, _, _ = self._trajectory_automass(
-                    self.force.jackknife['Zforce_all'][i],
-                    self.force.jackknife['Eforce_all'][i],
-                    self.force.jackknife['Nforce_all'][i],
+                    self.force.jackknife['z_force_all'][i],
+                    self.force.jackknife['e_force_all'][i],
+                    self.force.jackknife['n_force_all'][i],
                     mass=mass,
                     target_length=target_length,
                     duration=duration,
@@ -241,15 +241,15 @@ class LSTrajectory:
                 self.jackknife['horiz_dist_all'].append(horiz_dist_i)
 
     def _integrate_acceleration(
-        self, Zforce, Eforce, Nforce, mass, startidx, endidx, detrend=None
+        self, z_force, e_force, n_force, mass, startidx, endidx, detrend=None
     ):
 
         traj_tvec = self.force.tvec[startidx : endidx + 1]
 
         dx = 1.0 / self.force.force_sampling_rate
-        z_accel = -Zforce.copy()[startidx : endidx + 1] / mass
-        e_accel = -Eforce.copy()[startidx : endidx + 1] / mass
-        n_accel = -Nforce.copy()[startidx : endidx + 1] / mass
+        z_accel = -z_force.copy()[startidx : endidx + 1] / mass
+        e_accel = -e_force.copy()[startidx : endidx + 1] / mass
+        n_accel = -n_force.copy()[startidx : endidx + 1] / mass
         z_velo = np.cumsum(z_accel) * dx
         e_velo = np.cumsum(e_accel) * dx
         n_velo = np.cumsum(n_accel) * dx
@@ -284,9 +284,9 @@ class LSTrajectory:
 
     def _trajectory_automass(
         self,
-        Zforce,
-        Eforce,
-        Nforce,
+        z_force,
+        e_force,
+        n_force,
         mass=None,
         target_length=None,
         duration=None,
@@ -324,7 +324,7 @@ class LSTrajectory:
 
                 # Calculate the runout length [km] based on this mass
                 *_, e_disp, n_disp, _ = self._integrate_acceleration(
-                    Zforce, Eforce, Nforce, mass, startidx, endidx, detrend
+                    z_force, e_force, n_force, mass, startidx, endidx, detrend
                 )
                 current_length = (
                     _calculate_horizontal_distance(e_disp, n_disp)[-1] * KM_PER_M
@@ -345,7 +345,7 @@ class LSTrajectory:
             n_disp,
             traj_tvec,
         ) = self._integrate_acceleration(
-            Zforce, Eforce, Nforce, mass, startidx, endidx, detrend
+            z_force, e_force, n_force, mass, startidx, endidx, detrend
         )
 
         return (
