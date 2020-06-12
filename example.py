@@ -1,4 +1,4 @@
-from lsforce import LSData, LSForce
+from lsforce import LSData, LSForce, LSTrajectory
 from obspy import read, UTCDateTime
 from obspy.clients.fdsn import Client
 from obspy.geodetics import gps2dist_azimuth
@@ -224,10 +224,11 @@ force.plotinv(
 force.plotangmag(xlim=XLIM)
 
 # Calculate/plot trajectories
-force.trajectory(
+trajectory = LSTrajectory(force)
+trajectory.compute_trajectory(
     target_length=L, plot_jackknife=True, duration=XLIM[1], detrend_velocity=XLIM[1]
 )
-force.trajectory(
+trajectory.compute_trajectory(
     target_length=L,
     plot_jackknife=True,
     duration=XLIM[1],
