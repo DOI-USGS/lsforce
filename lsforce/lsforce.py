@@ -1406,10 +1406,10 @@ class LSForce:
 
         else:
             if highf_tr is None:
-                fig = plt.figure(figsize=(14, 4))
+                fig = plt.figure(figsize=(10, 4))
                 ax = fig.add_subplot(111)
             else:
-                fig = plt.figure(figsize=(14, 7))
+                fig = plt.figure(figsize=(10, 6))
                 ax = fig.add_subplot(211)
                 ax4 = fig.add_subplot(212)
                 if type(highf_tr) != Trace:
