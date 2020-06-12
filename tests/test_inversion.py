@@ -5,6 +5,10 @@ import os
 import shutil
 import time
 
+# Relative tolerance for test, see:
+# https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html
+RTOL = 3e-7
+
 # Get start time
 start_time = time.time()
 
@@ -55,7 +59,10 @@ print('Done')
 print('Testing...')
 try:
     np.testing.assert_allclose(
-        force.model, np.load(os.path.join(data_dir, 'model.npy')), verbose=False
+        force.model,
+        np.load(os.path.join(data_dir, 'model.npy')),
+        verbose=False,
+        rtol=RTOL,
     )
     print('PASS')
 except AssertionError as error:
