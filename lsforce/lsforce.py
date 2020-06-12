@@ -13,6 +13,7 @@ import stat
 import shutil
 import subprocess
 import copy
+from obspy.core import AttribDict
 
 
 class LSForce:
@@ -751,17 +752,12 @@ class LSForce:
         self.alphafit = {'alphas': None, 'fit': None, 'size': None}
 
         if jackknife:
-            self.jackknife = dict(
-                z_force_lower=[],
-                z_force_upper=[],
-                n_force_lower=[],
-                n_force_upper=[],
-                e_force_lower=[],
-                e_force_upper=[],
+            # Initialize
+            self.jackknife = AttribDict(
+                Z=AttribDict(lower=[], upper=[], all=[]),
+                N=AttribDict(lower=[], upper=[], all=[]),
+                E=AttribDict(lower=[], upper=[], all=[]),
                 VR_all=[],
-                z_force_all=[],
-                n_force_all=[],
-                e_force_all=[],
                 num_iter=num_iter,
                 frac_delete=frac_delete,
             )
@@ -999,8 +995,8 @@ class LSForce:
         stasets = []
         if self.jackknife is not None:
             # Start jackknife iterations
-            for ii in range(self.jackknife['num_iter']):
-                numcut = int(round(self.jackknife['frac_delete'] * self.numsta))
+            for ii in range(self.jackknife.num_iter):
+                numcut = int(round(self.jackknife.frac_delete * self.numsta))
                 numkeep = self.numsta - numcut
                 indxcut = rnd.sample(list(range(self.numsta)), numcut)
                 stasets.append(indxcut)
@@ -1066,38 +1062,26 @@ class LSForce:
                     dt = np.reshape(dtemp, (numkeep, dl))
 
                 VR = _varred(dt, dtnew)
-                self.jackknife['z_force_all'].append(Zf.copy())
-                self.jackknife['n_force_all'].append(Nf.copy())
-                self.jackknife['e_force_all'].append(Ef.copy())
-                self.jackknife['VR_all'].append(VR.copy())
+                self.jackknife.Z.all.append(Zf.copy())
+                self.jackknife.N.all.append(Nf.copy())
+                self.jackknife.E.all.append(Ef.copy())
+                self.jackknife.VR_all.append(VR.copy())
 
-            self.jackknife['z_force_lower'] = np.percentile(
-                self.jackknife['z_force_all'], 2.5, axis=0
-            )
-            self.jackknife['z_force_upper'] = np.percentile(
-                self.jackknife['z_force_all'], 97.5, axis=0
-            )
-            self.jackknife['e_force_lower'] = np.percentile(
-                self.jackknife['e_force_all'], 2.5, axis=0
-            )
-            self.jackknife['e_force_upper'] = np.percentile(
-                self.jackknife['e_force_all'], 97.5, axis=0
-            )
-            self.jackknife['n_force_lower'] = np.percentile(
-                self.jackknife['n_force_all'], 2.5, axis=0
-            )
-            self.jackknife['n_force_upper'] = np.percentile(
-                self.jackknife['n_force_all'], 97.5, axis=0
-            )
+            self.jackknife.Z.lower = np.percentile(self.jackknife.Z.all, 2.5, axis=0)
+            self.jackknife.Z.upper = np.percentile(self.jackknife.Z.all, 97.5, axis=0)
+            self.jackknife.E.lower = np.percentile(self.jackknife.E.all, 2.5, axis=0)
+            self.jackknife.E.upper = np.percentile(self.jackknife.E.all, 97.5, axis=0)
+            self.jackknife.N.lower = np.percentile(self.jackknife.N.all, 2.5, axis=0)
+            self.jackknife.N.upper = np.percentile(self.jackknife.N.all, 97.5, axis=0)
 
-            self.jackknife['VR_all'] = np.array(self.jackknife['VR_all'])
+            self.jackknife.VR_all = np.array(self.jackknife.VR_all)
 
             print(
                 'Jackknife VR stats: max %2.0f, min %2.0f, median %2.0f'
                 % (
-                    self.jackknife['VR_all'].max(),
-                    self.jackknife['VR_all'].min(),
-                    np.median(self.jackknife['VR_all']),
+                    self.jackknife.VR_all.max(),
+                    self.jackknife.VR_all.min(),
+                    np.median(self.jackknife.VR_all),
                 )
             )
 
@@ -1243,12 +1227,12 @@ class LSForce:
                     ylim1[1] + 0.1 * ylim1[1],
                 )  # add 10% on each side to make it look nicer
         else:
-            Zupper = self.jackknife['z_force_upper']
-            Nupper = self.jackknife['n_force_upper']
-            Eupper = self.jackknife['e_force_upper']
-            Zlower = self.jackknife['z_force_lower']
-            Nlower = self.jackknife['n_force_lower']
-            Elower = self.jackknife['e_force_lower']
+            Zupper = self.jackknife.Z.upper
+            Nupper = self.jackknife.N.upper
+            Eupper = self.jackknife.E.upper
+            Zlower = self.jackknife.Z.lower
+            Nlower = self.jackknife.N.lower
+            Elower = self.jackknife.E.lower
             if ylim is None:
                 ylim1 = (
                     np.amin(
@@ -1303,9 +1287,9 @@ class LSForce:
             if self.jackknife is not None:
                 if jackshowall:
                     for Z, N, E in zip(
-                        self.jackknife['z_force_all'],
-                        self.jackknife['n_force_all'],
-                        self.jackknife['e_force_all'],
+                        self.jackknife.Z.all,
+                        self.jackknife.N.all,
+                        self.jackknife.E.all,
                     ):
                         ax1.plot(self.tvec, Z, 'blue', alpha=0.2, linewidth=1)
                         ax2.plot(self.tvec, N, 'red', alpha=0.2, linewidth=1)
@@ -1507,12 +1491,12 @@ class LSForce:
                     ylim1[1] + 0.1 * ylim1[1],
                 )  # add 10% on each side to make it look nicer
         else:
-            Zupper = self.jackknife['z_force_upper']
-            Nupper = self.jackknife['n_force_upper']
-            Eupper = self.jackknife['e_force_upper']
-            Zlower = self.jackknife['z_force_lower']
-            Nlower = self.jackknife['n_force_lower']
-            Elower = self.jackknife['e_force_lower']
+            Zupper = self.jackknife.Z.upper
+            Nupper = self.jackknife.N.upper
+            Eupper = self.jackknife.E.upper
+            Zlower = self.jackknife.Z.lower
+            Nlower = self.jackknife.N.lower
+            Elower = self.jackknife.E.lower
 
             if ylim is None:
                 ylim1 = (

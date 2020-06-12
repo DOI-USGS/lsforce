@@ -143,7 +143,7 @@ class LSTrajectory:
         # Plot jackknife trajectories as well if desired
         if plot_jackknife:
             if self.jackknife:
-                for i in range(self.force.jackknife['num_iter']):
+                for i in range(self.force.jackknife.num_iter):
                     if elevation_profile:
                         x = self.jackknife['horiz_dist_all'][i] * KM_PER_M
                         y = self.jackknife['z_disp_all'][i] * KM_PER_M
@@ -218,16 +218,16 @@ class LSTrajectory:
 
         # Compute jackknife trajectories as well if the inversion was jackknifed
         if self.force.jackknife:
-            self.jackknife = dict(num_iter=self.force.jackknife['num_iter'])
+            self.jackknife = dict(num_iter=self.force.jackknife.num_iter)
             self.jackknife['z_disp_all'] = []
             self.jackknife['e_disp_all'] = []
             self.jackknife['n_disp_all'] = []
             self.jackknife['horiz_dist_all'] = []
-            for i in range(self.jackknife['num_iter']):
+            for i in range(self.jackknife.num_iter):
                 *_, z_disp_i, e_disp_i, n_disp_i, _, _ = self._trajectory_automass(
-                    self.force.jackknife['z_force_all'][i],
-                    self.force.jackknife['e_force_all'][i],
-                    self.force.jackknife['n_force_all'][i],
+                    self.force.jackknife.Z.all[i],
+                    self.force.jackknife.E.all[i],
+                    self.force.jackknife.N.all[i],
                     mass=mass,
                     target_length=target_length,
                     duration=duration,
