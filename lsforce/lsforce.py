@@ -1468,7 +1468,7 @@ class LSForce:
 
         return fig
 
-    def plotangmag(self, xlim=None, ylim=None, tvecshift=0.0):
+    def plot_angle_magnitude(self, xlim=None, ylim=None, tvecshift=0.0):
         """
         plot angles and magnitudes of inversion result and append results
         to object for further use
