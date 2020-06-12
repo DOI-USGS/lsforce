@@ -211,7 +211,7 @@ XLIM = (-50, 200)  # [s] x-axis (time) limits for plots
 L = 5.8  # [km] Estimate of horizontal COM runout length
 
 # Plot inversion waveform fits and results
-force.plotdatafit()
+force.plot_fits()
 force.plotinv(
     highf_tr=st_hf[0],
     hfshift=hf_shift,
