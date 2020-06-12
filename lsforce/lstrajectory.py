@@ -12,21 +12,51 @@ class LSTrajectory:
     """Class for force inversion derived trajectories.
 
     Attributes:
-        force: The LSForce object
+        force:
+        mass_requested:
+        target_length:
+        duration:
+        detrend_velocity:
     """
 
-    def __init__(self, force):
+    def __init__(
+        self,
+        force,
+        mass=None,
+        target_length=None,
+        duration=None,
+        detrend_velocity=None,
+    ):
         """
         Args:
             force (LSForce): Completed force inversion
+            mass_requested:
+            target_length:
+            duration:
+            detrend_velocity:
         """
 
         if not force.inversion_complete:
             raise ValueError('Cannot compute trajectory if inversion has not been run!')
 
         self.force = force
+        self.mass_requested = mass
+        self.target_length = target_length
+        self.duration = duration
+        self.detrend_velocity = detrend_velocity
 
-    def compute_trajectory(
+        compute_kwargs = dict(
+            mass=self.mass_requested,
+            target_length=self.target_length,
+            duration=self.duration,
+            detrend_velocity=detrend_velocity,
+            plot_jackknife=True,  # REMOVE!
+        )
+
+        self._compute_trajectory(**compute_kwargs)
+        self._compute_trajectory(elevation_profile=True, **compute_kwargs)
+
+    def _compute_trajectory(
         self,
         mass=None,
         target_length=None,
@@ -73,17 +103,17 @@ class LSTrajectory:
 
         # For the full inversion (all channels) result
         (
-            self.force.Za,
-            self.force.Ea,
-            self.force.Na,
-            self.force.Zvel,
-            self.force.Evel,
-            self.force.Nvel,
-            self.force.Zdisp,
-            self.force.Edisp,
-            self.force.Ndisp,
-            self.force.mass,
-            self.force.traj_tvec,
+            self.Za,
+            self.Ea,
+            self.Na,
+            self.Zvel,
+            self.Evel,
+            self.Nvel,
+            self.Zdisp,
+            self.Edisp,
+            self.Ndisp,
+            self.mass_actual,
+            self.traj_tvec,
         ) = self._trajectory_automass(
             self.force.Zforce,
             self.force.Eforce,
@@ -93,18 +123,18 @@ class LSTrajectory:
             duration=duration,
             detrend=detrend_velocity,
         )
-        self.force.Hdist = _calculate_Hdist(self.force.Edisp, self.force.Ndisp)
+        self.Hdist = _calculate_Hdist(self.Edisp, self.Ndisp)
 
         fig, ax = plt.subplots()
 
         # Converting to km below
         if elevation_profile:
-            x = self.force.Hdist / 1000
-            y = self.force.Zdisp / 1000
+            x = self.Hdist / 1000
+            y = self.Zdisp / 1000
         else:
-            x = self.force.Edisp / 1000
-            y = self.force.Ndisp / 1000
-        sc = ax.scatter(x, y, c=self.force.traj_tvec, cmap='rainbow', zorder=100)
+            x = self.Edisp / 1000
+            y = self.Ndisp / 1000
+        sc = ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', zorder=100)
 
         if elevation_profile:
             ax.set_xlabel('Horizontal distance (km)')
@@ -125,28 +155,29 @@ class LSTrajectory:
             cmap = cm.get_cmap('Greys_r', reference_points.size)
             for i, time in enumerate(reference_points):
                 try:
-                    ref_pt_ind = np.where(self.force.traj_tvec == time)[0][0]
+                    ref_pt_ind = np.where(self.traj_tvec == time)[0][0]
                 except IndexError:
                     raise  # No point corresponding to requested reference time
                 ax.scatter(x[ref_pt_ind], y[ref_pt_ind], color=cmap(i), zorder=150)
                 cbar.ax.plot(
-                    [self.force.traj_tvec.min(), self.force.traj_tvec.max()],
+                    [self.traj_tvec.min(), self.traj_tvec.max()],
                     [time, time],
                     color=cmap(i),
                     linewidth=2,
                 )
 
-        title = f'mass = {self.force.mass:,} kg\nrunout length = {self.force.Hdist[-1] / 1000:.2f} km'
+        title = f'mass = {self.mass_actual:,} kg\nrunout length = {self.Hdist[-1] / 1000:.2f} km'
         if target_length:
             title += f'\n(target length = {target_length:g} km)'
         ax.set_title(title)
 
         # Plot jackknife trajectories as well if desired
         if plot_jackknife:
-            self.force.jackknife['Zdisp_all'] = []
-            self.force.jackknife['Edisp_all'] = []
-            self.force.jackknife['Ndisp_all'] = []
-            self.force.jackknife['Hdist_all'] = []
+            self.jackknife = dict(num_iter=self.force.jackknife['num_iter'])
+            self.jackknife['Zdisp_all'] = []
+            self.jackknife['Edisp_all'] = []
+            self.jackknife['Ndisp_all'] = []
+            self.jackknife['Hdist_all'] = []
             for i in range(self.force.jackknife['num_iter']):
                 *_, Zdisp_i, Edisp_i, Ndisp_i, _, _ = self._trajectory_automass(
                     self.force.jackknife['Zforce_all'][i],
@@ -159,20 +190,20 @@ class LSTrajectory:
                 )
 
                 # Store jackknifed trajectories
-                self.force.jackknife['Zdisp_all'].append(Zdisp_i)
-                self.force.jackknife['Edisp_all'].append(Edisp_i)
-                self.force.jackknife['Ndisp_all'].append(Ndisp_i)
+                self.jackknife['Zdisp_all'].append(Zdisp_i)
+                self.jackknife['Edisp_all'].append(Edisp_i)
+                self.jackknife['Ndisp_all'].append(Ndisp_i)
 
                 # Converting to km below
                 if elevation_profile:
                     Hdist_i = _calculate_Hdist(Edisp_i, Ndisp_i)
-                    self.force.jackknife['Hdist_all'].append(Hdist_i)  # Store
+                    self.jackknife['Hdist_all'].append(Hdist_i)  # Store
                     x = Hdist_i / 1000
                     y = Zdisp_i / 1000
                 else:
                     x = Edisp_i / 1000
                     y = Ndisp_i / 1000
-                ax.scatter(x, y, c=self.force.traj_tvec, cmap='rainbow', alpha=0.02)
+                ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', alpha=0.02)
 
         ax.axis('equal')
 
@@ -315,8 +346,7 @@ class LSTrajectory:
             raise ValueError('Input DEM must have a UTM projection!')
         loc_utm = crs.transform_point(self.force.lon, self.force.lat, ccrs.Geodetic())
         points = [
-            [x + loc_utm[0], y + loc_utm[1]]
-            for x, y in zip(self.force.Edisp, self.force.Ndisp)
+            [x + loc_utm[0], y + loc_utm[1]] for x, y in zip(self.Edisp, self.Ndisp)
         ]
 
         # Densify the coarse points
@@ -351,7 +381,7 @@ class LSTrajectory:
         )
 
         # Check that interp_spacing wasn't too coarse by matching path lengths
-        if not np.isclose(horiz_dist[-1], self.force.Hdist[-1]):
+        if not np.isclose(horiz_dist[-1], self.Hdist[-1]):
             raise ValueError('interp_spacing was too coarse. Try decreasing.')
 
         warnings.warn('Assuming DEM vertical unit is meters!')
