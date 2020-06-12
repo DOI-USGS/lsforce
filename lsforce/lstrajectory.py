@@ -31,7 +31,7 @@ class LSTrajectory:
         """
         Args:
             force (LSForce): Completed force inversion
-            mass_requested:
+            mass:
             target_length:
             duration:
             detrend_velocity:
@@ -130,7 +130,10 @@ class LSTrajectory:
                     linewidth=2,
                 )
 
-        title = f'mass = {self.mass_actual:,} kg\nrunout length = {self.Hdist[-1] * KM_PER_M:.2f} km'
+        title = (
+            f'mass = {self.mass_actual:,} kg\n'
+            f'runout length = {self.Hdist[-1] * KM_PER_M:.2f} km'
+        )
         if self.target_length:
             title += f'\n(target length = {self.target_length:g} km)'
         ax.set_title(title)
