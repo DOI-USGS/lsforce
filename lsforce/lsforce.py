@@ -1123,7 +1123,7 @@ class LSForce:
             spacing = 2
         else:
             amp_string = 'equal scale'
-            spacing = np.abs(self.dtorig).max() * 2
+            spacing = np.abs(self.dtorig).max() * 2  # Spacing controlled by largest amp
 
         fig, ax = plt.subplots(figsize=(8, 12))
 
