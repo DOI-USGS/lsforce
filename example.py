@@ -205,7 +205,7 @@ force.invert(
     tikhonov_ratios=[0.4, 0.0, 0.6],
 )
 
-#%% PLOT
+#%% PLOT INVERSION
 
 XLIM = (-50, 200)  # [s] x-axis (time) limits for plots
 L = 5.8  # [km] Estimate of horizontal COM runout length
@@ -223,15 +223,8 @@ force.plotinv(
 )
 force.plotangmag(xlim=XLIM)
 
-# Calculate/plot trajectories
-trajectory = LSTrajectory(force)
-trajectory.compute_trajectory(
-    target_length=L, plot_jackknife=True, duration=XLIM[1], detrend_velocity=XLIM[1]
-)
-trajectory.compute_trajectory(
-    target_length=L,
-    plot_jackknife=True,
-    duration=XLIM[1],
-    detrend_velocity=XLIM[1],
-    elevation_profile=True,
+#%% COMPUTE TRAJECTORY & PLOT
+
+trajectory = LSTrajectory(
+    force, target_length=L, duration=XLIM[1], detrend_velocity=XLIM[1]
 )
