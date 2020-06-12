@@ -1831,8 +1831,7 @@ def _Lcurve(fit1, size1, alphas):
     Plot L-curve
     """
 
-    fig = plt.figure(figsize=(6, 6))
-    ax = fig.add_subplot(111)
+    fig, ax = plt.subplots(figsize=(6, 6))
     ax.loglog(fit1, size1, '.')
     for i, alpha in enumerate(alphas):
         text1 = '%3.1E' % alpha
