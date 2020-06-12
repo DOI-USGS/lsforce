@@ -1103,48 +1103,85 @@ class LSForce:
                 )
             )
 
-    def plotdatafit(self):
-        """
-        plot comparision between real and synthetic data
+    def plot_fits(self, equal_scale=True, xlim=None):
+        """Create a plot showing the model-produced waveform fit to the data.
+
+        Args:
+            equal_scale: If `True`, all plots will share the same y-axis scale
+            xlim: Tuple of x-axis limits (time relative to zero time, in seconds)
+
+        Returns:
+            The figure handle
         """
 
-        fig = plt.figure(figsize=(10, 11))
-        offset = 1.0 * np.amax(np.amax(np.absolute(self.dtorig), 0))
-        oneline = offset * np.ones((1, self.datalength))
-        labels = []
-        yticks1 = []
-        for i, trace in enumerate(self.st):
-            if i == 0:
-                addmat = oneline
+        data_color = 'black'
+        model_color = 'red'
+        lw = 1
+
+        if not equal_scale:
+            amp_string = 'normalized'
+            spacing = 2
+        else:
+            amp_string = 'equal scale'
+            spacing = np.abs(self.dtorig).max() * 2
+
+        fig, ax = plt.subplots(figsize=(8, 12))
+
+        offset = 0
+        yticks = []
+        yticklabels = []
+
+        for i, tr in enumerate(self.st):
+            if not equal_scale:
+                scaler = np.abs(self.dtorig[i].max())  # Scale to original data
             else:
-                addmat = np.vstack((addmat, oneline * (i + 1)))
-            label = f'{trace.stats.network}.{trace.stats.station} ({trace.stats.channel[-1]}) – {trace.stats.distance:.1f} km'
-            labels.append(label)
-            yticks1.append(-(i + 1) * offset)
+                scaler = 1
+            ax.plot(
+                self.dtvec,
+                self.dtorig[i] / scaler + offset,
+                color=data_color,
+                linewidth=lw,
+            )
+            ax.plot(
+                self.dtvec,
+                self.dtnew[i] / scaler + offset,
+                color=model_color,
+                linewidth=lw,
+            )
+            label = (
+                f'{tr.stats.network}.{tr.stats.station} ({tr.stats.channel[-1]}) '
+                f'– {tr.stats.distance:.1f} km'
+            )
+            yticklabels.append(label)
+            yticks.append(offset)
+            offset -= spacing
 
-        ax = fig.add_axes([0.25, 0.05, 0.7, 0.9])
-        # .T might be flipping the data upside down...
-        ax.plot(
-            np.tile(self.dtvec, (self.numsta, 1)).T,
-            self.dtorig.T - addmat.T,
-            'k',
-            label='Original',
+        # Misc. tweaks
+        if xlim:
+            ax.set_xlim(xlim)
+        else:
+            ax.set_xlim(self.dtvec[0], self.dtvec[-1])
+        ax.set_ylim(yticks[-1] - spacing / 2, yticks[0] + spacing / 2)
+        ax.set_xlabel('Time (s)')
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticklabels)
+        ax.tick_params(left=False, top=True, which='both')
+        ax.yaxis.set_tick_params(length=0, pad=4)
+
+        ax.set_title(f'Variance reduction {self.VR:.1f}% ({amp_string})', pad=10)
+
+        # Make legend
+        data_handle = mlines.Line2D(
+            [], [], color=data_color, label='Data', linewidth=lw
         )
-        ax.plot(
-            np.tile(self.dtvec, (self.numsta, 1)).T,
-            self.dtnew.T - addmat.T,
-            'r',
-            label='Model',
+        model_handle = mlines.Line2D(
+            [], [], color=model_color, label='Model', linewidth=lw
         )
-        ax.set_xlim((self.dtvec[0], self.dtvec[-1]))
-        ax.set_xlabel('Time (sec)')
-        ax.set_yticks(yticks1)
-        ax.set_yticklabels(labels)
-        ax.set_title('Variance Reduction %2.0f%%' % self.VR)
-        redline = mlines.Line2D([], [], color='r', label='Model')
-        blackline = mlines.Line2D([], [], color='k', label='Data')
-        ax.legend(handles=[blackline, redline], loc='upper right')
-        plt.show()
+        ax.legend(handles=[data_handle, model_handle], loc='upper right')
+
+        fig.tight_layout()
+        fig.show()
+
         return fig
 
     def plotinv(
