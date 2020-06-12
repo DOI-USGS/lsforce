@@ -17,6 +17,7 @@ class LSTrajectory:
         target_length:
         duration:
         detrend_velocity:
+        jackknife:
     """
 
     def __init__(
@@ -44,29 +45,19 @@ class LSTrajectory:
         self.target_length = target_length
         self.duration = duration
         self.detrend_velocity = detrend_velocity
+        self.jackknife = None
 
         compute_kwargs = dict(
             mass=self.mass_requested,
             target_length=self.target_length,
             duration=self.duration,
             detrend_velocity=detrend_velocity,
-            plot_jackknife=True,  # REMOVE!
         )
 
         self._compute_trajectory(**compute_kwargs)
-        self._compute_trajectory(elevation_profile=True, **compute_kwargs)
 
     def _compute_trajectory(
-        self,
-        mass=None,
-        target_length=None,
-        duration=None,
-        elevation_profile=False,
-        plot_jackknife=False,
-        image=None,
-        dem=None,
-        reference_point=None,
-        detrend_velocity=None,
+        self, mass=None, target_length=None, duration=None, detrend_velocity=None,
     ):
         """
         Integrate force time series to velocity and then displacement. Either
@@ -78,28 +69,9 @@ class LSTrajectory:
             mass: Landslide mass [kg]
             target_length: Horizontal runout length from groundtruth [m]
             duration: Clip time series to go from 0-duration [s]
-            elevation_profile: If True, plot vertical displacement versus
-                               horizontal runout distance (H vs. L) instead of
-                               a map view
-            plot_jackknife: Toggle plotting jackknifed displacements as well
-            image: An xarray.DataArray with coordinates defined in km with the
-                   origin (0, 0) being the start location of the compute_trajectory
-            dem: A UTM-projected DEM GeoTIFF to slice thru for elevation
-                 profile plot
-            reference_point (int/float or list): Plot a dot on compute_trajectory, and
-                                                 line on colorbar, at this
-                                                 specified time(s) for
-                                                 reference (default: None, for
-                                                 no markings)
             detrend_velocity: If provided, force velocity to linearly go to
                               zero at this time [s]. If None, don't detrend
-
-        Returns:
-            The output figure
         """
-
-        # Convert reference points to numpy array
-        reference_points = np.atleast_1d(reference_point)
 
         # For the full inversion (all channels) result
         (
@@ -125,15 +97,74 @@ class LSTrajectory:
         )
         self.Hdist = _calculate_Hdist(self.Edisp, self.Ndisp)
 
+        # Compute jackknife trajectories as well if the inversion was jackknifed
+        if self.force.jackknife:
+            self.jackknife = dict(num_iter=self.force.jackknife['num_iter'])
+            self.jackknife['Zdisp_all'] = []
+            self.jackknife['Edisp_all'] = []
+            self.jackknife['Ndisp_all'] = []
+            self.jackknife['Hdist_all'] = []
+            for i in range(self.jackknife['num_iter']):
+                *_, Zdisp_i, Edisp_i, Ndisp_i, _, _ = self._trajectory_automass(
+                    self.force.jackknife['Zforce_all'][i],
+                    self.force.jackknife['Eforce_all'][i],
+                    self.force.jackknife['Nforce_all'][i],
+                    mass=mass,
+                    target_length=target_length,
+                    duration=duration,
+                    detrend=detrend_velocity,
+                )
+
+                Hdist_i = _calculate_Hdist(Edisp_i, Ndisp_i)
+
+                # Store jackknifed trajectories
+                self.jackknife['Zdisp_all'].append(Zdisp_i)
+                self.jackknife['Edisp_all'].append(Edisp_i)
+                self.jackknife['Ndisp_all'].append(Ndisp_i)
+                self.jackknife['Hdist_all'].append(Hdist_i)
+
+    def plot_trajectory(
+        self,
+        elevation_profile=False,
+        plot_jackknife=False,
+        image=None,
+        dem=None,
+        reference_point=None,
+    ):
+        """Plot trajectory results with context.
+
+        Args:
+            elevation_profile: If True, plot vertical displacement versus
+                               horizontal runout distance (H vs. L) instead of
+                               a map view
+            plot_jackknife: Toggle plotting jackknifed displacements as well (if
+                available)
+            image: An xarray.DataArray with coordinates defined in km with the
+                   origin (0, 0) being the start location of the compute_trajectory
+            dem: A UTM-projected DEM GeoTIFF to slice thru for elevation
+                 profile plot
+            reference_point (int/float or list): Plot a dot on compute_trajectory, and
+                                                 line on colorbar, at this
+                                                 specified time(s) for
+                                                 reference (default: None, for
+                                                 no markings)
+
+        Returns:
+            The output figure
+        """
+
+        # Convert reference points to numpy array
+        reference_points = np.atleast_1d(reference_point)
+
         fig, ax = plt.subplots()
 
         # Converting to km below
         if elevation_profile:
-            x = self.Hdist / 1000
-            y = self.Zdisp / 1000
+            x = self.Hdist * KM_PER_M
+            y = self.Zdisp * KM_PER_M
         else:
-            x = self.Edisp / 1000
-            y = self.Ndisp / 1000
+            x = self.Edisp * KM_PER_M
+            y = self.Ndisp * KM_PER_M
         sc = ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', zorder=100)
 
         if elevation_profile:
@@ -167,43 +198,23 @@ class LSTrajectory:
                 )
 
         title = f'mass = {self.mass_actual:,} kg\nrunout length = {self.Hdist[-1] / 1000:.2f} km'
-        if target_length:
-            title += f'\n(target length = {target_length:g} km)'
+        if self.target_length:
+            title += f'\n(target length = {self.target_length:g} km)'
         ax.set_title(title)
 
         # Plot jackknife trajectories as well if desired
         if plot_jackknife:
-            self.jackknife = dict(num_iter=self.force.jackknife['num_iter'])
-            self.jackknife['Zdisp_all'] = []
-            self.jackknife['Edisp_all'] = []
-            self.jackknife['Ndisp_all'] = []
-            self.jackknife['Hdist_all'] = []
-            for i in range(self.force.jackknife['num_iter']):
-                *_, Zdisp_i, Edisp_i, Ndisp_i, _, _ = self._trajectory_automass(
-                    self.force.jackknife['Zforce_all'][i],
-                    self.force.jackknife['Eforce_all'][i],
-                    self.force.jackknife['Nforce_all'][i],
-                    mass=mass,
-                    target_length=target_length,
-                    duration=duration,
-                    detrend=detrend_velocity,
-                )
-
-                # Store jackknifed trajectories
-                self.jackknife['Zdisp_all'].append(Zdisp_i)
-                self.jackknife['Edisp_all'].append(Edisp_i)
-                self.jackknife['Ndisp_all'].append(Ndisp_i)
-
-                # Converting to km below
-                if elevation_profile:
-                    Hdist_i = _calculate_Hdist(Edisp_i, Ndisp_i)
-                    self.jackknife['Hdist_all'].append(Hdist_i)  # Store
-                    x = Hdist_i / 1000
-                    y = Zdisp_i / 1000
-                else:
-                    x = Edisp_i / 1000
-                    y = Ndisp_i / 1000
-                ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', alpha=0.02)
+            if self.jackknife:
+                for i in range(self.force.jackknife['num_iter']):
+                    if elevation_profile:
+                        x = self.jackknife['Hdist_all'][i] * KM_PER_M
+                        y = self.jackknife['Zdisp_all'][i] * KM_PER_M
+                    else:
+                        x = self.jackknife['Edisp_all'][i] * KM_PER_M
+                        y = self.jackknife['Ndisp_all'][i] * KM_PER_M
+                    ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', alpha=0.02)
+            else:
+                warnings.warn('No jackknife iterations to plot.')
 
         ax.axis('equal')
 

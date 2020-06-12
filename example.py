@@ -223,8 +223,13 @@ force.plot_forces(
 )
 force.plot_angle_magnitude(xlim=XLIM)
 
-#%% COMPUTE TRAJECTORY & PLOT
+#%% COMPUTE TRAJECTORY
 
 trajectory = LSTrajectory(
     force, target_length=L, duration=XLIM[1], detrend_velocity=XLIM[1]
 )
+
+#%% PLOT TRAJECTORIES
+
+trajectory.plot_trajectory(plot_jackknife=True)
+trajectory.plot_trajectory(plot_jackknife=True, elevation_profile=True)
