@@ -130,7 +130,7 @@ class LSTrajectory:
                     linewidth=2,
                 )
 
-        title = f'mass = {self.mass_actual:,} kg\nrunout length = {self.Hdist[-1] / 1000:.2f} km'
+        title = f'mass = {self.mass_actual:,} kg\nrunout length = {self.Hdist[-1] * KM_PER_M:.2f} km'
         if self.target_length:
             title += f'\n(target length = {self.target_length:g} km)'
         ax.set_title(title)
@@ -163,7 +163,7 @@ class LSTrajectory:
 
         if (dem is not None) and elevation_profile:
             distance, drop = self._slice_dem(dem)
-            ax.plot(distance / 1000, drop / 1000, color='black', zorder=100)
+            ax.plot(distance * KM_PER_M, drop * KM_PER_M, color='black', zorder=100)
 
         plt.tight_layout()
         plt.show()
@@ -312,7 +312,7 @@ class LSTrajectory:
                 *_, Edisp, Ndisp, _ = self._integrate_acceleration(
                     Zforce, Eforce, Nforce, mass, startidx, endidx, detrend
                 )
-                current_length = _calculate_Hdist(Edisp, Ndisp)[-1] / 1000  # [km]
+                current_length = _calculate_Hdist(Edisp, Ndisp)[-1] * KM_PER_M  # [km]
         else:
             mass = int(mass)
 
