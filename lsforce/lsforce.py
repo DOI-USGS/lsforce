@@ -1639,7 +1639,7 @@ class LSForce:
                 for axe in axes
             ]
 
-        plt.xlabel('Time (sec')
+        plt.xlabel('Time (s)')
         plt.show()
 
         self.angmag = dict(Mag=Mag, MagU=MagU, MagL=MagL, Vang=Vang, Haz=Haz)
