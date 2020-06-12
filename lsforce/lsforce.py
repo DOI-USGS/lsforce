@@ -1278,12 +1278,12 @@ class LSForce:
 
         if subplots:
             if highf_tr is None:
-                fig = plt.figure(figsize=(14, 9))
+                fig = plt.figure(figsize=(10, 8))
                 ax1 = fig.add_subplot(311)
                 ax2 = fig.add_subplot(312)  # ,sharex=ax1)
                 ax3 = fig.add_subplot(313)  # ,sharex=ax1)
             else:
-                fig = plt.figure(figsize=(14, 12))
+                fig = plt.figure(figsize=(10, 10))
                 ax1 = fig.add_subplot(411)
                 ax2 = fig.add_subplot(412)  # ,sharex=ax1)
                 ax3 = fig.add_subplot(413)  # ,sharex=ax1)
@@ -1291,7 +1291,7 @@ class LSForce:
 
                 if infra_tr is not None:
                     plt.close(fig)
-                    fig = plt.figure(figsize=(14, 15))
+                    fig = plt.figure(figsize=(10, 12))
                     ax1 = fig.add_subplot(511)
                     ax2 = fig.add_subplot(512)  # ,sharex=ax1)
                     ax3 = fig.add_subplot(513)  # ,sharex=ax1)
@@ -1475,7 +1475,10 @@ class LSForce:
         if self.zero_time:
             t0 += self.zero_time
         plt.xlabel('Time (s) from {}'.format(t0.strftime('%Y-%m-%d %H:%M:%S')))
-        plt.show()
+
+        fig.tight_layout()
+        fig.show()
+
         return fig
 
     def plotangmag(self, xlim=None, ylim=None, tvecshift=0.0):
