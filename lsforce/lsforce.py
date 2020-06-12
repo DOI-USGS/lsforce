@@ -731,7 +731,7 @@ class LSForce:
         """
 
         # Check inputs for consistency
-        if impose_zero and (zero_time is None or zero_time == 0.0):
+        if impose_zero and not zero_time:
             raise ValueError('impose_zero set to True but no zero_time provided.')
 
         # Save input choices
