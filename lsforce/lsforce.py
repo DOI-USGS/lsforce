@@ -1280,21 +1280,21 @@ class LSForce:
             if highf_tr is None:
                 fig = plt.figure(figsize=(10, 8))
                 ax1 = fig.add_subplot(311)
-                ax2 = fig.add_subplot(312)  # ,sharex=ax1)
-                ax3 = fig.add_subplot(313)  # ,sharex=ax1)
+                ax2 = fig.add_subplot(312)
+                ax3 = fig.add_subplot(313)
             else:
                 fig = plt.figure(figsize=(10, 10))
                 ax1 = fig.add_subplot(411)
-                ax2 = fig.add_subplot(412)  # ,sharex=ax1)
-                ax3 = fig.add_subplot(413)  # ,sharex=ax1)
+                ax2 = fig.add_subplot(412)
+                ax3 = fig.add_subplot(413)
                 ax4 = fig.add_subplot(414)
 
                 if infra_tr is not None:
                     plt.close(fig)
                     fig = plt.figure(figsize=(10, 12))
                     ax1 = fig.add_subplot(511)
-                    ax2 = fig.add_subplot(512)  # ,sharex=ax1)
-                    ax3 = fig.add_subplot(513)  # ,sharex=ax1)
+                    ax2 = fig.add_subplot(512)
+                    ax3 = fig.add_subplot(513)
                     ax4 = fig.add_subplot(514)
                     ax5 = fig.add_subplot(515)
 
