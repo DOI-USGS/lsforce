@@ -212,7 +212,7 @@ L = 5.8  # [km] Estimate of horizontal COM runout length
 
 # Plot inversion waveform fits and results
 force.plot_fits()
-force.plotinv(
+force.plot_forces(
     highf_tr=st_hf[0],
     hfshift=hf_shift,
     infra_tr=st_infra[0],

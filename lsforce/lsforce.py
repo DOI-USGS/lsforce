@@ -1182,7 +1182,7 @@ class LSForce:
 
         return fig
 
-    def plotinv(
+    def plot_forces(
         self,
         subplots=False,
         xlim=None,
@@ -1473,7 +1473,7 @@ class LSForce:
         plot angles and magnitudes of inversion result and append results
         to object for further use
 
-        USAGE plotinv(Zforce,Nforce,Eforce,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
+        USAGE plot_forces(Zforce,Nforce,Eforce,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
         INPUTS
         [ZEN]force
         tvec =
