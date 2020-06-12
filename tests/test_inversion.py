@@ -4,6 +4,7 @@ import numpy as np
 import os
 import shutil
 import time
+import tempfile
 
 # Relative tolerance for test, see:
 # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html
@@ -19,8 +20,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(script_dir, 'data', 'test_inversion')
 
 # Create a temporary run directory
-tmp_dir = os.path.join(script_dir, 'tmp')
-os.mkdir(tmp_dir)
+tmp_dir = tempfile.TemporaryDirectory()
 
 # Read in Stream
 st = read(os.path.join(data_dir, 'data.pkl'), format='PICKLE')
@@ -31,7 +31,7 @@ data = LSData(st, source_lat=60.0273, source_lon=-153.0683)
 print('Done')
 
 # Create LSForce object
-force = LSForce(data=data, sampling_rate=1, nickname='test', main_folder=tmp_dir)
+force = LSForce(data=data, sampling_rate=1, nickname='test', main_folder=tmp_dir.name)
 
 # Compute GFs
 print('Computing Green\'s functions...')
@@ -70,7 +70,7 @@ except AssertionError as error:
     print(error.__str__() + '\n')
 
 # Clean up
-shutil.rmtree(tmp_dir)
+tmp_dir.cleanup()
 
 # Print elapsed time (in seconds)
 print(f'Elapsed time: {time.time() - start_time:.1f} seconds')
