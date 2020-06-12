@@ -69,14 +69,11 @@ class LSForce:
             self.main_folder = main_folder
 
         if method not in ['tik', 'triangle']:
-            raise Exception('%s method not yet implemented.' % method.upper())
+            raise ValueError(f'Method {method} not yet implemented.')
 
         self.method = method
         if self.method in ['triangle'] and self.domain == 'freq':
-            raise Exception(
-                'triangle method must be done in time domain, '
-                'frequency domain not implemented'
-            )
+            raise ValueError('The triangle method must be done in the time domain.')
 
     def compute_greens(self, model_file, gf_duration, T0, L=5.0):
         """
@@ -192,7 +189,7 @@ class LSForce:
         if retcode != 0:
             os.chdir(currentdir)  # Change back to previous directory
             print(stderr)
-            raise Exception('Greens functions were not computed: %s' % stderr)
+            raise OSError(f'Green\'s functions were not computed:\n{stderr}')
 
         # copy and rename files
         files = [
@@ -311,16 +308,16 @@ class LSForce:
 
         if self.weight_method != 'Manual':
             if weights == 'prenoise' and weightpre is None:
-                raise Exception(
-                    'weightpre must be defined if prenoise weighting is used'
+                raise ValueError(
+                    'weightpre must be defined if prenoise weighting is used.'
                 )
             else:
                 self.weightpre = weightpre
 
         # check if sampling rate specified is compatible with period_range
         if 2.0 * self.filter['freqmax'] > self.sampling_rate:
-            raise Exception(
-                'sampling_rate and period_range are not compatible, ' 'violates Nyquist'
+            raise ValueError(
+                'sampling_rate and period_range are not compatible (violates Nyquist).'
             )
 
         # Always work on copy of data
@@ -354,10 +351,10 @@ class LSForce:
         self.datalength = len(st[0].data)
 
         if self.greenlength > self.datalength:
-            raise Exception(
-                'greenlength is greater than datalength. Reselect '
-                'data and/or recompute greens functions so that data '
-                'is longer than greens functions'
+            raise ValueError(
+                'greenlength is greater than datalength. Reselect data and/or '
+                'recompute Green\'s functions so that data is longer than Green\'s '
+                'functions'
             )
 
         if self.domain == 'time':
@@ -369,7 +366,7 @@ class LSForce:
             )  # +greenlength) #needs to be the length of the two added together because convolution length M+N-1
             self.lenUall = self.NFFT * len(st)
         else:
-            raise Exception('domain not recognized. Must be time or freq')
+            raise ValueError('domain not recognized. Must be \'time\' or \'freq\'.')
 
         if self.method == 'tik':
 
@@ -389,12 +386,12 @@ class LSForce:
                 if component == 'Z':
                     zvf = read(os.path.join(self.sacdir, '*_%s_*ZVF.sac' % station))
                     if len(zvf) > 1:
-                        raise Exception('Found more than one ZVF GF for %s' % station)
+                        raise ValueError(f'Found more than one ZVF GF for {station}.')
                     else:
                         zvf = zvf[0]
                     zhf = read(os.path.join(self.sacdir, '*_%s_*ZHF.sac' % station))
                     if len(zhf) > 1:
-                        raise Exception('Found more than one ZHF GF for %s' % station)
+                        raise ValueError(f'Found more than one ZHF GF for {station}.')
                     else:
                         zhf = zhf[0]
                     # process the same way as st (except shouldn't need to resample)
@@ -433,12 +430,12 @@ class LSForce:
                 elif component == 'R':
                     rvf = read(os.path.join(self.sacdir, '*_%s_*RVF.sac' % station))
                     if len(rvf) > 1:
-                        raise Exception('Found more than one RVF GF for %s' % station)
+                        raise ValueError(f'Found more than one RVF GF for {station}.')
                     else:
                         rvf = rvf[0]
                     rhf = read(os.path.join(self.sacdir, '*_%s_*RHF.sac' % station))
                     if len(rhf) > 1:
-                        raise Exception('Found more than one RHF GF for %s' % station)
+                        raise ValueError(f'Found more than one RHF GF for {station}.')
                     else:
                         rhf = rhf[0]
 
@@ -478,7 +475,7 @@ class LSForce:
                 elif component == 'T':
                     thf = read(os.path.join(self.sacdir, '*_%s_*THF.sac' % station))
                     if len(thf) > 1:
-                        raise Exception('Found more than one THF GF for %s' % station)
+                        raise ValueError(f'Found more than one THF GF for {station}.')
                     else:
                         thf = thf[0]
                     # process the same way as st
@@ -502,7 +499,7 @@ class LSForce:
                         (TVF, K * THF * math.sin(az), -K * THF * math.cos(az))
                     )
                 else:
-                    raise Exception('st not rotated to T and R for %s' % station)
+                    raise ValueError(f'st not rotated to T and R for {station}.')
                 # Deal with data
                 if self.domain == 'time':
                     datline = trace.data
@@ -553,12 +550,12 @@ class LSForce:
                 if component == 'Z':
                     zvf = read(os.path.join(self.sacdir, '*%s*ZVF.sac' % station))
                     if len(zvf) > 1:
-                        raise Exception('Found more than one ZVF GF for %s' % station)
+                        raise ValueError(f'Found more than one ZVF GF for {station}.')
                     else:
                         zvf = zvf[0]
                     zhf = read(os.path.join(self.sacdir, '*%s*ZHF.sac' % station))
                     if len(zhf) > 1:
-                        raise Exception('Found more than one ZHF GF for %s' % station)
+                        raise ValueError(f'Found more than one ZHF GF for {station}.')
                     else:
                         zhf = zhf[0]
                     # process the same way as st (except shouldn't need to resample)
@@ -586,12 +583,12 @@ class LSForce:
                 elif component == 'R':
                     rvf = read(os.path.join(self.sacdir, '*%s*RVF.sac' % station))
                     if len(rvf) > 1:
-                        raise Exception('Found more than one RVF GF for %s' % station)
+                        raise ValueError(f'Found more than one RVF GF for {station}.')
                     else:
                         rvf = rvf[0]
                     rhf = read(os.path.join(self.sacdir, '*%s*RHF.sac' % station))
                     if len(rhf) > 1:
-                        raise Exception('Found more than one RHF GF for %s' % station)
+                        raise ValueError(f'Found more than one RHF GF for {station}.')
                     else:
                         rhf = rhf[0]
                     """ Don't need to filter these GFs?
@@ -620,7 +617,7 @@ class LSForce:
                 elif component == 'T':
                     thf = read(os.path.join(self.sacdir, '*%s*THF.sac' % station))
                     if len(thf) > 1:
-                        raise Exception('Found more than one THF GF for %s' % station)
+                        raise ValueError(f'Found more than one THF GF for {station}.')
                     else:
                         thf = thf[0]
                     """ Don't need to filter these GFs?
@@ -639,7 +636,7 @@ class LSForce:
                         (TVF, K * THF * math.sin(az), -K * THF * math.cos(az))
                     )
                 else:
-                    raise Exception('st not rotated to T and R for %s' % station)
+                    raise ValueError(f'st not rotated to T and R for {station}.')
                 # Deal with data
                 datline = trace.data
 
@@ -672,7 +669,9 @@ class LSForce:
         self.weights = weight / np.max(np.abs(weight))
 
         if np.shape(G)[0] != len(d):
-            raise Exception('G and d sizes are not compatible, fix something somewhere')
+            raise ValueError(
+                'G and d sizes are not compatible, fix something somewhere.'
+            )
         self.G = (
             G * 1.0 / self.sampling_rate
         )  # need to multiply G by sample interval (sec) since convolution is an integral
@@ -733,7 +732,7 @@ class LSForce:
 
         # Check inputs for consistency
         if impose_zero and (zero_time is None or zero_time == 0.0):
-            raise Exception('impose_zero set to True but no zero_time provided')
+            raise ValueError('impose_zero set to True but no zero_time provided.')
 
         # Save input choices
         self.regr_param = kwargs  # regression parameters specific to method
@@ -796,7 +795,7 @@ class LSForce:
         """
 
         if np.sum(tikhonov_ratios) != 1.0:
-            raise Exception('Tikhonov ratios must add to 1')
+            raise ValueError('Tikhonov ratios must add to 1.')
         self.parameters = {}
 
         if self.W is not None:
@@ -1337,7 +1336,7 @@ class LSForce:
 
             if highf_tr is not None:
                 if type(highf_tr) != Trace:
-                    raise Exception('highf_tr is not an obspy trace')
+                    raise TypeError('highf_tr is not an ObsPy Trace.')
                 tvec2 = np.linspace(
                     0,
                     (len(highf_tr.data) - 1) * 1 / highf_tr.stats.sampling_rate,
@@ -1353,7 +1352,7 @@ class LSForce:
 
             if infra_tr is not None:
                 if type(infra_tr) != Trace:
-                    raise Exception('highf_tr is not an obspy trace')
+                    raise TypeError('infra_tr is not an ObsPy Trace.')
                 tvec2 = np.linspace(
                     0,
                     (len(infra_tr.data) - 1) * 1 / infra_tr.stats.sampling_rate,
@@ -1415,7 +1414,7 @@ class LSForce:
                 ax = fig.add_subplot(211)
                 ax4 = fig.add_subplot(212)
                 if type(highf_tr) != Trace:
-                    raise Exception('highf_tr is not an obspy trace')
+                    raise TypeError('highf_tr is not an ObsPy Trace.')
                 tvec2 = np.linspace(
                     0,
                     (len(highf_tr.data) - 1) * 1 / highf_tr.stats.sampling_rate,
@@ -2127,7 +2126,7 @@ def _find_alpha(
         elif invmethod == 'nnls':
             model, residuals = sp.optimize.nnls(A, x)
         else:
-            raise Exception('inversion method %s not recognized' % invmethod)
+            raise ValueError(f'Inversion method {invmethod} not recognized.')
         temp1 = Ghat @ model.T - dhat
         fit1.append(sp.linalg.norm(temp1))
         size1.append(
@@ -2187,7 +2186,7 @@ def _find_alpha(
     _Lcurve(fit1, size1, alphas)
     if type(bestalpha) == list:
         if len(bestalpha) > 1:
-            raise Exception('Returned more than one alpha value, check codes')
+            raise ValueError('Returned more than one alpha value, check codes.')
         bestalpha = bestalpha[0]
     return bestalpha, fit1, size1, alphas
 
