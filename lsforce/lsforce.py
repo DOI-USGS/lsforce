@@ -1581,6 +1581,7 @@ class LSForce:
             MagU = None
             MagL = None
         ax1.set_ylabel('Force (N)')
+        ax1.set_ylim(bottom=0)
 
         # Plot the horizontal azimuth
         ax2 = fig.add_subplot(413)
@@ -1604,6 +1605,7 @@ class LSForce:
         Haz = 360 - tempang
         ax2.plot(tvec, Haz)
         ax2.set_ylabel('Azimuth (deg CW from N)')
+        ax2.set_ylim(0, 360)
 
         # Plot the vertical angle
         ax3 = fig.add_subplot(414)
@@ -1628,9 +1630,11 @@ class LSForce:
             ]
 
         plt.xlabel('Time (s)')
-        plt.show()
 
         self.angmag = dict(Mag=Mag, MagU=MagU, MagL=MagL, Vang=Vang, Haz=Haz)
+
+        fig.tight_layout()
+        fig.show()
 
         return fig
 
