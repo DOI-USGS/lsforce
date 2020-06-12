@@ -7,6 +7,8 @@ import warnings
 
 KM_PER_M = 1 / 1000  # [km/m]
 
+MASS_INC = int(1e7)  # [kg] Smaller increment is slower but more precise
+
 
 class LSTrajectory:
     """Class for force inversion derived trajectories.
@@ -311,8 +313,6 @@ class LSTrajectory:
 
         # Either use the mass that was provided, or calculate one
         if target_length:
-
-            MASS_INC = int(1e7)  # [kg] Smaller increment is slower but more precise
 
             # Initialize with end-members
             mass = 0  # [kg]
