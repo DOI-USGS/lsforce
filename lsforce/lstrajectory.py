@@ -206,9 +206,9 @@ class LSTrajectory:
             self.mass_actual,
             self.traj_tvec,
         ) = self._trajectory_automass(
-            self.force.z_force,
-            self.force.e_force,
-            self.force.n_force,
+            self.force.Z,
+            self.force.E,
+            self.force.N,
             mass=mass,
             target_length=target_length,
             duration=duration,
