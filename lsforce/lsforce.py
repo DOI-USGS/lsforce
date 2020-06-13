@@ -713,9 +713,9 @@ class LSForce:
         Returns: Populates object with the following attributes
             model (array): model vector of concatated components (n x 1) of solution using
                 regularization parameter alpha
-            z_force (array): vertical force time series extracted from model
-            n_force (array): same as above for north force
-            e_force (array): same as above for east force
+            Z (array): vertical force time series extracted from model
+            N (array): same as above for north force
+            E (array): same as above for east force
             tvec (array): Time vector, referenced using zero_time (if specified) and corrected for T0
                 time shift
             VR (float): Variance reduction (%), rule of thumb, this should be ~50%-80%, if 100%,
@@ -741,9 +741,9 @@ class LSForce:
 
         # Initialize stuff (also serves to clear any previous results if this is a rerun)
         self.model = None
-        self.z_force = None
-        self.n_force = None
-        self.e_force = None
+        self.Z = None
+        self.N = None
+        self.E = None
         self.tvec = None
         self.VR = None  # variance reduction
         self.dtorig = None  #
@@ -943,11 +943,12 @@ class LSForce:
             model, residuals, rank, s = sp.linalg.lstsq(A, x)
             self.model = model.copy()
             div = len(model) / 3
-            self.z_force = -np.real(
-                np.fft.ifft(model[0:div]) / 10 ** 5
-            )  # convert from dynes to newtons, flip so up is positive
-            self.n_force = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
-            self.e_force = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
+
+            # Convert from dynes to newtons, flip so up is positive
+            self.Z = -np.real(np.fft.ifft(model[0:div]) / 10 ** 5)
+            self.N = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
+            self.E = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
+
             # run forward model
             df_new = self.G @ model.T
             # convert d and df_new back to time domain
@@ -959,11 +960,12 @@ class LSForce:
             model, residuals, rank, s = sp.linalg.lstsq(A, x)
             self.model = model.copy()
             div = int(len(model) / 3)
-            self.z_force = (
-                -model[0:div] / 10 ** 5
-            )  # convert from dynes to netwons, flip so up is positive
-            self.n_force = model[div : 2 * div] / 10 ** 5
-            self.e_force = model[2 * div :] / 10 ** 5
+
+            # Convert from dynes to newtons, flip so up is positive
+            self.Z = -model[0:div] / 10 ** 5
+            self.N = model[div : 2 * div] / 10 ** 5
+            self.E = model[2 * div :] / 10 ** 5
+
             dtnew = self.G.dot(model)
             self.dtnew = np.reshape(dtnew, (self.numsta, dl))
             self.dtorig = np.reshape(self.d, (self.numsta, dl))
@@ -974,7 +976,7 @@ class LSForce:
         tvec = (
             np.arange(
                 0,
-                len(self.z_force) * 1 / self.force_sampling_rate,
+                len(self.Z) * 1 / self.force_sampling_rate,
                 1 / self.force_sampling_rate,
             )
             - self.T0
@@ -1215,12 +1217,8 @@ class LSForce:
         if self.jackknife is None:
             if ylim is None:
                 ylim1 = (
-                    np.amin(
-                        [self.z_force.min(), self.e_force.min(), self.n_force.min()]
-                    ),
-                    np.amax(
-                        [self.z_force.max(), self.e_force.max(), self.n_force.max()]
-                    ),
+                    np.amin([self.Z.min(), self.E.min(), self.N.min()]),
+                    np.amax([self.Z.max(), self.E.max(), self.N.max()]),
                 )
                 ylim = (
                     ylim1[0] + 0.1 * ylim1[0],
@@ -1240,9 +1238,9 @@ class LSForce:
                             Zlower.min(),
                             Elower.min(),
                             Nlower.min(),
-                            self.z_force.min(),
-                            self.n_force.min(),
-                            self.e_force.min(),
+                            self.Z.min(),
+                            self.N.min(),
+                            self.E.min(),
                         ]
                     ),
                     np.amax(
@@ -1250,9 +1248,9 @@ class LSForce:
                             Zupper.max(),
                             Eupper.max(),
                             Nupper.max(),
-                            self.z_force.max(),
-                            self.n_force.max(),
-                            self.e_force.max(),
+                            self.Z.max(),
+                            self.N.max(),
+                            self.E.max(),
                         ]
                     ),
                 )
@@ -1276,11 +1274,11 @@ class LSForce:
                         nrows=5, figsize=(10, 12)
                     )
 
-            ax1.plot(tvec, self.z_force, 'blue', linewidth=1)
+            ax1.plot(tvec, self.Z, 'blue', linewidth=1)
             ax1.set_ylabel('Up force (N)')
-            ax2.plot(tvec, self.n_force, 'red', linewidth=1)
+            ax2.plot(tvec, self.N, 'red', linewidth=1)
             ax2.set_ylabel('North force (N)')
-            ax3.plot(tvec, self.e_force, 'green', linewidth=1)
+            ax3.plot(tvec, self.E, 'green', linewidth=1)
             ax3.set_ylabel('East force (N)')
 
             x = np.concatenate((tvec, tvec[::-1]))
@@ -1406,9 +1404,9 @@ class LSForce:
                 else:
                     ax4.annotate('%s' % highf_tr.id, **annot_kwargs)
 
-            ax.plot(tvec, self.z_force, 'blue', label='Up')
-            ax.plot(tvec, self.n_force, 'red', label='North')
-            ax.plot(tvec, self.e_force, 'green', label='East')
+            ax.plot(tvec, self.Z, 'blue', label='Up')
+            ax.plot(tvec, self.N, 'red', label='North')
+            ax.plot(tvec, self.E, 'green', label='East')
 
             if self.jackknife is not None:
                 x = np.concatenate((tvec, tvec[::-1]))
@@ -1461,7 +1459,7 @@ class LSForce:
         plot angles and magnitudes of inversion result and append results
         to object for further use
 
-        USAGE plot_forces(z_force,n_force,e_force,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
+        USAGE plot_forces(Z,N,E,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
         INPUTS
         [ZEN]force
         tvec =
@@ -1479,12 +1477,8 @@ class LSForce:
         if self.jackknife is None:
             if ylim is None:
                 ylim1 = (
-                    np.amin(
-                        [self.z_force.min(), self.e_force.min(), self.n_force.min()]
-                    ),
-                    np.amax(
-                        [self.z_force.max(), self.e_force.max(), self.n_force.max()]
-                    ),
+                    np.amin([self.Z.min(), self.E.min(), self.N.min()]),
+                    np.amax([self.Z.max(), self.E.max(), self.N.max()]),
                 )
                 ylim = (
                     ylim1[0] + 0.1 * ylim1[0],
@@ -1511,9 +1505,9 @@ class LSForce:
 
         # Plot the inversion result in the first one
         ax = fig.add_subplot(411)
-        ax.plot(tvec, self.z_force, 'blue', label='Up')
-        ax.plot(tvec, self.n_force, 'red', label='North')
-        ax.plot(tvec, self.e_force, 'green', label='East')
+        ax.plot(tvec, self.Z, 'blue', label='Up')
+        ax.plot(tvec, self.N, 'red', label='North')
+        ax.plot(tvec, self.E, 'green', label='East')
 
         if self.jackknife is not None:
             x = np.concatenate((tvec, tvec[::-1]))
@@ -1543,9 +1537,7 @@ class LSForce:
 
         # Plot the magnitudes in second one
         ax1 = fig.add_subplot(412)
-        Mag = np.linalg.norm(
-            list(zip(self.z_force, self.e_force, self.n_force)), axis=1
-        )
+        Mag = np.linalg.norm(list(zip(self.Z, self.E, self.N)), axis=1)
         ax1.plot(tvec, Mag, 'k', label='best')
 
         if self.jackknife is not None:
@@ -1580,7 +1572,7 @@ class LSForce:
         # Plot the horizontal azimuth
         ax2 = fig.add_subplot(413)
         tempang = (180 / np.pi) * np.arctan2(
-            self.n_force, self.e_force
+            self.N, self.E
         ) - 90  # get angle counterclockwise relative to N
         # any negative values, add 360
         for i, temp in enumerate(tempang):
@@ -1603,9 +1595,7 @@ class LSForce:
 
         # Plot the vertical angle
         ax3 = fig.add_subplot(414)
-        Vang = (180 / np.pi) * np.arctan(
-            self.z_force / np.sqrt(self.n_force ** 2 + self.e_force ** 2)
-        )
+        Vang = (180 / np.pi) * np.arctan(self.Z / np.sqrt(self.N ** 2 + self.E ** 2))
         ax3.plot(tvec, Vang)
         ax3.set_ylabel('Vertical angle (deg)')
 
