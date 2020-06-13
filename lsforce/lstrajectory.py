@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import xarray as xr
 import cartopy.crs as ccrs
+from obspy.core import AttribDict
 import warnings
 
 KM_PER_M = 1 / 1000  # [km/m]
@@ -145,11 +146,11 @@ class LSTrajectory:
             if self.jackknife:
                 for i in range(self.force.jackknife.num_iter):
                     if elevation_profile:
-                        x = self.jackknife['horiz_dist_all'][i] * KM_PER_M
-                        y = self.jackknife['z_disp_all'][i] * KM_PER_M
+                        x = self.jackknife.horizontal_distance[i] * KM_PER_M
+                        y = self.jackknife.displacement.Z[i] * KM_PER_M
                     else:
-                        x = self.jackknife['e_disp_all'][i] * KM_PER_M
-                        y = self.jackknife['n_disp_all'][i] * KM_PER_M
+                        x = self.jackknife.displacement.E[i] * KM_PER_M
+                        y = self.jackknife.displacement.N[i] * KM_PER_M
                     ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', alpha=0.02)
             else:
                 warnings.warn('No jackknife iterations to plot.')
@@ -218,11 +219,11 @@ class LSTrajectory:
 
         # Compute jackknife trajectories as well if the inversion was jackknifed
         if self.force.jackknife:
-            self.jackknife = dict(num_iter=self.force.jackknife.num_iter)
-            self.jackknife['z_disp_all'] = []
-            self.jackknife['e_disp_all'] = []
-            self.jackknife['n_disp_all'] = []
-            self.jackknife['horiz_dist_all'] = []
+            self.jackknife = AttribDict(
+                num_iter=self.force.jackknife.num_iter,
+                displacement=AttribDict(Z=[], E=[], N=[]),
+                horizontal_distance=[],
+            )
             for i in range(self.jackknife.num_iter):
                 *_, z_disp_i, e_disp_i, n_disp_i, _, _ = self._trajectory_automass(
                     self.force.jackknife.Z.all[i],
@@ -237,10 +238,10 @@ class LSTrajectory:
                 horiz_dist_i = _calculate_horizontal_distance(e_disp_i, n_disp_i)
 
                 # Store jackknifed trajectories
-                self.jackknife['z_disp_all'].append(z_disp_i)
-                self.jackknife['e_disp_all'].append(e_disp_i)
-                self.jackknife['n_disp_all'].append(n_disp_i)
-                self.jackknife['horiz_dist_all'].append(horiz_dist_i)
+                self.jackknife.displacement.Z.append(z_disp_i)
+                self.jackknife.displacement.E.append(e_disp_i)
+                self.jackknife.displacement.N.append(n_disp_i)
+                self.jackknife.horizontal_distance.append(horiz_dist_i)
 
     def _integrate_acceleration(
         self, z_force, e_force, n_force, mass, startidx, endidx, detrend=None
