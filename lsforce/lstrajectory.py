@@ -21,6 +21,9 @@ class LSTrajectory:
         duration:
         detrend_velocity:
         jackknife:
+        acceleration:
+        velocity:
+        displacement:
     """
 
     def __init__(
@@ -96,11 +99,11 @@ class LSTrajectory:
 
         # Converting to km below
         if elevation_profile:
-            x = self.horiz_dist * KM_PER_M
-            y = self.z_disp * KM_PER_M
+            x = self.horizontal_distance * KM_PER_M
+            y = self.displacement.Z * KM_PER_M
         else:
-            x = self.e_disp * KM_PER_M
-            y = self.n_disp * KM_PER_M
+            x = self.displacement.E * KM_PER_M
+            y = self.displacement.N * KM_PER_M
         sc = ax.scatter(x, y, c=self.traj_tvec, cmap='rainbow', zorder=100)
 
         if elevation_profile:
@@ -135,7 +138,7 @@ class LSTrajectory:
 
         title = (
             f'mass = {self.mass_actual:,} kg\n'
-            f'runout length = {self.horiz_dist[-1] * KM_PER_M:.2f} km'
+            f'runout length = {self.horizontal_distance[-1] * KM_PER_M:.2f} km'
         )
         if self.target_length:
             title += f'\n(target length = {self.target_length:g} km)'
@@ -195,15 +198,9 @@ class LSTrajectory:
 
         # For the full inversion (all channels) result
         (
-            self.z_accel,
-            self.e_accel,
-            self.n_accel,
-            self.z_velo,
-            self.e_velo,
-            self.n_velo,
-            self.z_disp,
-            self.e_disp,
-            self.n_disp,
+            self.acceleration,
+            self.velocity,
+            self.displacement,
             self.mass_actual,
             self.traj_tvec,
         ) = self._trajectory_automass(
@@ -215,7 +212,9 @@ class LSTrajectory:
             duration=duration,
             detrend=detrend_velocity,
         )
-        self.horiz_dist = _calculate_horizontal_distance(self.e_disp, self.n_disp)
+        self.horizontal_distance = _calculate_horizontal_distance(
+            self.displacement.E, self.displacement.N
+        )
 
         # Compute jackknife trajectories as well if the inversion was jackknifed
         if self.force.jackknife:
@@ -225,7 +224,7 @@ class LSTrajectory:
                 horizontal_distance=[],
             )
             for i in range(self.jackknife.num_iter):
-                *_, z_disp_i, e_disp_i, n_disp_i, _, _ = self._trajectory_automass(
+                *_, disp_i, _, _ = self._trajectory_automass(
                     self.force.jackknife.Z.all[i],
                     self.force.jackknife.E.all[i],
                     self.force.jackknife.N.all[i],
@@ -235,12 +234,12 @@ class LSTrajectory:
                     detrend=detrend_velocity,
                 )
 
-                horiz_dist_i = _calculate_horizontal_distance(e_disp_i, n_disp_i)
+                horiz_dist_i = _calculate_horizontal_distance(disp_i.E, disp_i.N)
 
                 # Store jackknifed trajectories
-                self.jackknife.displacement.Z.append(z_disp_i)
-                self.jackknife.displacement.E.append(e_disp_i)
-                self.jackknife.displacement.N.append(n_disp_i)
+                self.jackknife.displacement.Z.append(disp_i.Z)
+                self.jackknife.displacement.E.append(disp_i.E)
+                self.jackknife.displacement.N.append(disp_i.N)
                 self.jackknife.horizontal_distance.append(horiz_dist_i)
 
     def _integrate_acceleration(
@@ -250,38 +249,38 @@ class LSTrajectory:
         traj_tvec = self.force.tvec[startidx : endidx + 1]
 
         dx = 1.0 / self.force.force_sampling_rate
-        z_accel = -z_force.copy()[startidx : endidx + 1] / mass
-        e_accel = -e_force.copy()[startidx : endidx + 1] / mass
-        n_accel = -n_force.copy()[startidx : endidx + 1] / mass
-        z_velo = np.cumsum(z_accel) * dx
-        e_velo = np.cumsum(e_accel) * dx
-        n_velo = np.cumsum(n_accel) * dx
+        acceleration = AttribDict(
+            Z=-z_force.copy()[startidx : endidx + 1] / mass,
+            E=-e_force.copy()[startidx : endidx + 1] / mass,
+            N=-n_force.copy()[startidx : endidx + 1] / mass,
+        )
+        velocity = AttribDict(
+            Z=np.cumsum(acceleration.Z) * dx,
+            E=np.cumsum(acceleration.E) * dx,
+            N=np.cumsum(acceleration.N) * dx,
+        )
 
-        # Detrend is either None (no detrending) or a time where velo should
+        # Detrend is either None (no detrending) or a time where velocity should
         # be fully tapered to zero
         if detrend:
             zeroidx = np.where(traj_tvec == detrend)[0][
                 0
-            ]  # Index corresponding to time where velo should be zero
-            for comp in [z_velo, e_velo, n_velo]:
+            ]  # Index corresponding to time where velocity should be zero
+            for comp in velocity.values():
                 trend = np.linspace(0, comp[zeroidx], len(traj_tvec[:zeroidx]))
                 comp[:zeroidx] -= trend
                 comp[zeroidx:] = np.zeros(len(comp[zeroidx:]))
 
-        z_disp = np.cumsum(z_velo) * dx
-        e_disp = np.cumsum(e_velo) * dx
-        n_disp = np.cumsum(n_velo) * dx
+        displacement = AttribDict(
+            Z=np.cumsum(velocity.Z) * dx,
+            E=np.cumsum(velocity.E) * dx,
+            N=np.cumsum(velocity.N) * dx,
+        )
 
         return (
-            z_accel,
-            e_accel,
-            n_accel,
-            z_velo,
-            e_velo,
-            n_velo,
-            z_disp,
-            e_disp,
-            n_disp,
+            acceleration,
+            velocity,
+            displacement,
             traj_tvec,
         )
 
@@ -324,41 +323,29 @@ class LSTrajectory:
                 mass += MASS_INC  # Increase the mass
 
                 # Calculate the runout length [km] based on this mass
-                *_, e_disp, n_disp, _ = self._integrate_acceleration(
+                *_, disp, _ = self._integrate_acceleration(
                     z_force, e_force, n_force, mass, startidx, endidx, detrend
                 )
                 current_length = (
-                    _calculate_horizontal_distance(e_disp, n_disp)[-1] * KM_PER_M
+                    _calculate_horizontal_distance(disp.E, disp.N)[-1] * KM_PER_M
                 )  # [km]
         else:
             mass = int(mass)
 
         # Calculate compute_trajectory based on mass assigned above
         (
-            z_accel,
-            e_accel,
-            n_accel,
-            z_velo,
-            e_velo,
-            n_velo,
-            z_disp,
-            e_disp,
-            n_disp,
+            acceleration,
+            velocity,
+            displacement,
             traj_tvec,
         ) = self._integrate_acceleration(
             z_force, e_force, n_force, mass, startidx, endidx, detrend
         )
 
         return (
-            z_accel,
-            e_accel,
-            n_accel,
-            z_velo,
-            e_velo,
-            n_velo,
-            z_disp,
-            e_disp,
-            n_disp,
+            acceleration,
+            velocity,
+            displacement,
             mass,
             traj_tvec,
         )
@@ -386,7 +373,8 @@ class LSTrajectory:
             raise ValueError('Input DEM must have a UTM projection!')
         loc_utm = crs.transform_point(self.force.lon, self.force.lat, ccrs.Geodetic())
         points = [
-            [x + loc_utm[0], y + loc_utm[1]] for x, y in zip(self.e_disp, self.n_disp)
+            [x + loc_utm[0], y + loc_utm[1]]
+            for x, y in zip(self.displacement.E, self.displacement.N)
         ]
 
         # Densify the coarse points
@@ -421,7 +409,7 @@ class LSTrajectory:
         )
 
         # Check that interp_spacing wasn't too coarse by matching path lengths
-        if not np.isclose(horizontal_distance[-1], self.horiz_dist[-1]):
+        if not np.isclose(horizontal_distance[-1], self.horizontal_distance[-1]):
             raise ValueError('interp_spacing was too coarse. Try decreasing.')
 
         warnings.warn('Assuming DEM vertical unit is meters!')
@@ -433,10 +421,10 @@ class LSTrajectory:
 
 def _calculate_horizontal_distance(east_displacement, north_displacement):
     """
-    Calculate horizontal distance vector (horiz_dist) from east and north displacement
-    vectors. This is the horizontal distance "along the avalanche path" as a function of
-    time. horiz_dist[-1] is L, the horizontal runout distance (which is shorter than the
-    3-D runout distance).
+    Calculate horizontal distance vector (horizontal_distance) from east and north
+    displacement vectors. This is the horizontal distance "along the avalanche path" as
+    a function of time. horizontal_distance[-1] is L, the horizontal runout distance
+    (which is shorter than the 3-D runout distance).
 
     Args:
         east_displacement: Eastward displacement vector as a function of time [m]
