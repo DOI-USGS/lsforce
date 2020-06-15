@@ -372,7 +372,7 @@ class LSTrajectory:
             interp_spacing: [m] Density of interpolation points
 
         Returns:
-            horizontal_distance: Distance along path given by EDisp, NDisp
+            horizontal_distance: Distance along path
             elevation: Elevation along horizontal_distance
         """
 
@@ -411,7 +411,7 @@ class LSTrajectory:
         )
 
         # Find horizontal distance vector (works for curvy paths!)
-        horiz_dist = np.hstack(
+        horizontal_distance = np.hstack(
             [
                 0,
                 np.cumsum(
@@ -421,14 +421,14 @@ class LSTrajectory:
         )
 
         # Check that interp_spacing wasn't too coarse by matching path lengths
-        if not np.isclose(horiz_dist[-1], self.horiz_dist[-1]):
+        if not np.isclose(horizontal_distance[-1], self.horiz_dist[-1]):
             raise ValueError('interp_spacing was too coarse. Try decreasing.')
 
         warnings.warn('Assuming DEM vertical unit is meters!')
 
         profile.data -= profile.data[0]  # Start at 0 and go negative
 
-        return horiz_dist, profile.data
+        return horizontal_distance, profile.data
 
 
 def _calculate_horizontal_distance(east_displacement, north_displacement):
