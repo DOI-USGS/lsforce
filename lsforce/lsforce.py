@@ -1819,15 +1819,15 @@ def _Lcurve(fit1, size1, alphas):
     Plot L-curve
     """
 
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.loglog(fit1, size1, '.')
+    fig, ax = plt.subplots(figsize=(7, 6))
+    ax.loglog(fit1, size1, '.', markersize=10, color='black')
     for i, alpha in enumerate(alphas):
-        text1 = '%3.1E' % alpha
-        ax.text(fit1[i], size1[i], text1)
-    ax.set_xlabel('Residual norm ||Gm-d||2')
-    ax.set_ylabel('Solution norm ||m||2')
-    plt.show()
-    plt.draw()
+        ax.text(fit1[i], size1[i], f'  {alpha:.1e}', va='center')
+    ax.set_xlabel(r'Residual norm $||{\bfG}{\bfm}-{\bfd}||^2$')
+    ax.set_ylabel(r'Solution norm $||{\bfm}||^2$')
+
+    fig.tight_layout()
+    fig.show()
 
 
 def _varred(dt, dtnew):

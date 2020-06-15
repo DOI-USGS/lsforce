@@ -174,8 +174,8 @@ class LSTrajectory:
             distance, drop = self._slice_dem(dem)
             ax.plot(distance * KM_PER_M, drop * KM_PER_M, color='black', zorder=100)
 
-        plt.tight_layout()
-        plt.show()
+        fig.tight_layout()
+        fig.show()
 
         return fig
 
