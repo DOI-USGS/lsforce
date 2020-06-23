@@ -70,7 +70,7 @@ class LSForce:
             raise ValueError(f'Method {method} not yet implemented.')
 
         self.method = method
-        if self.method in ['triangle'] and self.domain == 'freq':
+        if self.method == 'triangle' and self.domain == 'freq':
             raise ValueError('The triangle method must be done in the time domain.')
 
     def compute_greens(self, model_file, gf_duration, T0, L=5.0):
@@ -121,7 +121,7 @@ class LSForce:
             f.write('%3.2f' % T0)
 
         # write L file, if applicable
-        if self.method in ['triangle']:
+        if self.method == 'triangle':
             with open(os.path.join(self.moddir, 'L.txt'), 'w') as f:
                 f.write('%3.2f' % L)
 
@@ -246,7 +246,7 @@ class LSForce:
         with open(os.path.join(self.moddir, 'T0.txt'), 'r') as f:
             self.T0 = float(f.read())
 
-        if self.method in ['triangle']:
+        if self.method == 'triangle':
             with open(os.path.join(self.moddir, 'L.txt'), 'r') as f:
                 self.L = float(f.read())
 
