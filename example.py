@@ -208,7 +208,6 @@ force.invert(
 #%% PLOT INVERSION
 
 XLIM = (-50, 200)  # [s] x-axis (time) limits for plots
-L = 5.8  # [km] Estimate of horizontal COM runout length
 
 # Plot inversion waveform fits and results
 force.plot_fits()
@@ -224,6 +223,8 @@ force.plot_forces(
 force.plot_angle_magnitude(xlim=XLIM)
 
 #%% COMPUTE TRAJECTORY
+
+L = 5.8  # [km] Estimate of horizontal COM runout length
 
 trajectory = LSTrajectory(
     force, target_length=L, duration=XLIM[1], detrend_velocity=XLIM[1]
