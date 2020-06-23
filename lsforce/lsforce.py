@@ -1274,11 +1274,11 @@ class LSForce:
                         nrows=5, figsize=(10, 12)
                     )
 
-            ax1.plot(tvec, self.Z, 'blue', linewidth=1)
+            ax1.plot(tvec, self.Z, 'red', linewidth=1)
             ax1.set_ylabel('Up force (N)')
-            ax2.plot(tvec, self.N, 'red', linewidth=1)
+            ax2.plot(tvec, self.N, 'green', linewidth=1)
             ax2.set_ylabel('North force (N)')
-            ax3.plot(tvec, self.E, 'green', linewidth=1)
+            ax3.plot(tvec, self.E, 'blue', linewidth=1)
             ax3.set_ylabel('East force (N)')
 
             x = np.concatenate((tvec, tvec[::-1]))
@@ -1289,23 +1289,23 @@ class LSForce:
                         self.jackknife.N.all,
                         self.jackknife.E.all,
                     ):
-                        ax1.plot(self.tvec, Z, 'blue', alpha=0.2, linewidth=1)
-                        ax2.plot(self.tvec, N, 'red', alpha=0.2, linewidth=1)
-                        ax3.plot(self.tvec, E, 'green', alpha=0.2, linewidth=1)
+                        ax1.plot(self.tvec, Z, 'red', alpha=0.2, linewidth=1)
+                        ax2.plot(self.tvec, N, 'green', alpha=0.2, linewidth=1)
+                        ax3.plot(self.tvec, E, 'blue', alpha=0.2, linewidth=1)
                 else:
                     y = np.concatenate((Zlower, Zupper[::-1]))
                     poly = plt.Polygon(
-                        list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
+                        list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
                     )
                     ax1.add_patch(poly)
                     y = np.concatenate((Nlower, Nupper[::-1]))
                     poly = plt.Polygon(
-                        list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
+                        list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
                     )
                     ax2.add_patch(poly)
                     y = np.concatenate((Elower, Eupper[::-1]))
                     poly = plt.Polygon(
-                        list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
+                        list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
                     )
                     ax3.add_patch(poly)
 
@@ -1404,26 +1404,26 @@ class LSForce:
                 else:
                     ax4.annotate('%s' % highf_tr.id, **annot_kwargs)
 
-            ax.plot(tvec, self.Z, 'blue', label='Up')
-            ax.plot(tvec, self.N, 'red', label='North')
-            ax.plot(tvec, self.E, 'green', label='East')
+            ax.plot(tvec, self.Z, 'red', label='Up')
+            ax.plot(tvec, self.N, 'green', label='North')
+            ax.plot(tvec, self.E, 'blue', label='East')
 
             if self.jackknife is not None:
                 x = np.concatenate((tvec, tvec[::-1]))
 
                 y = np.concatenate((Zlower, Zupper[::-1]))
                 poly = plt.Polygon(
-                    list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
+                    list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
                 )
                 ax.add_patch(poly)
                 y = np.concatenate((Nlower, Nupper[::-1]))
                 poly = plt.Polygon(
-                    list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
+                    list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
                 )
                 ax.add_patch(poly)
                 y = np.concatenate((Elower, Eupper[::-1]))
                 poly = plt.Polygon(
-                    list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
+                    list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
                 )
                 ax.add_patch(poly)
             if xlim:
@@ -1505,25 +1505,25 @@ class LSForce:
 
         # Plot the inversion result in the first one
         ax = fig.add_subplot(411)
-        ax.plot(tvec, self.Z, 'blue', label='Up')
-        ax.plot(tvec, self.N, 'red', label='North')
-        ax.plot(tvec, self.E, 'green', label='East')
+        ax.plot(tvec, self.Z, 'red', label='Up')
+        ax.plot(tvec, self.N, 'green', label='North')
+        ax.plot(tvec, self.E, 'blue', label='East')
 
         if self.jackknife is not None:
             x = np.concatenate((tvec, tvec[::-1]))
             y = np.concatenate((Zlower, Zupper[::-1]))
             poly = plt.Polygon(
-                list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
+                list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
             )
             ax.add_patch(poly)
             y = np.concatenate((Nlower, Nupper[::-1]))
             poly = plt.Polygon(
-                list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
+                list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
             )
             ax.add_patch(poly)
             y = np.concatenate((Elower, Eupper[::-1]))
             poly = plt.Polygon(
-                list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
+                list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
             )
             ax.add_patch(poly)
 
