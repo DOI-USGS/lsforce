@@ -1370,15 +1370,15 @@ class LSForce:
                     axe.axvline(self.maxduration, color='gray', linestyle='solid', lw=3)
                     for axe in axes
                 ]
-            if hfylabel is not None:
-                ax4.set_ylabel(hfylabel)
-
-            if hfshift != 0:
-                ax4.annotate(
-                    '%s (shifted -%1.0f s)' % (highf_tr.id, hfshift), **annot_kwargs
-                )
-            else:
-                ax4.annotate('%s' % highf_tr.id, **annot_kwargs)
+            if highf_tr is not None:
+                if hfylabel is not None:
+                    ax4.set_ylabel(hfylabel)
+                if hfshift != 0:
+                    ax4.annotate(
+                        '%s (shifted -%1.0f s)' % (highf_tr.id, hfshift), **annot_kwargs
+                    )
+                else:
+                    ax4.annotate('%s' % highf_tr.id, **annot_kwargs)
 
         else:
             if highf_tr is None:
