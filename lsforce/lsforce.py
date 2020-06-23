@@ -786,7 +786,7 @@ class LSForce:
             zero_taper_length (float): length of taper for zero_scaler, in seconds.
                 shorter tapers can result in sharp artifacts, longer is better
             tikhonov_ratios (array): Proportion each regularization method contributes, where values correspond
-                to [zeroth, first order, second order]. Must add to 1. Only used if method = 'tikh'
+                to [zeroth, first order, second order]. Must add to 1.
         """
 
         if np.sum(tikhonov_ratios) != 1.0:
