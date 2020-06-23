@@ -263,9 +263,8 @@ class LSTrajectory:
         # Detrend is either None (no detrending) or a time where velocity should
         # be fully tapered to zero
         if detrend:
-            zeroidx = np.where(traj_tvec == detrend)[0][
-                0
-            ]  # Index corresponding to time where velocity should be zero
+            # Index corresponding to time where velocity should be zero (closest entry)
+            zeroidx = (np.abs(traj_tvec - detrend)).argmin()
             for comp in velocity.values():
                 trend = np.linspace(0, comp[zeroidx], len(traj_tvec[:zeroidx]))
                 comp[:zeroidx] -= trend
@@ -304,10 +303,12 @@ class LSTrajectory:
         if not mass and not target_length:
             raise ValueError('You must specify either mass or target length!')
 
-        startidx = np.where(self.force.tvec == 0)[0][0]  # Always start at t = 0
-        # Clip time series to `duration` [s] if desired
+        # Start as close to t = 0 as possible
+        startidx = (np.abs(self.force.tvec - 0)).argmin()
+
+        # Clip time series as close to `duration` [s] as possible, if desired
         if duration:
-            endidx = np.where(self.force.tvec == duration)[0][0]
+            endidx = (np.abs(self.force.tvec - duration)).argmin()
         else:
             endidx = len(self.force.tvec)
 
