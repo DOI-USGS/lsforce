@@ -274,7 +274,7 @@ class LSData:
 
 
 def _rotate_to_rtz(st):
-    """Rotates all components of a Stream into radial–transverse–vertical.
+    """Rotate all components of a Stream into radial–transverse–vertical.
 
     This function first rotates non-standard horizontals into EN, then rotates into RTZ.
     It also checks that input components labeled as east, north, and vertical (e.g.,
