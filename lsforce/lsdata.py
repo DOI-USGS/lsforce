@@ -168,8 +168,8 @@ class LSData:
 
         Args:
             region (list or tuple): Array of the form [lonmin, lonmax, latmin, latmax]
-                specifying the desired map region. If `None`, we automatically pick a
-                region that includes the event and stations
+                specifying the desired map region in decimal degrees. If `None`, we
+                automatically pick a region that includes the event and stations
             label_stations (bool): If `True`, label stations with their codes
 
         Returns:
