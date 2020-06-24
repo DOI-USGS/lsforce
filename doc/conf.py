@@ -17,6 +17,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinxcontrib.apidoc',
     'sphinx.ext.mathjax',
+    'sphinx.ext.todo',
 ]
 
 # List of patterns, relative to source directory, that match files and
@@ -41,6 +42,8 @@ autodoc_default_options = {
 }
 if SHOW_PRIVATE:
     autodoc_default_options['private-members'] = True
+
+todo_include_todos = True
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
