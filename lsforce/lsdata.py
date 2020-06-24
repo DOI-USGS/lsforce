@@ -8,7 +8,6 @@ import matplotlib.dates as mdates
 import numpy as np
 import warnings
 
-
 DETREND_POLY_ORDER = 2
 
 WATER_LEVEL = 60  # [dB]
