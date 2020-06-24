@@ -68,6 +68,10 @@ conda remove --yes --name $ENV_NAME --all
 dev_list=(
     "black"
     "ipython"
+    "sphinx"
+    "sphinx_rtd_theme"
+    "sphinxcontrib-apidoc"
+    "recommonmark"
 )
 
 # Package list:
