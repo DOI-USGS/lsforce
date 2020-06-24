@@ -17,8 +17,28 @@ from obspy.core import AttribDict
 
 
 class LSForce:
-    """
-    Class for single force inversions
+    """Class for performing force inversions.
+
+    Attributes:
+        st:
+        domain:
+        sampling_rate:
+        nickname:
+        numsta:
+        greens_computed:
+        lat:
+        lon:
+        inversion_complete:
+        main_folder:
+        method:
+        model_file:P
+        T0:
+        L:
+        sacdir:
+        sacodir:
+        nickname:
+        moddir:
+        TODO add rest of attributes and determine which ones can be edited/removed!
     """
 
     def __init__(
@@ -30,27 +50,27 @@ class LSForce:
         main_folder=None,
         method='tik',
     ):
-        """
+        """Create an LSForce object.
+
         Args:
-            data (LSData): LSData object, corrected for station response but not filtered
-            sampling_rate (float): Number of samples per second (Hz) to use in inversion.
-                All data will be resampled to this rate and Greens functions
-                will be created with this sample rate.
-            domain (str): domain in which to do inversion, 'time' (default) or
-                'freq'
-            nickname (str): Nickname for this event, used for convenient in
-                naming files
-            main_folder (str): if None, will use current folder
-            method (str): 'tik' = full waveform inversion using Tikhonov
-                                regularization (L2 norm minimization)
-                          'triangle' = parameterized inversion using overlapping
-                                  triangles (variation of method of Ekstrom et al., 2013)
-                          'basis' = parameterized using many hanning basis functions
-                          'sinusoid' = parameterized using single sinusoid
-                                  (variation of method by Chao et al. YEAR)
+            data (:class:`~lsforce.lsdata.LSData`): LSData object, corrected for station
+                response but not filtered
+            sampling_rate (int or float): [Hz] Samples per second to use in inversion.
+                All data will be resampled to this rate, and Green's functions will be
+                created with this rate
+            domain (str): Domain in which to do inversion, one of `'time'` or `'freq'`
+            nickname (str): Nickname for this event, used for convenient naming of files
+            main_folder (str): If `None`, will use current folder
+            method (str): One of:
+                'tik' = Full waveform inversion using Tikhonov regularization (L2 norm
+                        minimization)
+                'triangle' = Inversion parameterized using overlapping triangles;
+                             variation on method of Ekström & Stark (2013)
+                'basis' = Parameterized using many Hanning basis functions
+                'sinusoid' = Parameterized using a single sinusoid; variation on method
+                             of _______ TODO implement this method!
         """
 
-        # General
         self.st = data.st_proc.copy()
         self.domain = domain
         self.sampling_rate = sampling_rate
@@ -74,20 +94,19 @@ class LSForce:
             raise ValueError('The triangle method must be done in the time domain.')
 
     def compute_greens(self, model_file, gf_duration, T0, L=5.0):
-        """
-        Use CPS to compute the necessary Greens functions relating the source
-        location and the seismic stations in st
-        Will compute the type of Greens functions appropriate for the method
-        defined during class initiation
+        """Compute Green's functions for inversion.
+
+        Use CPS to compute the necessary Green's functions (GFs) for the source location
+        and seismic stations being used. Computes the type of GFs appropriate for the
+        method defined during class creation.
 
         Args:
-            model_file (str): Full file path to location of CPS model file
-            gf_duration (float):
-            T0 (float): number of seconds prior to impulse application
-            L (float): half width, in seconds, of triangle. Only needed for
-                triangle method, default 5 sec. This will also correspond
-                to sample interval of resulting force time function because
-                triangles overlap by 50%
+            model_file (str): Full path to location of CPS model file
+            gf_duration (int or float): [s] Duration of GFs
+            T0 (int or float): [s] Amount of extra time prior to impulse application
+            L (int or float): [s] Half width of isosceles triangle. Only needed for
+                triangle method. This relates to the sampling interval of the force-time
+                function since the triangles overlap by 50%
         """
 
         self.model_file = model_file
@@ -213,18 +232,17 @@ class LSForce:
         self.greens_computed = True
 
     def load_greens(self, model_file):
+        """Load Green's functions for inversion.
 
-        """
-        If Greens functions were already computed for this exact data
-        selection, this simply loads info about them needed for setup
+        If Green's functions (GFs) were already computed for this exact data selection,
+        this simply loads them for setup.
+
+        TODO add error catching in case the stations in st don't line up with computed
+            GFs in folder!
 
         Args:
-            model_file (str): the name of the model file used to compute the
-                Greens functions. This is so they can be found because they
-                are saved in a folder referencing the model file name
-
-            TODO add error catching in case the stations in st don't line
-            up with computed GFs in folder
+            model_file (str): Full path to location of CPS model file. Used to locate
+                appropriate directory containing GFs
         """
 
         if self.nickname is None:
@@ -257,25 +275,25 @@ class LSForce:
 
     def setup(
         self,
+        period_range,
         weights=None,
         weightpre=None,
-        period_range=(30.0, 150.0),
         filter_order=2,
         zerophase=False,
     ):
-        """
-        Loads in greens functions and creates all matrices needed
+        """Loads in GFs and creates all necessary matrices.
 
         Args:
-            weights: if None, no weighting is applied, array of floats
-                corresponding to length and order of st applies manual weighting,
-                if 'prenoise' is specified, will used std of noise window before
-                event (length by weightpre) or 'distance' to weight by 1/distance
-            weightpre (float): length of pre-noise window in seconds (if not None, noise will be used to
-                  determine weights)
-            period_range (list or tuple): Range of periods to consider in inversion, in seconds
+            period_range (list or tuple): [s] Bandpass filter corners
+            weights (list or tuple or str): If `None`, no weighting is applied. An array
+                of floats with length ``st.count()`` and in the order of the `st`
+                applies manual weighting. If `'prenoise'`, uses standard deviation of
+                a noise window defined by `weightpre` to weight. If `'distance'`,
+                weights by 1/distance
+            weightpre (int or float): [s] Length of noise window for `'prenoise'`
+                weighting scheme (if not `None`, `weights` is set to `'prenoise'`)
             filter_order (int): Order of filter applied over period_range
-            zerophase (bool): If True, zero-phase filtering will be used
+            zerophase (bool): If `True`, zero-phase filtering will be used
         """
 
         # Create filter dictionary to keep track of filter used without
@@ -690,9 +708,7 @@ class LSForce:
         frac_delete=0.5,
         **kwargs,
     ):
-        """
-        Perform single force inversion of long-period landslide
-        seismic signal using Tikhonov regularization
+        """Performs single-force inversion using Tikhonov regularization.
 
         Args:
             zero_time (float): Optional estimated start time of real part of signal, in seconds from
