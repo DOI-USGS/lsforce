@@ -47,10 +47,19 @@ The following has only been tested on macOS Mojave.
    curl -O http://www.eas.slu.edu/eqc/eqc_cps/TUTORIAL/SPHERICITY/AK135/tak135sph.mod
    ```
 
-Usage
------
+Documentation
+-------------
 
 A usage example is given in `example.py`.
+
+To build the documentation, first ensure that you installed the developer tools
+(`DEVELOPER=1` in `install.sh`), which are required for documentation building. Then:
+```
+conda activate lsforce
+cd doc
+make html
+open _build/html/index.html  # macOS command to open file in browser
+```
 
 Testing
 -------
