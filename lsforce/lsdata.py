@@ -31,17 +31,22 @@ class LSData:
     """Class for force inversion data (essentially a souped-up Stream).
 
     Attributes:
-        st_orig: Original input Stream `st`
-        st_proc: Stream rotated into RTZ w.r.t. `source_lat`, `source_lon`
-        source_lat: See below
-        source_lon: See below
+        st_orig (:class:`~obspy.core.stream.Stream`): Original input Stream `st`
+        st_proc (:class:`~obspy.core.stream.Stream`): Stream rotated into RTZ w.r.t.
+            `source_lat`, `source_lon`
+        source_lat (int or float): Latitude in decimal degrees of centroid of landslide
+            source location
+        source_lon (int or float): Longitude in decimal degrees of centroid of landslide
+            source location
     """
 
     def __init__(self, st, source_lat, source_lon, remove_response=True):
-        """
+        """Create an LSData object.
+
         Args:
-            st: ObsPy Stream object with ``tr.stats.latitude`` and
-                ``tr.stats.longitude`` defined and response attached
+            st (:class:`~obspy.core.stream.Stream`): Stream object with
+                ``tr.stats.latitude`` and ``tr.stats.longitude`` defined and response
+                attached
             source_lat (int or float): Latitude in decimal degrees of centroid of
                 landslide source location
             source_lon (int or float): Longitude in decimal degrees of centroid of
@@ -82,16 +87,15 @@ class LSData:
             )
 
     def plot_data(self, equal_scale=True, period_range=None):
-        """Create a record section plot of waveforms in `st_proc`, with optional
-        preview filtering.
+        """Create a record section plot of waveforms in `st_proc`.
 
         Args:
-            equal_scale: If `True`, all plots will share the same y-axis scale
-            period_range: If not `None`, filter the data between period_range[0] and
-                period_range[1], given in seconds
+            equal_scale (bool): If `True`, all plots will share the same y-axis scale
+            period_range (list or tuple): If not `None`, filter the data between
+                `period_range[0]` and `period_range[1]`, given in seconds
 
         Returns:
-            The figure handle
+            :class:`~matplotlib.figure.Figure`: Output figure handle
         """
 
         st_plot = self.st_proc.copy()  # Make a copy to manipulate
@@ -164,12 +168,13 @@ class LSData:
         """Create a map showing stations and event location.
 
         Args:
-            region: [lonmin, lonmax, latmin, latmax] Desired map region. If `None`, we
-                automatically pick one that includes the event and stations
+            region (list or tuple): Array of the form [lonmin, lonmax, latmin, latmax]
+                specifying the desired map region. If `None`, we automatically pick a
+                region that includes the event and stations
             label_stations (bool): If `True`, label stations with their codes
 
         Returns:
-            The figure handle
+            :class:`~matplotlib.figure.Figure`: Output figure handle
         """
 
         # Automatically determine a nice region, if one not explicitly provided
@@ -272,15 +277,15 @@ class LSData:
 def _rotate_to_rtz(st):
     """Rotates all components of a Stream into radial–transverse–vertical.
 
-    This function first rotates non-standard horizontals into EN, then rotates into
-    RTZ. It also checks that input components labeled as east, north, and vertical
-    (e.g., BHE, BHN, BHZ, etc.) have the correct orientation.
+    This function first rotates non-standard horizontals into EN, then rotates into RTZ.
+    It also checks that input components labeled as east, north, and vertical (e.g.,
+    BHE, BHN, BHZ, etc.) have the correct orientation.
 
     Args:
-        st: ObsPy Stream
+        st (:class:`~obspy.core.stream.Stream`): Input Stream to be rotated
 
     Returns:
-        Rotated Stream
+        :class:`~obspy.core.stream.Stream`: Rotated Stream
     """
 
     st_rot = st.copy()  # Work on a copy of the data
