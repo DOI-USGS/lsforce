@@ -15,15 +15,23 @@ class LSTrajectory:
     """Class for force inversion derived trajectories.
 
     Attributes:
-        force:
-        mass_requested:
-        target_length:
-        duration:
-        detrend_velocity:
-        jackknife:
-        acceleration:
-        velocity:
-        displacement:
+        force (:class:`~lsforce.lsforce.LSForce`): Inversion results used to compute
+            this trajectory
+        mass_requested (int or float): [kg] Mass specified
+        mass_actual (int): [kg] Mass used (same as `mass_requested`) if `target_length`
+            is not specified
+        target_length (int or float): [km] Center-of-mass runout length of event, `None`
+            if not specified
+        jackknife (:class:`~obspy.core.util.attribdict.AttribDict`): Jackknifed
+            trajectory results
+        acceleration (:class:`~obspy.core.util.attribdict.AttribDict`): [m^2/s] Computed
+            acceleration with Z, E, N components as attributes
+        velocity (:class:`~obspy.core.util.attribdict.AttribDict`): [m/s] Computed
+            velocity with Z, E, N components as attributes
+        displacement (:class:`~obspy.core.util.attribdict.AttribDict`): [m] Computed
+            displacement with Z, E, N components as attributes
+        horizontal_distance (:class:`~numpy.ndarray`): [m] Computed horizontal distance
+        traj_tvec (:class:`~numpy.ndarray`): [s] Time array for all trajectory arrays
     """
 
     def __init__(
@@ -34,13 +42,18 @@ class LSTrajectory:
         duration=None,
         detrend_velocity=None,
     ):
-        """
+        """Create an LSTrajectory object.
+
         Args:
-            force (LSForce): Completed force inversion
-            mass:
-            target_length:
-            duration:
-            detrend_velocity:
+            force (:class:`~lsforce.lsforce.LSForce`): Completed force inversion
+            mass (int or float): [kg] Mass of event. If `None`, the mass is computed
+                using `target_length`, which must be specified
+            target_length (int or float): [km] Center-of-mass runout length of event. If
+                `None`, `mass` must be specified
+            duration (int or float): [s] If not `None`, only use the force time series
+                from 0–`duration` seconds in the trajectory calculation
+            detrend_velocity: [s] If provided, require the velocity to linearly go to
+                zero at this time; if `None`, don't detrend
         """
 
         if not force.inversion_complete:
@@ -49,14 +62,12 @@ class LSTrajectory:
         self.force = force
         self.mass_requested = mass
         self.target_length = target_length
-        self.duration = duration
-        self.detrend_velocity = detrend_velocity
         self.jackknife = None
 
         compute_kwargs = dict(
             mass=self.mass_requested,
             target_length=self.target_length,
-            duration=self.duration,
+            duration=duration,
             detrend_velocity=detrend_velocity,
         )
 
@@ -73,23 +84,20 @@ class LSTrajectory:
         """Plot trajectory results with context.
 
         Args:
-            elevation_profile: If True, plot vertical displacement versus
-                               horizontal runout distance (H vs. L) instead of
-                               a map view
-            plot_jackknife: Toggle plotting jackknifed displacements as well (if
+            elevation_profile (bool): If True, plot vertical displacement versus
+                horizontal runout distance (H vs. L) instead of a map view
+            plot_jackknife (bool): Toggle plotting jackknifed displacements as well (if
                 available)
-            image: An xarray.DataArray with coordinates defined in km with the
-                   origin (0, 0) being the start location of the compute_trajectory
-            dem: A UTM-projected DEM GeoTIFF to slice thru for elevation
-                 profile plot
-            reference_point (int/float or list): Plot a dot on compute_trajectory, and
-                                                 line on colorbar, at this
-                                                 specified time(s) for
-                                                 reference (default: None, for
-                                                 no markings)
+            image (:class:`~xarray.DataArray`): An image with coordinates defined in km
+                with the origin (0, 0) being the start location of the trajectory
+            dem (str): A UTM-projected DEM GeoTIFF to slice thru for elevation profile
+                plot
+            reference_point (int or float or list): If not `None`, plot a dot on
+                trajectory, and line on colorbar, at this specified time(s) for
+                reference
 
         Returns:
-            The output figure
+            :class:`~matplotlib.figure.Figure`: Output figure handle
         """
 
         # Convert reference points to numpy array
@@ -182,18 +190,13 @@ class LSTrajectory:
     def _compute_trajectory(
         self, mass=None, target_length=None, duration=None, detrend_velocity=None,
     ):
-        """
-        Integrate force time series to velocity and then displacement. Either
-        provide a mass or a target horizontal runout length. If a length is
-        provided, the code will find the mass that achieves this length. Calls
-        _trajectory_automass().
+        """Integrate force time series to velocity and then to displacement.
 
-        Args:
-            mass: Landslide mass [kg]
-            target_length: Horizontal runout length from groundtruth [m]
-            duration: Clip time series to go from 0-duration [s]
-            detrend_velocity: If provided, force velocity to linearly go to
-                              zero at this time [s]. If None, don't detrend
+        Either provide a mass or a target horizontal runout length. If a length is
+        provided, the code will find the mass that achieves this length. Calls
+        :meth:`~lsforce.lstrajectory.LSTrajectory._trajectory_automass()`. See
+        :meth:`~lsforce.lstrajectory.LSTrajectory.__init__()` for description of
+        arguments.
         """
 
         # For the full inversion (all channels) result
@@ -245,6 +248,7 @@ class LSTrajectory:
     def _integrate_acceleration(
         self, z_force, e_force, n_force, mass, startidx, endidx, detrend=None
     ):
+        """Integrate forces (acceleration) to velocity and displacement."""
 
         traj_tvec = self.force.tvec[startidx : endidx + 1]
 
@@ -293,8 +297,7 @@ class LSTrajectory:
         duration=None,
         detrend=None,
     ):
-        """
-        Calls _integrate_acceleration().
+        """Calls :meth:`~lsforce.lstrajectory.LSTrajectory._integrate_acceleration()`.
         """
 
         # Check args
@@ -352,16 +355,19 @@ class LSTrajectory:
         )
 
     def _slice_dem(self, dem_file, interp_spacing=0.1):
-        """
-        Slice through an input DEM along the compute_trajectory path.
+        """Slice through an input DEM along the trajectory path.
 
         Args:
-            dem_file: DEM GeoTIFF to slice (must be UTM-projected!)
-            interp_spacing: [m] Density of interpolation points
+            dem_file (str): DEM GeoTIFF to slice (must be UTM-projected!)
+            interp_spacing (int or float): [m] Density of interpolation points
 
         Returns:
-            horizontal_distance: Distance along path
-            elevation: Elevation along horizontal_distance
+            tuple: Tuple containing:
+
+            - **horizontal_distance** (:class:`~numpy.ndarray`) – [m] Distance along
+              path
+            - **elevation** (:class:`~numpy.ndarray`) – [m] Elevation along
+              `horizontal_distance`
         """
 
         dem = xr.open_rasterio(dem_file).squeeze()
@@ -415,24 +421,26 @@ class LSTrajectory:
 
         warnings.warn('Assuming DEM vertical unit is meters!')
 
-        profile.data -= profile.data[0]  # Start at 0 and go negative
+        elevation = profile.data - profile.data[0]  # Start at 0 and go negative
 
-        return horizontal_distance, profile.data
+        return horizontal_distance, elevation
 
 
 def _calculate_horizontal_distance(east_displacement, north_displacement):
-    """
-    Calculate horizontal distance vector (horizontal_distance) from east and north
-    displacement vectors. This is the horizontal distance "along the avalanche path" as
-    a function of time. horizontal_distance[-1] is L, the horizontal runout distance
-    (which is shorter than the 3-D runout distance).
+    """Calculate horizontal distance vector from east and north displacement vectors.
+
+    This is the horizontal distance "along the avalanche path" as a function of time.
+    `horizontal_distance[-1]` is :math:`L`, the horizontal runout distance (which is
+    shorter than the 3-D runout distance).
 
     Args:
-        east_displacement: Eastward displacement vector as a function of time [m]
-        north_displacement: Northward displacement vector as a function of time [m]
+        east_displacement (:class:`~numpy.ndarray`): Eastward displacement vector as a
+            function of time [m]
+        north_displacement (:class:`~numpy.ndarray`): Northward displacement vector as a
+            function of time [m]
 
     Returns:
-        Horizontal distance as a function of time [m]
+        :class:`~numpy.ndarray`: Horizontal distance as a function of time [m]
     """
 
     dx = np.diff(east_displacement)
