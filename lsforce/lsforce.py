@@ -19,6 +19,9 @@ from obspy.core import AttribDict
 class LSForce:
     """Class for performing force inversions.
 
+    TODO:
+        Add rest of attributes and determine which ones can be edited/removed!
+
     Attributes:
         st:
         domain:
@@ -31,14 +34,12 @@ class LSForce:
         inversion_complete:
         main_folder:
         method:
-        model_file:P
+        model_file:
         T0:
         L:
         sacdir:
         sacodir:
-        nickname:
         moddir:
-        TODO add rest of attributes and determine which ones can be edited/removed!
     """
 
     def __init__(
@@ -52,6 +53,9 @@ class LSForce:
     ):
         """Create an LSForce object.
 
+        TODO:
+            Implement sinusoid method!
+
         Args:
             data (:class:`~lsforce.lsdata.LSData`): LSData object, corrected for station
                 response but not filtered
@@ -61,14 +65,12 @@ class LSForce:
             domain (str): Domain in which to do inversion, one of `'time'` or `'freq'`
             nickname (str): Nickname for this event, used for convenient naming of files
             main_folder (str): If `None`, will use current folder
-            method (str): One of:
-                'tik' = Full waveform inversion using Tikhonov regularization (L2 norm
-                        minimization)
-                'triangle' = Inversion parameterized using overlapping triangles;
-                             variation on method of Ekström & Stark (2013)
-                'basis' = Parameterized using many Hanning basis functions
-                'sinusoid' = Parameterized using a single sinusoid; variation on method
-                             of _______ TODO implement this method!
+            method (str): One of `'tik'` — full waveform inversion using Tikhonov
+                regularization (L2 norm minimization); `'triangle'` — inversion
+                parameterized using overlapping triangles, variation on method of
+                Ekström & Stark (2013); `'basis'` — parameterized using many Hanning
+                basis functions; `'sinusoid'` — parameterized using a single sinusoid,
+                variation on method of ????
         """
 
         self.st = data.st_proc.copy()
@@ -237,7 +239,8 @@ class LSForce:
         If Green's functions (GFs) were already computed for this exact data selection,
         this simply loads them for setup.
 
-        TODO add error catching in case the stations in st don't line up with computed
+        TODO:
+            Add error catching in case the stations in st don't line up with computed
             GFs in folder!
 
         Args:
