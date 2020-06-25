@@ -1917,7 +1917,11 @@ def _varred(dt, dtnew):
 
     The formula is
 
-    .. math:: \mathrm{VR} = \left(1 - \frac{\|\mathbf{d} - \mathbf{d}_\mathbf{obs}\|^2}{\|\mathbf{d}_\mathbf{obs}\|^2}\right) \times 100\%\,,
+    .. math::
+
+        \mathrm{VR} = \left(1 - \frac{\|\mathbf{d}
+        - \mathbf{d}_\mathbf{obs}\|^2}{\|\mathbf{d}_\mathbf{obs}\|^2}\right)
+        \times 100\%\,,
 
     where :math:`\mathbf{d}_\mathbf{obs}` are the observed data, `dt`, and
     :math:`\mathbf{d}` are the synthetic data predicted by the forward model, `dtnew`.
