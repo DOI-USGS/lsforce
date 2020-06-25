@@ -155,7 +155,7 @@ class LSForce:
             '%s_%s'
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
-        tmp_gf_dir = os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)
+        tmp_sac_dir = os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)
         self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata_%s' % self.method)
 
         # Make all the directories
@@ -163,8 +163,8 @@ class LSForce:
             os.mkdir(self.main_folder)
         if not os.path.exists(self.gf_run_dir):
             os.mkdir(self.gf_run_dir)
-        if not os.path.exists(tmp_gf_dir):
-            os.mkdir(tmp_gf_dir)
+        if not os.path.exists(tmp_sac_dir):
+            os.mkdir(tmp_sac_dir)
         if not os.path.exists(self.gf_sac_dir):
             os.mkdir(self.gf_sac_dir)
 
@@ -212,7 +212,7 @@ class LSForce:
         shellscript = os.path.join(self.gf_run_dir, 'CPScommands.sh')
         with open(shellscript, 'w') as f:
             f.write('#!/bin/bash\n')
-            f.write('rm %s\n' % os.path.join(tmp_gf_dir, '*.sac'))
+            f.write('rm %s\n' % os.path.join(tmp_sac_dir, '*.sac'))
             f.write('rm %s\n' % os.path.join(self.gf_sac_dir, '*.sac'))
             f.write(
                 'hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n'
@@ -228,7 +228,7 @@ class LSForce:
                 f.write('hpulse96 -d %s -V -OD -p > Green\n' % 'dist')
             f.write('f96tosac Green\n')
             f.write('cp *.sac %s\n' % os.path.join(self.gf_sac_dir, '.'))
-            f.write('mv *.sac %s\n' % os.path.join(tmp_gf_dir, '.'))
+            f.write('mv *.sac %s\n' % os.path.join(tmp_sac_dir, '.'))
 
         os.chmod(shellscript, stat.S_IRWXU)
 
@@ -294,10 +294,8 @@ class LSForce:
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
         if os.path.exists(os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)):
-            tmp_gf_dir = os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)
             self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata_%s' % self.method)
         else:
-            tmp_gf_dir = os.path.join(self.gf_run_dir, 'sacorig')
             self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata')
 
         # read T0 file
