@@ -20,8 +20,8 @@ class LSForce:
     r"""Class for performing force inversions.
 
     TODO:
-        Add rest of attributes, determine which ones can be edited/removed, and make
-        sure all are defined in __init__()!
+        Make sure all attributes are defined in :meth:`__init__()` and complete this
+        docstring!
 
     Attributes:
         data (:class:`~lsforce.lsdata.LSData`): The LSData object associated with this
@@ -67,8 +67,6 @@ class LSForce:
             `'frequency'`)
         alpha: Regularization parameter that was used
         alphafit:
-        fit1:
-        size1:
     """
 
     def __init__(
