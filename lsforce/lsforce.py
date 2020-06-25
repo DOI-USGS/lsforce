@@ -72,7 +72,7 @@ class LSForce:
             be wrong or something else may be wrong with setup
         dtorig: Original data vector (time domain)
         dtnew: Modeled data vector (Gm-d) (converted to time domain if domain is
-            `'freq'`)
+            `'frequency'`)
         alpha: Regularization parameter that was used
         alphafit:
         fit1:
@@ -99,7 +99,8 @@ class LSForce:
             sampling_rate (int or float): [Hz] Samples per second to use in inversion.
                 All data will be resampled to this rate, and Green's functions will be
                 created with this rate
-            domain (str): Domain in which to do inversion, one of `'time'` or `'freq'`
+            domain (str): Domain in which to do inversion, one of `'time'` or
+                `'frequency'`
             nickname (str): Nickname for this event, used for convenient naming of files
             main_folder (str): If `None`, will use current folder
             method (str): One of `'tik'` — full waveform inversion using Tikhonov
@@ -129,7 +130,7 @@ class LSForce:
             raise ValueError(f'Method {method} not yet implemented.')
 
         self.method = method
-        if self.method == 'triangle' and self.domain == 'freq':
+        if self.method == 'triangle' and self.domain == 'frequency':
             raise ValueError('The triangle method must be done in the time domain.')
 
     def compute_greens(self, model_file, gf_duration, T0, L=5.0):
@@ -416,13 +417,15 @@ class LSForce:
         if self.domain == 'time':
             # ADD WAY TO ACCOUNT FOR WHEN GREENLENGTH IS LONGER THAN DATALENGTH - ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
             self.lenUall = self.datalength * len(st)
-        elif self.domain == 'freq':
+        elif self.domain == 'frequency':
             self.NFFT = next_pow_2(
                 self.datalength
             )  # +greenlength) #needs to be the length of the two added together because convolution length M+N-1
             self.lenUall = self.NFFT * len(st)
         else:
-            raise ValueError('domain not recognized. Must be \'time\' or \'freq\'.')
+            raise ValueError(
+                'domain not recognized. Must be \'time\' or \'frequency\'.'
+            )
 
         if self.method == 'tik':
 
@@ -984,7 +987,7 @@ class LSForce:
         )  # Combo of all regularization things (if any are zero they won't matter)
         x = np.squeeze(Ghat.conj().T @ dhat)
 
-        if self.domain == 'freq':
+        if self.domain == 'frequency':
             model, residuals, rank, s = sp.linalg.lstsq(A, x)
             self.model = model.copy()
             div = len(model) / 3
@@ -1084,7 +1087,7 @@ class LSForce:
                 )  # Combo of all regularization things (if any are zero they won't matter)
                 xj = np.squeeze(Ghat1.conj().T @ dhat1)
 
-                if self.domain == 'freq':
+                if self.domain == 'frequency':
                     model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
                     div = len(model) / 3
                     Zf = -np.real(
