@@ -20,7 +20,8 @@ class LSForce:
     """Class for performing force inversions.
 
     TODO:
-        Add rest of attributes and determine which ones can be edited/removed!
+        Add rest of attributes, determine which ones can be edited/removed, and make
+        sure all are defined in __init__()!
 
     Attributes:
         st:
@@ -40,6 +41,20 @@ class LSForce:
         sacdir:
         sacodir:
         moddir:
+        model: Model vector of concatenated components (n x 1) of solution
+        Z: [N] Vertical force time series extracted from model (positive up)
+        N: [N]North force time series extracted from model (positive north)
+        E: [N] East force time series extracted from model (positive east)
+        tvec: [s] Time vector, referenced using `zero_time` (if specified) and corrected
+            for `T0` time shift
+        VR: [%] Variance reduction. Rule of thumb: This should be ~50–80%, if ~100%,
+            solution is fitting data exactly and results are suspect. If ~5%, model may
+            be wrong or something else may be wrong with setup
+        dtorig: Original data vector (time domain)
+        dtnew: Modeled data vector (Gm-d) (converted to time domain if domain='freq')
+        alpha: Regularization parameter that was used
+        fit1:
+        size1:
     """
 
     def __init__(
@@ -714,37 +729,24 @@ class LSForce:
         """Performs single-force inversion using Tikhonov regularization.
 
         Args:
-            zero_time (float): Optional estimated start time of real part of signal, in seconds from
-                start time of seismic data. Useful for making figures showing selected start time
-                and also for impose_zero option
-            impose_zero (bool): Will add weighting matrix to suggest forces tend towards zero prior
-                to zero_time (zero_time must be defined)
-            add_to_zero (bool): Add weighting matrix to suggest that all components of force integrate
-                to zero.
-            maxduration (float): Maximum duration allowed for the event, starting at zero_time if defined,
-                otherwise starting from beginning of seismic data. Points after this will tend towards
-                zero. This helps tamp down artifacts due to edge effects.
-            jackknife
-            num_iter
-            frac_delete
-            kwargs
-
-        Returns: Populates object with the following attributes
-            model (array): model vector of concatated components (n x 1) of solution using
-                regularization parameter alpha
-            Z (array): vertical force time series extracted from model
-            N (array): same as above for north force
-            E (array): same as above for east force
-            tvec (array): Time vector, referenced using zero_time (if specified) and corrected for T0
-                time shift
-            VR (float): Variance reduction (%), rule of thumb, this should be ~50%-80%, if 100%,
-                solution is fitting data exactly and results are suspect. If ~5%, model may be wrong or
-                something else may be wrong with setup.
-            dtorig (array): original data vector (time domain)
-            dtnew (array): modeled data vector (Gm-d) (converted to time domain if domain='freq')
-            alpha (float): regularization parameter that was used
-            fit1 (array):
-            size1 (array):
+            zero_time (int or float): [s] Optional estimated start time of real
+                (avalanche-related) part of signal, in seconds from start time of
+                seismic data. Useful for making figures showing selected start time and
+                also for the `impose_zero` option
+            impose_zero (bool): Adds weighting matrix to suggest that forces tend
+                towards zero prior to `zero_time` (`zero_time` must be defined)
+            add_to_zero (bool): Adds weighting matrix to suggest that all components of
+                force integrate to zero
+            maxduration (int or float): Maximum duration allowed for the event, starting
+                at `zero_time` if defined, otherwise starting from the beginning of the
+                seismic data. Forces after this will tend towards zero. This helps tamp
+                down artifacts due to edge effects, etc.
+            jackknife (bool): If `True`, perform `num_iter` additional iterations of the
+                model while randomly discarding `frac_delete` of the data
+            num_iter (int): Number of jackknife iterations to perform
+            frac_delete (int or float): Fraction (out of 1) of data to discard for each
+                iteration
+            kwargs: Additional keyword arguments to be passed on to the inversion method
         """
 
         # Check inputs for consistency
@@ -794,18 +796,20 @@ class LSForce:
         zero_taper_length=20.0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
-        """
-        Full waveform inversion using Tikhonov regularization
+        """Performs full-waveform inversion using Tikhonov regularization.
 
         Args:
-            alphaset (float): Set regularization parameter, if None, will search for best alpha using L-curve method
-            zero_scaler (float): Factor by which to divide Gnorm to get scaling factor used for zero constraint.
-                The lower the number, teh stronger the constraint, but the higher the risk of high freq.
-                oscillations due to a sudden release of the constraint
-            zero_taper_length (float): length of taper for zero_scaler, in seconds.
-                shorter tapers can result in sharp artifacts, longer is better
-            tikhonov_ratios (array): Proportion each regularization method contributes, where values correspond
-                to [zeroth, first order, second order]. Must add to 1.
+            alphaset (int or float): Set regularization parameter. If `None`, will
+                search for best alpha using the L-curve method
+            zero_scaler (int or float): Factor by which to divide Gnorm to get scaling
+                factor used for zero constraint. The lower the number, the stronger the
+                constraint, but the higher the risk of high frequency oscillations due
+                to a sudden release of the constraint
+            zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
+                Shorter tapers can result in sharp artifacts, so longer is better
+            tikhonov_ratios (list or tuple): Proportion each regularization method
+                contributes to the overall regularization effect, where values
+                correspond to [0th order, 1st order, 2nd order]. Must sum to 1
         """
 
         if np.sum(tikhonov_ratios) != 1.0:
@@ -1110,11 +1114,12 @@ class LSForce:
         """Create a plot showing the model-produced waveform fit to the data.
 
         Args:
-            equal_scale: If `True`, all plots will share the same y-axis scale
-            xlim: Tuple of x-axis limits (time relative to zero time, in seconds)
+            equal_scale (bool): If `True`, all plots will share the same y-axis scale
+            xlim (list or tuple): [s] Array (length two) of x-axis limits (time relative
+                to zero time)
 
         Returns:
-            The figure handle
+            :class:`~matplotlib.figure.Figure`: Output figure handle
         """
 
         data_color = 'black'
@@ -1194,38 +1199,36 @@ class LSForce:
         ylim=None,
         sameY=True,
         highf_tr=None,
-        hfylabel=None,
         hfshift=0.0,
-        tvecshift=0.0,
-        jackshowall=False,
+        hfylabel=None,
         infra_tr=None,
         infra_shift=0,
+        tvecshift=0.0,
+        jackshowall=False,
     ):
-        """
-        Plot inversion result
+        """Plot inversion result.
 
         Args:
-            subplots (bool): True, make subplots, False, plot all one one plot
-            xlim:
-            ylim:
-            sameY:
-            hfshift:
-            infra_shift:
-            [ZEN]upper = upper limit of uncertainties (None if none)
-            [ZEN]lower = ditto for lower limit
-            highf_tr: obspy trace with a start time identical to the start time of the data used in the
-                inversion (otherwise won't line up right)
-            infra_tr:
-            hfylabel (str): Label used for high frequency trace, if not
-                defined, will use station name
-            tvecshift (float): shift time vector manually by this many seconds,
-                not usually need, only for display purposes
-            jackshowall (bool): if True and jackknife was run, will show all
-                individual runs (will change subplots to True)
+            subplots (bool): If `True`, make subplots for components, otherwise plot all
+                on one plot
+            xlim (list or tuple): x-axis limits
+            ylim (list or tuple): y-axis limits
+            sameY (bool): If `True`, use same y-axis limits for all plots
+            highf_tr (:class:`~obspy.core.trace.Trace`): Seismic trace with start time
+                identical to start time of the data used in the inversion
+            hfshift (int or float): [s] Time shift for seismic trace
+            hfylabel (str): Label used for seismic trace. If not defined, will use
+                station name
+            infra_tr (:class:`~obspy.core.trace.Trace`): Infrasound trace with start
+                time identical to start time of the data used in the inversion
+            infra_shift (int or float): [s] Time shift for infrasound trace
+            tvecshift (int or float): [s] Shift time vector manually by this many
+                seconds, not usually needed, only for display purposes (REMOVE?)
+            jackshowall (bool): If `True` and jackknife was run, will show all
+                individual runs (changes `subplots` to `True`)
 
-        Returns
-            figure handle
-
+        Returns:
+            :class:`~matplotlib.figure.Figure`: Output figure handle
         """
 
         tvec = self.tvec - tvecshift
@@ -1474,21 +1477,16 @@ class LSForce:
         return fig
 
     def plot_angle_magnitude(self, xlim=None, ylim=None, tvecshift=0.0):
-        """
-        plot angles and magnitudes of inversion result and append results
-        to object for further use
+        """Plot angles and magnitudes of inversion result.
 
-        USAGE plot_forces(Z,N,E,tvec,T0,zerotime=0.,subplots=False,Zupper=None,Zlower=None,Eupper=None,Elower=None,Nupper=None,Nlower=None):
-        INPUTS
-        [ZEN]force
-        tvec =
-        T0 = T0 (time delay) used in Green's functions (usually negative)
-        zerotime = designated time for event start
-        vline = plot vertical line at t=vline
-        [ZEN]upper = upper limit of uncertainties (None if none)
-        [ZEN]lower = ditto for lower limit
-        OUPUTS
-        fig - figure handle
+        Args:
+            xlim (list or tuple): x-axis limits
+            ylim (list or tuple): y-axis limits
+            tvecshift (int or float): [s] Shift time vector manually by this many
+                seconds, not usually needed, only for display purposes (REMOVE?)
+
+        Returns:
+            :class:`~matplotlib.figure.Figure`: Output figure handle
         """
 
         tvec = self.tvec - tvecshift
@@ -1650,18 +1648,19 @@ class LSForce:
         light=True,
         filetype='png',
     ):
-        """
-        Args:
-            filepath (str): full filepath where all files should be saved
-                if None, will use self.main_folder
-            timestamp (bool): will stamp results with current time so as not
-                to overwrite previous results
-            figs2save (list): list of figure handles to save
-            figs2save_names (list): list of names of figures (appends to end)
-            light (bool): to reduce size, does not save seismic data with object
-            filetype:
+        """Save a force inversion run for later use.
 
+        Args:
+            filepath (str): Full path to directory where all files should be saved. If
+                `None`, will use `self.main_folder`
+            timestamp (bool): Name results with current time to avoid overwriting
+                previous results
+            figs2save (list or tuple): Figure handles to save
+            figs2save_names (list or tuple): Names of figures (appends to end)
+            light (bool): If `True`, does not save seismic data with object to save size
+            filetype (str): Filetype given as extension, e.g. `'png'`
         """
+
         if filepath is None:
             filepath = self.main_folder
 
@@ -1716,24 +1715,38 @@ def _find_alpha(
     tikhonov_ratios=(1.0, 0.0, 0.0),
     rough=False,
 ):
-    """
-    Find best regularization (trade-off) parameter, alpha, by computing model with many values of
-    alpha, plotting L-curve, and finding point of steepest curvature where slope is negative.
+    """Finds best regularization (trade-off) parameter alpha.
+
+    Computes model with many values of alpha, plots L-curve, and finds point of steepest
+    curvature where slope is negative.
+
+    TODO:
+        Finish this docstring!
 
     Args:
-        Ghat (array): m x n matrix of
-        dhat (array): 1 x n array of weighted data
+        Ghat (array): (m x n) matrix
+        dhat (array): (1 x n) array of weighted data
         I (array): Identity matrix
-        L1 (array): First order roughening matrix, if 0., will use only zeroth order Tikhonov reg.
-        L2 (array): Second order roughening matrix, if 0., will use only zeroth order Tikhonov reg.
-        invmethod (str): if 'lsq' will use least squares (regular tikhonov), 'nnls' will use non-negative
-            least squares
-        tikhonov_ratios (list): Proportion each regularization method contributes, where values correspond
-            to [zeroth, first order, second order]. Must add to 1.
-        rough (bool): If False (default), will do two iterations to fine tune the alpha parameter,
-            if True, time will be saved because it will only do one round of searching
-    Returns:
+        L1 (array): First order roughening matrix. If `0.`, will use only zeroth order
+            Tikhonov regularization
+        L2 (array): Second order roughening matrix. If `0.`, will use only zeroth order
+            Tikhonov regularization
+        invmethod (str): `'lsq'` — use least squares (regular Tikhonov); `'nnls'` — use
+            non-negative least squares
+        tikhonov_ratios (list or tuple): Proportion each regularization method
+            contributes to the overall regularization effect, where values correspond to
+            [0th order, 1st order, 2nd order]. Must sum to 1
+        rough (bool): If `False`, will do two iterations to fine tune the alpha
+            parameter. If `True`, time will be saved because it will only do one round
+            of searching
 
+    Returns:
+        tuple: Tuple containing:
+
+        - **bestalpha** – TODO
+        - **fit1** – TODO
+        - **size1** – TODO
+        - **alphas** – TODO
     """
 
     templ1 = np.ceil(
@@ -1830,12 +1843,20 @@ def _find_alpha(
         if len(bestalpha) > 1:
             raise ValueError('Returned more than one alpha value, check codes.')
         bestalpha = bestalpha[0]
+
     return bestalpha, fit1, size1, alphas
 
 
 def _Lcurve(fit1, size1, alphas):
-    """
-    Plot L-curve
+    """Plot an L-curve.
+
+    TODO:
+        Finish this docstring!
+
+    Args:
+        fit1: TODO
+        size1: TODO
+        alphas: TODO
     """
 
     fig, ax = plt.subplots(figsize=(7, 6))
@@ -1850,8 +1871,21 @@ def _Lcurve(fit1, size1, alphas):
 
 
 def _varred(dt, dtnew):
-    """
-    compute variance reduction in time domain (%)
+    r"""Compute variance reduction, :math:`\mathrm{VR}`, in the time domain.
+
+    The formula is
+
+    .. math:: \mathrm{VR} = \left(1 - \frac{\|\mathbf{d} - \mathbf{d}_\mathbf{obs}\|^2}{\|\mathbf{d}_\mathbf{obs}\|^2}\right) \times 100\%\,,
+
+    where :math:`\mathbf{d}_\mathbf{obs}` are the observed data, `dt`, and
+    :math:`\mathbf{d}` are the synthetic data predicted by the forward model, `dtnew`.
+
+    Args:
+        dt: Array of original data
+        dtnew: Array of modeled data
+
+    Returns:
+        float: Variance reduction :math:`\mathrm{VR}`
     """
 
     shp = np.shape(dt)
@@ -1861,12 +1895,27 @@ def _varred(dt, dtnew):
     d_dnew2 = (dt_temp - dtnew_temp) ** 2
     d2 = dt_temp ** 2
     VR = (1 - (np.sum(d_dnew2) / np.sum(d2))) * 100
+
     return VR
 
 
 def _back2time(d, df_new, numsta, datlenorig):
-    """
-    convert data back to the time domain and cut off zero padding
+    """Convert data back to the time domain and cut off zero padding.
+
+    TODO:
+        Finish this docstring!
+
+    Args:
+        d: TODO
+        df_new: TODO
+        numsta: TODO
+        datlenorig: TODO
+
+    Returns:
+        tuple: Tuple containing:
+
+        - **dt** – TODO
+        - **dtnew** – TODO
     """
 
     datlength = int(len(d) / numsta)
@@ -1876,14 +1925,25 @@ def _back2time(d, df_new, numsta, datlenorig):
     dt = dt[0:, 0:datlenorig]
     dtnew = np.real(np.fft.ifft(dfnrsp, axis=1))
     dtnew = dtnew[0:, 0:datlenorig]
+
     return dt, dtnew
 
 
 def _makeconvmat(c, size=None):
-    """
-    Build matrix that can be used for convolution as implemented by matrix multiplication
-    size is optional input for desired size as (rows,cols), this will just shift cflip until it
-    reaches the right size
+    """Build matrix that used for convolution as implemented by matrix multiplication.
+
+    `size` is optional input for desired size as ``(nrows, ncols)``; this will just
+    shift ``cflip`` until it reaches the right size.
+
+    TODO:
+        Finish this docstring!
+
+    Args:
+        c: TODO
+        size (int): TODO
+
+    Returns:
+        :class:`~numpy.ndarray`: Convolution matrix
     """
 
     cflip = c[::-1]  # flip order
@@ -1908,23 +1968,25 @@ def _makeconvmat(c, size=None):
                 p = np.concatenate(((cflip[-(i + 1) :]), np.zeros(size[1])))
             p = p[: size[1]]  # cut p to the right size
             C[i, :] = p.copy()
+
     return C
 
 
 def _makeshiftmat(c, shiftby, size1):
-    """
-    Build matrix that can be used for shifting of overlapping triangles for
-    triangle method, signal goes across rows and each shift is a new column
-    (opposite orientation to _makeconvmat)
+    r"""Build matrix that can be used for shifting of overlapping triangles.
+
+    Used for triangle method. Signal goes across rows and each shift is a new column
+    (opposite orientation to :func:`_makeconvmat()`)
 
     Args:
-        c (array): vector of data (usually greens function)
-        shiftby (int): number of samples to shift greens function in each row
-        size1 (tup): (nrows, ncols) of desired result. Will pad c if nrows is
-            greater than len(c). Will shift c forward by shiftby ncols times
+        c: Array of data (usually Green's function)
+        shiftby (int): Number of samples to shift Green's function in each row
+        size1 (list or tuple): Shape ``(nrows, ncols)`` of desired result. Will pad `c`
+            if ``nrows`` is greater than ``len(c)``. Will shift `c` forward `shiftby`
+            :math:`\times` ``ncols`` times
 
     Returns:
-        Matrix of shifted c of size size1
+        :class:`~numpy.ndarray`: Matrix of shifted `c` of size `size1`
     """
 
     diff = len(c) - size1[0]
@@ -1945,15 +2007,14 @@ def _makeshiftmat(c, shiftby, size1):
 
 
 def _curvature(x, y):
-    """
-    Estimate the radius of curvature for each point on line to find corner of L-curve
+    """Estimate radius of curvature for each point on line to find corner of L-curve.
 
     Args:
-        x (array): x points
-        y (array): y points
+        x: Array of x data
+        y: Array of y data
 
     Returns:
-        radius of curvature for each point (ends will be nan)
+        :class:`~numpy.ndarray`: Radius of curvature for each point (ends will be NaN)
     """
 
     # FOR EACH SET OF THREE POINTS, FIND RADIUS OF CIRCLE THAT FITS THEM - IGNORE ENDS
