@@ -24,7 +24,8 @@ class LSForce:
         sure all are defined in __init__()!
 
     Attributes:
-        st:
+        data (:class:`~lsforce.lsdata.LSData`): The LSData object associated with this
+            inversion
         domain:
         sampling_rate:
         nickname:
@@ -110,7 +111,7 @@ class LSForce:
                 variation on method of ????
         """
 
-        self.st = data.st_proc.copy()
+        self.data = data
         self.domain = domain
         self.sampling_rate = sampling_rate
         self.nickname = nickname
@@ -183,8 +184,10 @@ class LSForce:
                 f.write('%3.2f' % L)
 
         # Make sure there is only one occurrence of each station in list (ignore channels)
-        stacods = np.unique([tr.stats.station for tr in self.st])
-        dists = [self.st.select(station=sta)[0].stats.distance for sta in stacods]
+        stacods = np.unique([tr.stats.station for tr in self.data.st_proc])
+        dists = [
+            self.data.st_proc.select(station=sta)[0].stats.distance for sta in stacods
+        ]
 
         # write stadistlist.txt
         f = open(os.path.join(self.moddir, 'stadistlist.txt'), 'w')
@@ -376,7 +379,7 @@ class LSForce:
             )
 
         # Always work on copy of data
-        st = self.st.copy()
+        st = self.data.st_proc.copy()
 
         # filter data to band specified
         st.filter(
@@ -432,7 +435,7 @@ class LSForce:
             # initialize weighting matrices
             Wvec = np.ones(self.lenUall)
             indx = 0
-            weight = np.ones(self.st.count())
+            weight = np.ones(self.data.st_proc.count())
 
             n = self.datalength
 
@@ -589,7 +592,7 @@ class LSForce:
             # initialize weighting matrices
             Wvec = np.ones(self.lenUall)
             indx = 0
-            weight = np.ones(self.st.count())
+            weight = np.ones(self.data.st_proc.count())
 
             n = self.datalength
             fshiftby = int(
@@ -998,7 +1001,7 @@ class LSForce:
             # run forward model
             df_new = self.G @ model.T
             # convert d and df_new back to time domain
-            dt, dtnew = _back2time(self.d, df_new, self.st.count(), dl)
+            dt, dtnew = _back2time(self.d, df_new, self.data.st_proc.count(), dl)
             self.dtorig = dt
             self.dtnew = dtnew
 
@@ -1013,8 +1016,8 @@ class LSForce:
             self.E = model[2 * div :] / 10 ** 5
 
             dtnew = self.G.dot(model)
-            self.dtnew = np.reshape(dtnew, (self.st.count(), dl))
-            self.dtorig = np.reshape(self.d, (self.st.count(), dl))
+            self.dtnew = np.reshape(dtnew, (self.data.st_proc.count(), dl))
+            self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
 
         # compute variance reduction
         self.VR = _varred(self.dtorig, self.dtnew)
@@ -1044,9 +1047,11 @@ class LSForce:
         if self.jackknife is not None:
             # Start jackknife iterations
             for ii in range(self.jackknife.num_iter):
-                numcut = int(round(self.jackknife.frac_delete * self.st.count()))
-                numkeep = self.st.count() - numcut
-                indxcut = rnd.sample(list(range(self.st.count())), numcut)
+                numcut = int(
+                    round(self.jackknife.frac_delete * self.data.st_proc.count())
+                )
+                numkeep = self.data.st_proc.count() - numcut
+                indxcut = rnd.sample(list(range(self.data.st_proc.count())), numcut)
                 stasets.append(indxcut)
 
                 obj = [
@@ -1162,7 +1167,7 @@ class LSForce:
         yticks = []
         yticklabels = []
 
-        for i, tr in enumerate(self.st):
+        for i, tr in enumerate(self.data.st_proc):
             if not equal_scale:
                 scaler = np.abs(self.dtorig[i].max())  # Scale to original data
             else:
@@ -1491,7 +1496,7 @@ class LSForce:
             if self.max_duration is not None:
                 ax.axvline(self.max_duration, color='gray', linestyle='solid', lw=3)
 
-        t0 = self.st[0].stats.starttime
+        t0 = self.data.st_proc[0].stats.starttime
         if self.zero_time:
             t0 += self.zero_time
         plt.xlabel('Time (s) from {}'.format(t0.strftime('%Y-%m-%d %H:%M:%S')))
