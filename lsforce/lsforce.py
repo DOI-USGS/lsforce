@@ -146,11 +146,10 @@ class LSForce:
 
         self.gf_run_dir = os.path.join(
             self.main_folder,
-            '%s_%s'
-            % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
+            f'{self.nickname}_{os.path.splitext(os.path.basename(model_file))[0]}',
         )
-        tmp_sac_dir = os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)
-        self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata_%s' % self.method)
+        tmp_sac_dir = os.path.join(self.gf_run_dir, f'sacorig_{self.method}')
+        self.gf_sac_dir = os.path.join(self.gf_run_dir, f'sacdata_{self.method}')
 
         # Make all the directories
         if not os.path.exists(self.main_folder):
@@ -164,14 +163,14 @@ class LSForce:
 
         # write T0 file
         with open(os.path.join(self.gf_run_dir, 'T0.txt'), 'w') as f:
-            f.write('%3.2f' % T0)
+            f.write(f'{T0:3.2f}')
 
         # write triangle_half_width file, if applicable
         if self.method == 'triangle':
             with open(
                 os.path.join(self.gf_run_dir, 'triangle_half_width.txt'), 'w'
             ) as f:
-                f.write('%3.2f' % triangle_half_width)
+                f.write(f'{triangle_half_width:3.2f}')
 
         # Make sure there is only one occurrence of each station in list (ignore
         # channels)
@@ -183,7 +182,7 @@ class LSForce:
         # write stadistlist.txt
         f = open(os.path.join(self.gf_run_dir, 'stadistlist.txt'), 'w')
         for sta, dis in zip(stacods, dists):
-            f.write('%s\t%5.1f\n' % (sta, dis))
+            f.write(f'{sta}\t{dis:5.1f}\n')
         f.close()
 
         # write dist file in free format
@@ -191,10 +190,7 @@ class LSForce:
         samples = next_pow_2(gf_duration * self.data_sampling_rate)
         f = open(os.path.join(self.gf_run_dir, 'dist'), 'w')
         for dis in dists:
-            f.write(
-                '%0.1f %0.2f %i %i 0\n'
-                % (dis, 1.0 / self.data_sampling_rate, samples, self.T0)
-            )
+            f.write(f'{dis:0.1f} {self.data_sampling_rate:0.2f} {samples:d} {T0:d} 0\n')
         f.close()
         self.gf_length = samples
 
@@ -207,23 +203,21 @@ class LSForce:
         shellscript = os.path.join(self.gf_run_dir, 'CPScommands.sh')
         with open(shellscript, 'w') as f:
             f.write('#!/bin/bash\n')
-            f.write('rm %s\n' % os.path.join(tmp_sac_dir, '*.sac'))
-            f.write('rm %s\n' % os.path.join(self.gf_sac_dir, '*.sac'))
-            f.write(
-                'hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n'
-                % (self.model_file, 'dist')
-            )
+            f.write(f'rm {os.path.join(tmp_sac_dir, "*.sac")}\n')
+            f.write(f'rm {os.path.join(self.gf_sac_dir, "*.sac")}\n')
+            f.write(f'hprep96 -HR 0. -HS 0. -M {self.model_file} -d dist -R -EXF\n')
             f.write('hspec96 > hspec96.out\n')
             if self.method == 'triangle':
                 f.write(
-                    'hpulse96 -d %s -V -D -t -l %d > Green\n'
-                    % ('dist', int(self.triangle_half_width / self.data_sampling_rate))
+                    'hpulse96 -d dist -V -D -t -l {} > Green\n'.format(
+                        int(self.triangle_half_width / self.data_sampling_rate)
+                    )
                 )
             else:
-                f.write('hpulse96 -d %s -V -OD -p > Green\n' % 'dist')
+                f.write('hpulse96 -d dist -V -OD -p > Green\n')
             f.write('f96tosac Green\n')
-            f.write('cp *.sac %s\n' % os.path.join(self.gf_sac_dir, '.'))
-            f.write('mv *.sac %s\n' % os.path.join(tmp_sac_dir, '.'))
+            f.write(f'cp *.sac {os.path.join(self.gf_sac_dir, ".")}\n')
+            f.write(f'mv *.sac {os.path.join(tmp_sac_dir, ".")}\n')
 
         os.chmod(shellscript, stat.S_IRWXU)
 
@@ -251,11 +245,8 @@ class LSForce:
             indx = int(file1[1:4]) - 1
             GFt = file1[6:9]
             # rename
-            newname = 'GF_%s_%s_%1.0fkm_%s.sac' % (
-                self.nickname,
-                stacods[indx],
-                dists[indx],
-                GFt,
+            newname = (
+                f'GF_{self.nickname}_{stacods[indx]}_{dists[indx]:1.0f}km_{GFt}.sac'
             )
             os.rename(
                 os.path.join(self.gf_sac_dir, file1),
@@ -285,11 +276,10 @@ class LSForce:
 
         self.gf_run_dir = os.path.join(
             self.main_folder,
-            '%s_%s'
-            % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
+            f'{self.nickname}_{os.path.splitext(os.path.basename(model_file))[0]}',
         )
-        if os.path.exists(os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)):
-            self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata_%s' % self.method)
+        if os.path.exists(os.path.join(self.gf_run_dir, f'sacorig_{self.method}')):
+            self.gf_sac_dir = os.path.join(self.gf_run_dir, f'sacdata_{self.method}')
         else:
             self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata')
 
@@ -438,12 +428,12 @@ class LSForce:
                 component = trace.stats.channel[2]
                 station = trace.stats.station
                 if component == 'Z':
-                    zvf = read(os.path.join(self.gf_sac_dir, '*_%s_*ZVF.sac' % station))
+                    zvf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*ZVF.sac'))
                     if len(zvf) > 1:
                         raise ValueError(f'Found more than one ZVF GF for {station}.')
                     else:
                         zvf = zvf[0]
-                    zhf = read(os.path.join(self.gf_sac_dir, '*_%s_*ZHF.sac' % station))
+                    zhf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*ZHF.sac'))
                     if len(zhf) > 1:
                         raise ValueError(f'Found more than one ZHF GF for {station}.')
                     else:
@@ -482,12 +472,12 @@ class LSForce:
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
                     )
                 elif component == 'R':
-                    rvf = read(os.path.join(self.gf_sac_dir, '*_%s_*RVF.sac' % station))
+                    rvf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*RVF.sac'))
                     if len(rvf) > 1:
                         raise ValueError(f'Found more than one RVF GF for {station}.')
                     else:
                         rvf = rvf[0]
-                    rhf = read(os.path.join(self.gf_sac_dir, '*_%s_*RHF.sac' % station))
+                    rhf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*RHF.sac'))
                     if len(rhf) > 1:
                         raise ValueError(f'Found more than one RHF GF for {station}.')
                     else:
@@ -527,7 +517,7 @@ class LSForce:
                         (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
                     )
                 elif component == 'T':
-                    thf = read(os.path.join(self.gf_sac_dir, '*_%s_*THF.sac' % station))
+                    thf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*THF.sac'))
                     if len(thf) > 1:
                         raise ValueError(f'Found more than one THF GF for {station}.')
                     else:
@@ -604,12 +594,12 @@ class LSForce:
                 component = trace.stats.channel[2]
                 station = trace.stats.station
                 if component == 'Z':
-                    zvf = read(os.path.join(self.gf_sac_dir, '*%s*ZVF.sac' % station))
+                    zvf = read(os.path.join(self.gf_sac_dir, f'*{station}*ZVF.sac'))
                     if len(zvf) > 1:
                         raise ValueError(f'Found more than one ZVF GF for {station}.')
                     else:
                         zvf = zvf[0]
-                    zhf = read(os.path.join(self.gf_sac_dir, '*%s*ZHF.sac' % station))
+                    zhf = read(os.path.join(self.gf_sac_dir, f'*{station}*ZHF.sac'))
                     if len(zhf) > 1:
                         raise ValueError(f'Found more than one ZHF GF for {station}.')
                     else:
@@ -638,12 +628,12 @@ class LSForce:
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
                     )
                 elif component == 'R':
-                    rvf = read(os.path.join(self.gf_sac_dir, '*%s*RVF.sac' % station))
+                    rvf = read(os.path.join(self.gf_sac_dir, f'*{station}*RVF.sac'))
                     if len(rvf) > 1:
                         raise ValueError(f'Found more than one RVF GF for {station}.')
                     else:
                         rvf = rvf[0]
-                    rhf = read(os.path.join(self.gf_sac_dir, '*%s*RHF.sac' % station))
+                    rhf = read(os.path.join(self.gf_sac_dir, f'*{station}*RHF.sac'))
                     if len(rhf) > 1:
                         raise ValueError(f'Found more than one RHF GF for {station}.')
                     else:
@@ -672,7 +662,7 @@ class LSForce:
                         (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
                     )
                 elif component == 'T':
-                    thf = read(os.path.join(self.gf_sac_dir, '*%s*THF.sac' % station))
+                    thf = read(os.path.join(self.gf_sac_dir, f'*{station}*THF.sac'))
                     if len(thf) > 1:
                         raise ValueError(f'Found more than one THF GF for {station}.')
                     else:
@@ -973,7 +963,7 @@ class LSForce:
             alpha, fit1, size1, alphas = _find_alpha(
                 Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq',
             )
-            print('best alpha is %6.1e' % alpha)
+            print(f'best alpha is {alpha:6.1e}')
             self.alpha = alpha
             self.alphafit['alphas'] = alphas
             self.alphafit['fit'] = fit1
@@ -1023,7 +1013,7 @@ class LSForce:
 
         # compute variance reduction
         self.VR = _varred(self.dtorig, self.dtnew)
-        print('variance reduction %f percent' % (self.VR,))
+        print(f'Variance reduction = {self.VR:f} percent')
         tvec = (
             np.arange(
                 0,
@@ -1134,12 +1124,9 @@ class LSForce:
             self.jackknife.VR_all = np.array(self.jackknife.VR_all)
 
             print(
-                'Jackknife VR stats: max %2.0f, min %2.0f, median %2.0f'
-                % (
-                    self.jackknife.VR_all.max(),
-                    self.jackknife.VR_all.min(),
-                    np.median(self.jackknife.VR_all),
-                )
+                f'Jackknife VR stats: max {self.jackknife.VR_all.max():2.0f}, '
+                f'min {self.jackknife.VR_all.min():2.0f}, '
+                f'median {np.median(self.jackknife.VR_all):2.0f}'
             )
 
     def plot_fits(self, equal_scale=True, xlim=None):
@@ -1396,11 +1383,11 @@ class LSForce:
 
                 if infra_shift != 0:
                     ax5.annotate(
-                        '%s (shifted -%1.0f s)' % (infra_tr.id, infra_shift),
+                        f'{infra_tr.id} (shifted –{infra_shift:1.0f} s)',
                         **annot_kwargs,
                     )
                 else:
-                    ax5.annotate('%s' % infra_tr.id, **annot_kwargs)
+                    ax5.annotate(infra_tr.id, **annot_kwargs)
 
                 # Remove x-axis labels for plots above this one
                 for axis in [ax1, ax2, ax3, ax4]:
@@ -1431,10 +1418,10 @@ class LSForce:
                     ax4.set_ylabel(hfylabel)
                 if hfshift != 0:
                     ax4.annotate(
-                        '%s (shifted -%1.0f s)' % (highf_tr.id, hfshift), **annot_kwargs
+                        f'{highf_tr.id} (shifted –{hfshift:1.0f} s)', **annot_kwargs
                     )
                 else:
-                    ax4.annotate('%s' % highf_tr.id, **annot_kwargs)
+                    ax4.annotate(highf_tr.id, **annot_kwargs)
 
         else:
             if highf_tr is None:
@@ -1455,10 +1442,10 @@ class LSForce:
                 ax4.plot(tvec2, highf_tr.data)
                 if hfshift != 0:
                     ax4.annotate(
-                        '%s - shifted -%1.0f s' % (highf_tr.id, hfshift), **annot_kwargs
+                        f'{highf_tr.id} - shifted –{hfshift:1.0f} s', **annot_kwargs
                     )
                 else:
-                    ax4.annotate('%s' % highf_tr.id, **annot_kwargs)
+                    ax4.annotate(highf_tr.id, **annot_kwargs)
 
             ax.plot(tvec, self.Z, 'red', label='Up')
             ax.plot(tvec, self.N, 'green', label='North')
@@ -1715,7 +1702,7 @@ class LSForce:
             jk = 'JK'
 
         if timestamp:
-            filename = '%s_%1.0f-%1.0fsec_%s%s' % (
+            filename = '{}_{:1.0f}-{:1.0f}sec_{}{}'.format(
                 self.nickname,
                 self.filter['periodmin'],
                 self.filter['periodmax'],
@@ -1723,14 +1710,11 @@ class LSForce:
                 UTCDateTime.now().strftime('%Y-%m-%dT%H%M'),
             )
         else:
-            filename = '%s_%1.0f-%1.0fsec_%s' % (
-                self.nickname,
-                self.filter['periodmin'],
-                self.filter['periodmax'],
-                jk,
+            filename = '{}_{:1.0f}-{:1.0f}sec_{}'.format(
+                self.nickname, self.filter['periodmin'], self.filter['periodmax'], jk,
             )
 
-        with open(os.path.join(filepath, '%s.pickle' % filename), 'wb') as f:
+        with open(os.path.join(filepath, f'{filename}.pickle'), 'wb') as f:
             pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
         if figs2save is not None:
@@ -1739,7 +1723,7 @@ class LSForce:
             for i, fig in enumerate(figs2save):
                 fig.savefig(
                     os.path.join(
-                        filepath, '%s_%s.%s' % (filename, figs2save_names[i], filetype)
+                        filepath, f'{filename}_{figs2save_names[i]}.{filetype}'
                     ),
                     bbox_inches='tight',
                 )
