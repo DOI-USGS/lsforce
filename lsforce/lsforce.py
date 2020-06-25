@@ -315,7 +315,7 @@ class LSForce:
         self,
         period_range,
         weights=None,
-        weightpre=None,
+        noise_window_dur=None,
         filter_order=2,
         zerophase=False,
     ):
@@ -326,9 +326,9 @@ class LSForce:
             weights (list or tuple or str): If `None`, no weighting is applied. An array
                 of floats with length ``st.count()`` and in the order of the `st`
                 applies manual weighting. If `'prenoise'`, uses standard deviation of
-                a noise window defined by `weightpre` to weight. If `'distance'`,
+                a noise window defined by `noise_window_dur` to weight. If `'distance'`,
                 weights by 1/distance
-            weightpre (int or float): [s] Length of noise window for `'prenoise'`
+            noise_window_dur (int or float): [s] Length of noise window for `'prenoise'`
                 weighting scheme (if not `None`, `weights` is set to `'prenoise'`)
             filter_order (int): Order of filter applied over period_range
             zerophase (bool): If `True`, zero-phase filtering will be used
@@ -361,12 +361,10 @@ class LSForce:
             self.weights = weights
 
         if self.weight_method != 'Manual':
-            if weights == 'prenoise' and weightpre is None:
+            if weights == 'prenoise' and noise_window_dur is None:
                 raise ValueError(
-                    'weightpre must be defined if prenoise weighting is used.'
+                    'noise_window_dur must be defined if prenoise weighting is used.'
                 )
-            else:
-                self.weightpre = weightpre
 
         # check if sampling rate specified is compatible with period_range
         if 2.0 * self.filter['freqmax'] > self.data_sampling_rate:
@@ -573,7 +571,9 @@ class LSForce:
                         weight[i] = weights[i]
                     elif weights == 'prenoise':
                         weight[i] = 1.0 / np.std(
-                            trace.data[0 : int(weightpre * trace.stats.sampling_rate)]
+                            trace.data[
+                                0 : int(noise_window_dur * trace.stats.sampling_rate)
+                            ]
                         )
                     elif weights == 'distance':
                         weight[i] = trace.stats.distance
@@ -707,7 +707,9 @@ class LSForce:
                         weight[i] = weights[i]
                     elif weights == 'prenoise':
                         weight[i] = 1.0 / np.std(
-                            trace.data[0 : int(weightpre * trace.stats.sampling_rate)]
+                            trace.data[
+                                0 : int(noise_window_dur * trace.stats.sampling_rate)
+                            ]
                         )
                     elif weights == 'distance':
                         weight[i] = trace.stats.distance
