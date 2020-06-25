@@ -41,8 +41,6 @@ class LSForce:
         gf_run_dir:
         filter:
         data_length:
-        lenUall:
-        NFFT:
         force_sampling_rate:
         weight_method:
         W:
@@ -413,12 +411,12 @@ class LSForce:
 
         if self.domain == 'time':
             # ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH - ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
-            self.lenUall = self.data_length * len(st)
+            lenUall = self.data_length * len(st)
         elif self.domain == 'frequency':
-            self.NFFT = next_pow_2(
+            nfft = next_pow_2(
                 self.data_length
             )  # +gf_length) #needs to be the length of the two added together because convolution length M+N-1
-            self.lenUall = self.NFFT * len(st)
+            lenUall = nfft * len(st)
         else:
             raise ValueError(
                 'domain not recognized. Must be \'time\' or \'frequency\'.'
@@ -429,7 +427,7 @@ class LSForce:
             self.force_sampling_rate = self.data_sampling_rate
 
             # initialize weighting matrices
-            Wvec = np.ones(self.lenUall)
+            Wvec = np.ones(lenUall)
             indx = 0
             weight = np.ones(self.data.st_proc.count())
 
@@ -475,8 +473,8 @@ class LSForce:
                         ZVF = _makeconvmat(zvf.data, size=(n, n))
                         ZHF = _makeconvmat(zhf.data, size=(n, n))
                     else:
-                        zvff = np.fft.fft(zvf.data, self.NFFT)
-                        zhff = np.fft.fft(zhf.data, self.NFFT)
+                        zvff = np.fft.fft(zvf.data, nfft)
+                        zhff = np.fft.fft(zhf.data, nfft)
                         ZVF = np.diag(zvff)
                         ZHF = np.diag(zhff)
                     az = math.radians(trace.stats.azimuth)
@@ -520,8 +518,8 @@ class LSForce:
                         RVF = _makeconvmat(rvf.data, size=(n, n))
                         RHF = _makeconvmat(rhf.data, size=(n, n))
                     else:
-                        rvff = np.fft.fft(rvf.data, self.NFFT)
-                        rhff = np.fft.fft(rhf.data, self.NFFT)
+                        rvff = np.fft.fft(rvf.data, nfft)
+                        rhff = np.fft.fft(rhf.data, nfft)
                         RVF = np.diag(rvff)
                         RHF = np.diag(rhff)
                     az = math.radians(trace.stats.azimuth)
@@ -547,7 +545,7 @@ class LSForce:
                     if self.domain == 'time':
                         THF = _makeconvmat(thf.data, size=(n, n))
                     else:
-                        thff = np.fft.fft(thf.data, self.NFFT)
+                        thff = np.fft.fft(thf.data, nfft)
                         THF = np.diag(thff)
                     TVF = 0.0 * THF.copy()
                     az = math.radians(trace.stats.azimuth)
@@ -560,7 +558,7 @@ class LSForce:
                 if self.domain == 'time':
                     datline = trace.data
                 else:
-                    datline = np.fft.fft(trace.data, self.NFFT)
+                    datline = np.fft.fft(trace.data, nfft)
 
                 if i == 0:  # initialize G and d if first station
                     G = newline.copy()
@@ -588,7 +586,7 @@ class LSForce:
         elif self.method == 'triangle':
 
             # initialize weighting matrices
-            Wvec = np.ones(self.lenUall)
+            Wvec = np.ones(lenUall)
             indx = 0
             weight = np.ones(self.data.st_proc.count())
 
