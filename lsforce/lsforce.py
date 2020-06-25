@@ -42,7 +42,6 @@ class LSForce:
         filter:
         data_length:
         force_sampling_rate:
-        weight_method:
         W:
         Wvec:
         weights:
@@ -351,16 +350,16 @@ class LSForce:
 
         if weights is None:
             # Don't weight at all
-            self.weight_method = None
+            weight_method = None
         elif isinstance(weights, str):
             # The user specified a weight method
-            self.weight_method = weights
+            weight_method = weights
         else:
             # The user specified a vector of station weights
-            self.weight_method = 'Manual'
+            weight_method = 'Manual'
             self.weights = weights
 
-        if self.weight_method != 'Manual':
+        if weight_method != 'Manual':
             if weights == 'prenoise' and noise_window_dur is None:
                 raise ValueError(
                     'noise_window_dur must be defined if prenoise weighting is used.'
@@ -567,7 +566,7 @@ class LSForce:
                     G = np.vstack((G, newline.copy()))
                     d = np.hstack((d, datline.copy()))
                 if weights is not None:
-                    if self.weight_method == 'Manual':
+                    if weight_method == 'Manual':
                         weight[i] = weights[i]
                     elif weights == 'prenoise':
                         weight[i] = 1.0 / np.std(
@@ -703,7 +702,7 @@ class LSForce:
                     G = np.vstack((G, newline.copy()))
                     d = np.hstack((d, datline.copy()))
                 if weights is not None:
-                    if self.weight_method == 'Manual':
+                    if weight_method == 'Manual':
                         weight[i] = weights[i]
                     elif weights == 'prenoise':
                         weight[i] = 1.0 / np.std(
