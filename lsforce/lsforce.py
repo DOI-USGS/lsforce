@@ -31,7 +31,6 @@ class LSForce:
         nickname:
         greens_computed:
         greenlength:
-        shellscript:
         inversion_complete:
         main_folder:
         method:
@@ -209,8 +208,8 @@ class LSForce:
         )
 
         # write shell script to run Green's functions
-        self.shellscript = os.path.join(self.moddir, 'CPScommands.sh')
-        with open(self.shellscript, 'w') as f:
+        shellscript = os.path.join(self.moddir, 'CPScommands.sh')
+        with open(shellscript, 'w') as f:
             f.write('#!/bin/bash\n')
             f.write('rm %s\n' % os.path.join(self.sacodir, '*.sac'))
             f.write('rm %s\n' % os.path.join(self.sacdir, '*.sac'))
@@ -230,13 +229,13 @@ class LSForce:
             f.write('cp *.sac %s\n' % os.path.join(self.sacdir, '.'))
             f.write('mv *.sac %s\n' % os.path.join(self.sacodir, '.'))
 
-        os.chmod(self.shellscript, stat.S_IRWXU)
+        os.chmod(shellscript, stat.S_IRWXU)
 
         # Now actually run the codes
         currentdir = os.getcwd()
         os.chdir(self.moddir)
         proc = subprocess.Popen(
-            self.shellscript, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            shellscript, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         stdout, stderr = proc.communicate()
         retcode = proc.returncode
