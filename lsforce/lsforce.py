@@ -45,7 +45,6 @@ class LSForce:
         W:
         Wvec:
         weights:
-        regr_param:
         add_to_zero:
         zero_time:
         impose_zero:
@@ -778,7 +777,6 @@ class LSForce:
             raise ValueError('impose_zero set to True but no zero_time provided.')
 
         # Save input choices
-        self.regr_param = kwargs  # regression parameters specific to method
         self.add_to_zero = add_to_zero
         self.zero_time = zero_time
         self.impose_zero = impose_zero
