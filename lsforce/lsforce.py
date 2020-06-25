@@ -38,7 +38,7 @@ class LSForce:
         T0:
         triangle_half_width:
         gf_sac_dir:
-        moddir:
+        gf_run_dir:
         filter:
         datalength:
         lenUall:
@@ -150,31 +150,33 @@ class LSForce:
         if self.nickname is None:
             self.nickname = ''
 
-        self.moddir = os.path.join(
+        self.gf_run_dir = os.path.join(
             self.main_folder,
             '%s_%s'
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
-        tmp_gf_dir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
-        self.gf_sac_dir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
+        tmp_gf_dir = os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)
+        self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata_%s' % self.method)
 
         # Make all the directories
         if not os.path.exists(self.main_folder):
             os.mkdir(self.main_folder)
-        if not os.path.exists(self.moddir):
-            os.mkdir(self.moddir)
+        if not os.path.exists(self.gf_run_dir):
+            os.mkdir(self.gf_run_dir)
         if not os.path.exists(tmp_gf_dir):
             os.mkdir(tmp_gf_dir)
         if not os.path.exists(self.gf_sac_dir):
             os.mkdir(self.gf_sac_dir)
 
         # write T0 file
-        with open(os.path.join(self.moddir, 'T0.txt'), 'w') as f:
+        with open(os.path.join(self.gf_run_dir, 'T0.txt'), 'w') as f:
             f.write('%3.2f' % T0)
 
         # write triangle_half_width file, if applicable
         if self.method == 'triangle':
-            with open(os.path.join(self.moddir, 'triangle_half_width.txt'), 'w') as f:
+            with open(
+                os.path.join(self.gf_run_dir, 'triangle_half_width.txt'), 'w'
+            ) as f:
                 f.write('%3.2f' % triangle_half_width)
 
         # Make sure there is only one occurrence of each station in list (ignore channels)
@@ -184,7 +186,7 @@ class LSForce:
         ]
 
         # write stadistlist.txt
-        f = open(os.path.join(self.moddir, 'stadistlist.txt'), 'w')
+        f = open(os.path.join(self.gf_run_dir, 'stadistlist.txt'), 'w')
         for sta, dis in zip(stacods, dists):
             f.write('%s\t%5.1f\n' % (sta, dis))
         f.close()
@@ -192,7 +194,7 @@ class LSForce:
         # write dist file in free format
         # figure out how many samples
         samples = next_pow_2(gf_duration * self.data_sampling_rate)
-        f = open(os.path.join(self.moddir, 'dist'), 'w')
+        f = open(os.path.join(self.gf_run_dir, 'dist'), 'w')
         for dis in dists:
             f.write(
                 '%0.1f %0.2f %i %i 0\n'
@@ -203,11 +205,11 @@ class LSForce:
 
         # move copy of model_file to current directory for recordkeeping
         shutil.copy2(
-            model_file, os.path.join(self.moddir, os.path.basename(model_file))
+            model_file, os.path.join(self.gf_run_dir, os.path.basename(model_file))
         )
 
         # write shell script to run Green's functions
-        shellscript = os.path.join(self.moddir, 'CPScommands.sh')
+        shellscript = os.path.join(self.gf_run_dir, 'CPScommands.sh')
         with open(shellscript, 'w') as f:
             f.write('#!/bin/bash\n')
             f.write('rm %s\n' % os.path.join(tmp_gf_dir, '*.sac'))
@@ -232,7 +234,7 @@ class LSForce:
 
         # Now actually run the codes
         currentdir = os.getcwd()
-        os.chdir(self.moddir)
+        os.chdir(self.gf_run_dir)
         proc = subprocess.Popen(
             shellscript, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
@@ -286,24 +288,26 @@ class LSForce:
         if self.nickname is None:
             self.nickname = ''
 
-        self.moddir = os.path.join(
+        self.gf_run_dir = os.path.join(
             self.main_folder,
             '%s_%s'
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
-        if os.path.exists(os.path.join(self.moddir, 'sacorig_%s' % self.method)):
-            tmp_gf_dir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
-            self.gf_sac_dir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
+        if os.path.exists(os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)):
+            tmp_gf_dir = os.path.join(self.gf_run_dir, 'sacorig_%s' % self.method)
+            self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata_%s' % self.method)
         else:
-            tmp_gf_dir = os.path.join(self.moddir, 'sacorig')
-            self.gf_sac_dir = os.path.join(self.moddir, 'sacdata')
+            tmp_gf_dir = os.path.join(self.gf_run_dir, 'sacorig')
+            self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata')
 
         # read T0 file
-        with open(os.path.join(self.moddir, 'T0.txt'), 'r') as f:
+        with open(os.path.join(self.gf_run_dir, 'T0.txt'), 'r') as f:
             self.T0 = float(f.read())
 
         if self.method == 'triangle':
-            with open(os.path.join(self.moddir, 'triangle_half_width.txt'), 'r') as f:
+            with open(
+                os.path.join(self.gf_run_dir, 'triangle_half_width.txt'), 'r'
+            ) as f:
                 self.triangle_half_width = float(f.read())
 
         # Read a file to get greenlength
