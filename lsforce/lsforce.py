@@ -28,7 +28,6 @@ class LSForce:
         domain:
         sampling_rate:
         nickname:
-        numsta:
         greens_computed:
         greenlength:
         shellscript:
@@ -115,7 +114,6 @@ class LSForce:
         self.domain = domain
         self.sampling_rate = sampling_rate
         self.nickname = nickname
-        self.numsta = len(self.st)
         self.greens_computed = False
         self.lat = data.source_lat
         self.lon = data.source_lon
@@ -434,7 +432,7 @@ class LSForce:
             # initialize weighting matrices
             Wvec = np.ones(self.lenUall)
             indx = 0
-            weight = np.ones(self.numsta)
+            weight = np.ones(self.st.count())
 
             n = self.datalength
 
@@ -591,7 +589,7 @@ class LSForce:
             # initialize weighting matrices
             Wvec = np.ones(self.lenUall)
             indx = 0
-            weight = np.ones(self.numsta)
+            weight = np.ones(self.st.count())
 
             n = self.datalength
             fshiftby = int(
@@ -1000,7 +998,7 @@ class LSForce:
             # run forward model
             df_new = self.G @ model.T
             # convert d and df_new back to time domain
-            dt, dtnew = _back2time(self.d, df_new, self.numsta, dl)
+            dt, dtnew = _back2time(self.d, df_new, self.st.count(), dl)
             self.dtorig = dt
             self.dtnew = dtnew
 
@@ -1015,8 +1013,8 @@ class LSForce:
             self.E = model[2 * div :] / 10 ** 5
 
             dtnew = self.G.dot(model)
-            self.dtnew = np.reshape(dtnew, (self.numsta, dl))
-            self.dtorig = np.reshape(self.d, (self.numsta, dl))
+            self.dtnew = np.reshape(dtnew, (self.st.count(), dl))
+            self.dtorig = np.reshape(self.d, (self.st.count(), dl))
 
         # compute variance reduction
         self.VR = _varred(self.dtorig, self.dtnew)
@@ -1046,9 +1044,9 @@ class LSForce:
         if self.jackknife is not None:
             # Start jackknife iterations
             for ii in range(self.jackknife.num_iter):
-                numcut = int(round(self.jackknife.frac_delete * self.numsta))
-                numkeep = self.numsta - numcut
-                indxcut = rnd.sample(list(range(self.numsta)), numcut)
+                numcut = int(round(self.jackknife.frac_delete * self.st.count()))
+                numkeep = self.st.count() - numcut
+                indxcut = rnd.sample(list(range(self.st.count())), numcut)
                 stasets.append(indxcut)
 
                 obj = [
