@@ -37,7 +37,7 @@ class LSForce:
         method:
         model_file:
         T0:
-        L:
+        triangle_half_width:
         sacdir:
         sacodir:
         moddir:
@@ -128,7 +128,7 @@ class LSForce:
         if self.method == 'triangle' and self.domain == 'frequency':
             raise ValueError('The triangle method must be done in the time domain.')
 
-    def compute_greens(self, model_file, gf_duration, T0, L=5.0):
+    def compute_greens(self, model_file, gf_duration, T0, triangle_half_width=5.0):
         r"""Compute Green's functions for inversion.
 
         Use CPS to compute the necessary Green's functions (GFs) for the source location
@@ -139,15 +139,15 @@ class LSForce:
             model_file (str): Full path to location of CPS model file
             gf_duration (int or float): [s] Duration of GFs
             T0 (int or float): [s] Amount of extra time prior to impulse application
-            L (int or float): [s] Half width of isosceles triangle. Only needed for
-                triangle method. This relates to the sampling interval of the force-time
-                function since the triangles overlap by 50%
+            triangle_half_width (int or float): [s] Half width of isosceles triangle.
+                Only needed for triangle method. This relates to the sampling interval
+                of the force-time function since the triangles overlap by 50%
         """
 
         self.model_file = model_file
         self.T0 = T0
 
-        self.L = L
+        self.triangle_half_width = triangle_half_width
 
         if self.nickname is None:
             self.nickname = ''
@@ -174,10 +174,10 @@ class LSForce:
         with open(os.path.join(self.moddir, 'T0.txt'), 'w') as f:
             f.write('%3.2f' % T0)
 
-        # write L file, if applicable
+        # write triangle_half_width file, if applicable
         if self.method == 'triangle':
-            with open(os.path.join(self.moddir, 'L.txt'), 'w') as f:
-                f.write('%3.2f' % L)
+            with open(os.path.join(self.moddir, 'triangle_half_width.txt'), 'w') as f:
+                f.write('%3.2f' % triangle_half_width)
 
         # Make sure there is only one occurrence of each station in list (ignore channels)
         stacods = np.unique([tr.stats.station for tr in self.data.st_proc])
@@ -222,7 +222,7 @@ class LSForce:
             if self.method == 'triangle':
                 f.write(
                     'hpulse96 -d %s -V -D -t -l %d > Green\n'
-                    % ('dist', int(self.L / self.data_sampling_rate))
+                    % ('dist', int(self.triangle_half_width / self.data_sampling_rate))
                 )
             else:
                 f.write('hpulse96 -d %s -V -OD -p > Green\n' % 'dist')
@@ -303,8 +303,8 @@ class LSForce:
             self.T0 = float(f.read())
 
         if self.method == 'triangle':
-            with open(os.path.join(self.moddir, 'L.txt'), 'r') as f:
-                self.L = float(f.read())
+            with open(os.path.join(self.moddir, 'triangle_half_width.txt'), 'r') as f:
+                self.triangle_half_width = float(f.read())
 
         # Read a file to get greenlength
         temp = read(glob.glob(os.path.join(self.sacdir, '*RVF*.sac'))[0])
@@ -592,7 +592,7 @@ class LSForce:
 
             n = self.datalength
             fshiftby = int(
-                self.L / self.data_sampling_rate
+                self.triangle_half_width / self.data_sampling_rate
             )  # Number of samples to shift each triangle by
             Flen = int(
                 np.floor(self.datalength / fshiftby)
@@ -875,7 +875,12 @@ class LSForce:
             )
             if self.method == 'triangle':
                 len2 = int(
-                    np.floor(((self.zero_time - self.L) * self.force_sampling_rate))
+                    np.floor(
+                        (
+                            (self.zero_time - self.triangle_half_width)
+                            * self.force_sampling_rate
+                        )
+                    )
                 )  # Potentially need to adjust for T0 here too?
             if self.method == 'tik':
                 len3 = int(
@@ -1031,7 +1036,7 @@ class LSForce:
         if (
             self.method == 'triangle'
         ):  # Shift so that peak of triangle function lines up with time of force interval
-            tvec += self.L
+            tvec += self.triangle_half_width
         self.tvec = tvec
         self.dtvec = np.arange(
             0, self.datalength / self.data_sampling_rate, 1 / self.data_sampling_rate
