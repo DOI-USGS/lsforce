@@ -32,8 +32,6 @@ class LSForce:
         greens_computed:
         greenlength:
         shellscript:
-        lat:
-        lon:
         inversion_complete:
         main_folder:
         method:
@@ -116,8 +114,6 @@ class LSForce:
         self.sampling_rate = sampling_rate
         self.nickname = nickname
         self.greens_computed = False
-        self.lat = data.source_lat
-        self.lon = data.source_lon
         self.inversion_complete = False
 
         if main_folder is None:

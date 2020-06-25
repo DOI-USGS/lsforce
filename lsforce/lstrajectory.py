@@ -379,7 +379,9 @@ class LSTrajectory:
         crs = ccrs.epsg(int(dem.crs.split(':')[-1]))
         if crs.proj4_params['proj'] != 'utm':
             raise ValueError('Input DEM must have a UTM projection!')
-        loc_utm = crs.transform_point(self.force.lon, self.force.lat, ccrs.Geodetic())
+        loc_utm = crs.transform_point(
+            self.force.data.source_lon, self.force.data.source_lat, ccrs.Geodetic()
+        )
         points = [
             [x + loc_utm[0], y + loc_utm[1]]
             for x, y in zip(self.displacement.E, self.displacement.N)
