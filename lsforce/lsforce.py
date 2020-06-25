@@ -30,6 +30,8 @@ class LSForce:
         nickname:
         numsta:
         greens_computed:
+        greenlength:
+        shellscript:
         lat:
         lon:
         inversion_complete:
@@ -41,9 +43,27 @@ class LSForce:
         sacdir:
         sacodir:
         moddir:
+        filter:
+        datalength:
+        lenUall:
+        NFFT:
+        force_sampling_rate:
+        weight_method:
+        W:
+        Wvec:
+        weights:
+        regr_param:
+        add_to_zero:
+        zero_time:
+        impose_zero:
+        maxduration:
+        jackknife:
+        angmag:
+        G:
+        d:
         model: Model vector of concatenated components (n x 1) of solution
         Z: [N] Vertical force time series extracted from model (positive up)
-        N: [N]North force time series extracted from model (positive north)
+        N: [N] North force time series extracted from model (positive north)
         E: [N] East force time series extracted from model (positive east)
         tvec: [s] Time vector, referenced using `zero_time` (if specified) and corrected
             for `T0` time shift
@@ -54,6 +74,7 @@ class LSForce:
         dtnew: Modeled data vector (Gm-d) (converted to time domain if domain is
             `'freq'`)
         alpha: Regularization parameter that was used
+        alphafit:
         fit1:
         size1:
     """
@@ -816,7 +837,6 @@ class LSForce:
 
         if np.sum(tikhonov_ratios) != 1.0:
             raise ValueError('Tikhonov ratios must add to 1.')
-        self.parameters = {}
 
         if self.W is not None:
             Ghat = self.W.dot(self.G)
