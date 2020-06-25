@@ -1,7 +1,7 @@
 import os
 import sys
 
-SHOW_PRIVATE = False  # Set to True to build docs for private functions, methods, etc.
+SHOW_PRIVATE = True  # Set to True to build docs for private functions, methods, etc.
 
 sys.path.insert(0, os.path.abspath('..'))
 
