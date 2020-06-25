@@ -17,7 +17,7 @@ from obspy.core import AttribDict
 
 
 class LSForce:
-    """Class for performing force inversions.
+    r"""Class for performing force inversions.
 
     TODO:
         Add rest of attributes, determine which ones can be edited/removed, and make
@@ -66,7 +66,7 @@ class LSForce:
         main_folder=None,
         method='tik',
     ):
-        """Create an LSForce object.
+        r"""Create an LSForce object.
 
         TODO:
             Implement sinusoid method!
@@ -111,7 +111,7 @@ class LSForce:
             raise ValueError('The triangle method must be done in the time domain.')
 
     def compute_greens(self, model_file, gf_duration, T0, L=5.0):
-        """Compute Green's functions for inversion.
+        r"""Compute Green's functions for inversion.
 
         Use CPS to compute the necessary Green's functions (GFs) for the source location
         and seismic stations being used. Computes the type of GFs appropriate for the
@@ -249,7 +249,7 @@ class LSForce:
         self.greens_computed = True
 
     def load_greens(self, model_file):
-        """Load Green's functions for inversion.
+        r"""Load Green's functions for inversion.
 
         If Green's functions (GFs) were already computed for this exact data selection,
         this simply loads them for setup.
@@ -299,7 +299,7 @@ class LSForce:
         filter_order=2,
         zerophase=False,
     ):
-        """Loads in GFs and creates all necessary matrices.
+        r"""Loads in GFs and creates all necessary matrices.
 
         Args:
             period_range (list or tuple): [s] Bandpass filter corners
@@ -726,7 +726,7 @@ class LSForce:
         frac_delete=0.5,
         **kwargs,
     ):
-        """Performs single-force inversion using Tikhonov regularization.
+        r"""Performs single-force inversion using Tikhonov regularization.
 
         Args:
             zero_time (int or float): [s] Optional estimated start time of real
@@ -796,7 +796,7 @@ class LSForce:
         zero_taper_length=20.0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
-        """Performs full-waveform inversion using Tikhonov regularization.
+        r"""Performs full-waveform inversion using Tikhonov regularization.
 
         Args:
             alphaset (int or float): Set regularization parameter. If `None`, will
@@ -1111,7 +1111,7 @@ class LSForce:
             )
 
     def plot_fits(self, equal_scale=True, xlim=None):
-        """Create a plot showing the model-produced waveform fit to the data.
+        r"""Create a plot showing the model-produced waveform fit to the data.
 
         Args:
             equal_scale (bool): If `True`, all plots will share the same y-axis scale
@@ -1206,7 +1206,7 @@ class LSForce:
         tvecshift=0.0,
         jackshowall=False,
     ):
-        """Plot inversion result.
+        r"""Plot inversion result.
 
         Args:
             subplots (bool): If `True`, make subplots for components, otherwise plot all
@@ -1477,7 +1477,7 @@ class LSForce:
         return fig
 
     def plot_angle_magnitude(self, xlim=None, ylim=None, tvecshift=0.0):
-        """Plot angles and magnitudes of inversion result.
+        r"""Plot angles and magnitudes of inversion result.
 
         Args:
             xlim (list or tuple): x-axis limits
@@ -1648,7 +1648,7 @@ class LSForce:
         light=True,
         filetype='png',
     ):
-        """Save a force inversion run for later use.
+        r"""Save a force inversion run for later use.
 
         Args:
             filepath (str): Full path to directory where all files should be saved. If
@@ -1715,7 +1715,7 @@ def _find_alpha(
     tikhonov_ratios=(1.0, 0.0, 0.0),
     rough=False,
 ):
-    """Finds best regularization (trade-off) parameter alpha.
+    r"""Finds best regularization (trade-off) parameter alpha.
 
     Computes model with many values of alpha, plots L-curve, and finds point of steepest
     curvature where slope is negative.
@@ -1848,7 +1848,7 @@ def _find_alpha(
 
 
 def _Lcurve(fit1, size1, alphas):
-    """Plot an L-curve.
+    r"""Plot an L-curve.
 
     TODO:
         Finish this docstring!
@@ -1900,7 +1900,7 @@ def _varred(dt, dtnew):
 
 
 def _back2time(d, df_new, numsta, datlenorig):
-    """Convert data back to the time domain and cut off zero padding.
+    r"""Convert data back to the time domain and cut off zero padding.
 
     TODO:
         Finish this docstring!
@@ -1930,7 +1930,7 @@ def _back2time(d, df_new, numsta, datlenorig):
 
 
 def _makeconvmat(c, size=None):
-    """Build matrix that used for convolution as implemented by matrix multiplication.
+    r"""Build matrix that used for convolution as implemented by matrix multiplication.
 
     `size` is optional input for desired size as ``(nrows, ncols)``; this will just
     shift ``cflip`` until it reaches the right size.
@@ -2007,7 +2007,7 @@ def _makeshiftmat(c, shiftby, size1):
 
 
 def _curvature(x, y):
-    """Estimate radius of curvature for each point on line to find corner of L-curve.
+    r"""Estimate radius of curvature for each point on line to find corner of L-curve.
 
     Args:
         x: Array of x data
