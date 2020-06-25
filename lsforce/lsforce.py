@@ -26,33 +26,33 @@ class LSForce:
     Attributes:
         data (:class:`~lsforce.lsdata.LSData`): The LSData object associated with this
             inversion
-        domain:
-        data_sampling_rate:
-        nickname:
-        gf_computed:
-        gf_length:
-        inversion_complete:
-        main_folder:
-        method:
-        model_file:
-        T0:
-        triangle_half_width:
-        gf_sac_dir:
-        gf_run_dir:
-        filter:
-        data_length:
-        force_sampling_rate:
-        W:
-        Wvec:
-        weights:
-        add_to_zero:
-        zero_time:
-        impose_zero:
-        max_duration:
-        jackknife:
-        angle_magnitude:
-        G:
-        d:
+        domain: TODO
+        data_sampling_rate: TODO
+        nickname: TODO
+        gf_computed: TODO
+        gf_length: TODO
+        inversion_complete: TODO
+        main_folder: TODO
+        method: TODO
+        model_file: TODO
+        T0: TODO
+        triangle_half_width: TODO
+        gf_sac_dir: TODO
+        gf_run_dir: TODO
+        filter: TODO
+        data_length: TODO
+        force_sampling_rate: TODO
+        W: TODO
+        Wvec: TODO
+        weights: TODO
+        add_to_zero: TODO
+        zero_time: TODO
+        impose_zero: TODO
+        max_duration: TODO
+        jackknife: TODO
+        angle_magnitude: TODO
+        G: TODO
+        d: TODO
         model: Model vector of concatenated components (n x 1) of solution
         Z: [N] Vertical force time series extracted from model (positive up)
         N: [N] North force time series extracted from model (positive north)
@@ -66,7 +66,7 @@ class LSForce:
         dtnew: Modeled data vector (Gm-d) (converted to time domain if domain is
             `'frequency'`)
         alpha: Regularization parameter that was used
-        alphafit:
+        alphafit: TODO
     """
 
     def __init__(
