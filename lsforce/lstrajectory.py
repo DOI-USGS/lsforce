@@ -18,8 +18,8 @@ class LSTrajectory:
         force (:class:`~lsforce.lsforce.LSForce`): Inversion results used to compute
             this trajectory
         mass_requested (int or float): [kg] Mass specified
-        mass_actual (int): [kg] Mass used (same as `mass_requested`) if `target_length`
-            is not specified
+        mass_actual (int): [kg] Mass used (same as `mass_requested` if `target_length`
+            is not specified)
         target_length (int or float): [km] Center-of-mass runout length of event, `None`
             if not specified
         jackknife (:class:`~obspy.core.util.attribdict.AttribDict`): Jackknifed
@@ -84,8 +84,9 @@ class LSTrajectory:
         r"""Plot trajectory results with context.
 
         Args:
-            elevation_profile (bool): If True, plot vertical displacement versus
-                horizontal runout distance (H vs. L) instead of a map view
+            elevation_profile (bool): If `True`, plot vertical displacement versus
+                horizontal runout distance (:math:`H` vs. :math:`L`) instead of a map
+                view
             plot_jackknife (bool): Toggle plotting jackknifed displacements as well (if
                 available)
             image (:class:`~xarray.DataArray`): An image with coordinates defined in km

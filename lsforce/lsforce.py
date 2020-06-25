@@ -51,7 +51,8 @@ class LSForce:
             solution is fitting data exactly and results are suspect. If ~5%, model may
             be wrong or something else may be wrong with setup
         dtorig: Original data vector (time domain)
-        dtnew: Modeled data vector (Gm-d) (converted to time domain if domain='freq')
+        dtnew: Modeled data vector (Gm-d) (converted to time domain if domain is
+            `'freq'`)
         alpha: Regularization parameter that was used
         fit1:
         size1:
@@ -746,7 +747,8 @@ class LSForce:
             num_iter (int): Number of jackknife iterations to perform
             frac_delete (int or float): Fraction (out of 1) of data to discard for each
                 iteration
-            kwargs: Additional keyword arguments to be passed on to the inversion method
+            **kwargs: Additional keyword arguments to be passed on to the inversion
+                method
         """
 
         # Check inputs for consistency
@@ -1709,8 +1711,8 @@ def _find_alpha(
     Ghat,
     dhat,
     I,
-    L1=0.0,
-    L2=0.0,
+    L1=0,
+    L2=0,
     invmethod='lsq',
     tikhonov_ratios=(1.0, 0.0, 0.0),
     rough=False,
@@ -1727,9 +1729,9 @@ def _find_alpha(
         Ghat (array): (m x n) matrix
         dhat (array): (1 x n) array of weighted data
         I (array): Identity matrix
-        L1 (array): First order roughening matrix. If `0.`, will use only zeroth order
+        L1 (array): First order roughening matrix. If `0`, will use only 0th-order
             Tikhonov regularization
-        L2 (array): Second order roughening matrix. If `0.`, will use only zeroth order
+        L2 (array): Second order roughening matrix. If `0`, will use only 0th-order
             Tikhonov regularization
         invmethod (str): `'lsq'` — use least squares (regular Tikhonov); `'nnls'` — use
             non-negative least squares
