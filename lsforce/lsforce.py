@@ -30,7 +30,7 @@ class LSForce:
         data_sampling_rate:
         nickname:
         greens_computed:
-        greenlength:
+        gf_length:
         inversion_complete:
         main_folder:
         method:
@@ -40,7 +40,7 @@ class LSForce:
         gf_sac_dir:
         gf_run_dir:
         filter:
-        datalength:
+        data_length:
         lenUall:
         NFFT:
         force_sampling_rate:
@@ -201,7 +201,7 @@ class LSForce:
                 % (dis, 1.0 / self.data_sampling_rate, samples, self.T0)
             )
         f.close()
-        self.greenlength = samples
+        self.gf_length = samples
 
         # move copy of model_file to current directory for recordkeeping
         shutil.copy2(
@@ -308,9 +308,9 @@ class LSForce:
             ) as f:
                 self.triangle_half_width = float(f.read())
 
-        # Read a file to get greenlength
+        # Read a file to get gf_length
         temp = read(glob.glob(os.path.join(self.gf_sac_dir, '*RVF*.sac'))[0])
-        self.greenlength = len(temp[0])
+        self.gf_length = len(temp[0])
         self.greens_computed = True
 
     def setup(
@@ -402,22 +402,22 @@ class LSForce:
             )
 
         K = 1.0e-15  # CPS variable needed for conversion to meaningful units
-        self.datalength = len(st[0].data)
+        self.data_length = len(st[0].data)
 
-        if self.greenlength > self.datalength:
+        if self.gf_length > self.data_length:
             raise ValueError(
-                'greenlength is greater than datalength. Reselect data and/or '
+                'gf_length is greater than data_length. Reselect data and/or '
                 'recompute Green\'s functions so that data is longer than Green\'s '
                 'functions'
             )
 
         if self.domain == 'time':
-            # ADD WAY TO ACCOUNT FOR WHEN GREENLENGTH IS LONGER THAN DATALENGTH - ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
-            self.lenUall = self.datalength * len(st)
+            # ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH - ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
+            self.lenUall = self.data_length * len(st)
         elif self.domain == 'frequency':
             self.NFFT = next_pow_2(
-                self.datalength
-            )  # +greenlength) #needs to be the length of the two added together because convolution length M+N-1
+                self.data_length
+            )  # +gf_length) #needs to be the length of the two added together because convolution length M+N-1
             self.lenUall = self.NFFT * len(st)
         else:
             raise ValueError(
@@ -433,7 +433,7 @@ class LSForce:
             indx = 0
             weight = np.ones(self.data.st_proc.count())
 
-            n = self.datalength
+            n = self.data_length
 
             for i, trace in enumerate(st):
                 # find component of st
@@ -580,10 +580,10 @@ class LSForce:
                     elif weights == 'distance':
                         weight[i] = trace.stats.distance
 
-                    Wvec[indx : indx + self.datalength] = (
-                        Wvec[indx : indx + self.datalength] * weight[i]
+                    Wvec[indx : indx + self.data_length] = (
+                        Wvec[indx : indx + self.data_length] * weight[i]
                     )
-                    indx += self.datalength
+                    indx += self.data_length
 
         elif self.method == 'triangle':
 
@@ -592,12 +592,12 @@ class LSForce:
             indx = 0
             weight = np.ones(self.data.st_proc.count())
 
-            n = self.datalength
+            n = self.data_length
             fshiftby = int(
                 self.triangle_half_width / self.data_sampling_rate
             )  # Number of samples to shift each triangle by
             Flen = int(
-                np.floor(self.datalength / fshiftby)
+                np.floor(self.data_length / fshiftby)
             )  # Number of shifts, corresponds to length of force time function
             self.force_sampling_rate = 1.0 / fshiftby
 
@@ -716,10 +716,10 @@ class LSForce:
                     elif weights == 'distance':
                         weight[i] = trace.stats.distance
 
-                    Wvec[indx : indx + self.datalength] = (
-                        Wvec[indx : indx + self.datalength] * weight[i]
+                    Wvec[indx : indx + self.data_length] = (
+                        Wvec[indx : indx + self.data_length] * weight[i]
                     )
-                    indx += self.datalength
+                    indx += self.data_length
 
         else:
             raise ValueError(f'Method {self.method} not supported.')
@@ -857,8 +857,8 @@ class LSForce:
 
         Ghatnorm = np.linalg.norm(Ghat)
 
-        dl = self.datalength
-        gl = int(n / 3)  # self.datalength
+        dl = self.data_length
+        gl = int(n / 3)  # self.data_length
 
         if self.add_to_zero is True:  # constrain forces to add to zero
             scaler = Ghatnorm
@@ -1043,7 +1043,7 @@ class LSForce:
             tvec += self.triangle_half_width
         self.tvec = tvec
         self.dtvec = np.arange(
-            0, self.datalength / self.data_sampling_rate, 1 / self.data_sampling_rate
+            0, self.data_length / self.data_sampling_rate, 1 / self.data_sampling_rate
         )
         if self.zero_time is not None:
             self.dtvec -= self.zero_time
@@ -1062,9 +1062,9 @@ class LSForce:
                 obj = [
                     sum(ind)
                     for ind in zip(
-                        np.tile(list(range(self.datalength)), len(indxcut)),
+                        np.tile(list(range(self.data_length)), len(indxcut)),
                         np.repeat(
-                            [x1 * self.datalength for x1 in indxcut], self.datalength
+                            [x1 * self.data_length for x1 in indxcut], self.data_length
                         ),
                     )
                 ]
