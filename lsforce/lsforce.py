@@ -38,7 +38,6 @@ class LSForce:
         T0:
         triangle_half_width:
         sacdir:
-        sacodir:
         moddir:
         filter:
         datalength:
@@ -156,7 +155,7 @@ class LSForce:
             '%s_%s'
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
-        self.sacodir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
+        tmp_gf_dir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
         self.sacdir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
 
         # Make all the directories
@@ -164,8 +163,8 @@ class LSForce:
             os.mkdir(self.main_folder)
         if not os.path.exists(self.moddir):
             os.mkdir(self.moddir)
-        if not os.path.exists(self.sacodir):
-            os.mkdir(self.sacodir)
+        if not os.path.exists(tmp_gf_dir):
+            os.mkdir(tmp_gf_dir)
         if not os.path.exists(self.sacdir):
             os.mkdir(self.sacdir)
 
@@ -211,7 +210,7 @@ class LSForce:
         shellscript = os.path.join(self.moddir, 'CPScommands.sh')
         with open(shellscript, 'w') as f:
             f.write('#!/bin/bash\n')
-            f.write('rm %s\n' % os.path.join(self.sacodir, '*.sac'))
+            f.write('rm %s\n' % os.path.join(tmp_gf_dir, '*.sac'))
             f.write('rm %s\n' % os.path.join(self.sacdir, '*.sac'))
             f.write(
                 'hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n'
@@ -227,7 +226,7 @@ class LSForce:
                 f.write('hpulse96 -d %s -V -OD -p > Green\n' % 'dist')
             f.write('f96tosac Green\n')
             f.write('cp *.sac %s\n' % os.path.join(self.sacdir, '.'))
-            f.write('mv *.sac %s\n' % os.path.join(self.sacodir, '.'))
+            f.write('mv *.sac %s\n' % os.path.join(tmp_gf_dir, '.'))
 
         os.chmod(shellscript, stat.S_IRWXU)
 
@@ -291,10 +290,10 @@ class LSForce:
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
         if os.path.exists(os.path.join(self.moddir, 'sacorig_%s' % self.method)):
-            self.sacodir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
+            tmp_gf_dir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
             self.sacdir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
         else:
-            self.sacodir = os.path.join(self.moddir, 'sacorig')
+            tmp_gf_dir = os.path.join(self.moddir, 'sacorig')
             self.sacdir = os.path.join(self.moddir, 'sacdata')
 
         # read T0 file
