@@ -29,7 +29,7 @@ class LSForce:
         domain:
         data_sampling_rate:
         nickname:
-        greens_computed:
+        gf_computed:
         gf_length:
         inversion_complete:
         main_folder:
@@ -111,7 +111,7 @@ class LSForce:
         self.domain = domain
         self.data_sampling_rate = data_sampling_rate
         self.nickname = nickname
-        self.greens_computed = False
+        self.gf_computed = False
         self.inversion_complete = False
 
         if main_folder is None:
@@ -268,7 +268,7 @@ class LSForce:
             )
 
         os.chdir(currentdir)
-        self.greens_computed = True
+        self.gf_computed = True
 
     def load_greens(self, model_file):
         r"""Load Green's functions for inversion.
@@ -311,7 +311,7 @@ class LSForce:
         # Read a file to get gf_length
         temp = read(glob.glob(os.path.join(self.gf_sac_dir, '*RVF*.sac'))[0])
         self.gf_length = len(temp[0])
-        self.greens_computed = True
+        self.gf_computed = True
 
     def setup(
         self,
