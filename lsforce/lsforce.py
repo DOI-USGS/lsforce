@@ -56,7 +56,7 @@ class LSForce:
         add_to_zero:
         zero_time:
         impose_zero:
-        maxduration:
+        max_duration:
         jackknife:
         angmag:
         G:
@@ -745,7 +745,7 @@ class LSForce:
         zero_time=None,
         impose_zero=False,
         add_to_zero=False,
-        maxduration=None,
+        max_duration=None,
         jackknife=False,
         num_iter=200,
         frac_delete=0.5,
@@ -762,10 +762,10 @@ class LSForce:
                 towards zero prior to `zero_time` (`zero_time` must be defined)
             add_to_zero (bool): Adds weighting matrix to suggest that all components of
                 force integrate to zero
-            maxduration (int or float): Maximum duration allowed for the event, starting
-                at `zero_time` if defined, otherwise starting from the beginning of the
-                seismic data. Forces after this will tend towards zero. This helps tamp
-                down artifacts due to edge effects, etc.
+            max_duration (int or float): Maximum duration allowed for the event,
+                starting at `zero_time` if defined, otherwise starting from the
+                beginning of the seismic data. Forces after this will tend towards zero.
+                This helps tamp down artifacts due to edge effects, etc.
             jackknife (bool): If `True`, perform `num_iter` additional iterations of the
                 model while randomly discarding `frac_delete` of the data
             num_iter (int): Number of jackknife iterations to perform
@@ -784,7 +784,7 @@ class LSForce:
         self.add_to_zero = add_to_zero
         self.zero_time = zero_time
         self.impose_zero = impose_zero
-        self.maxduration = maxduration
+        self.max_duration = max_duration
 
         # Initialize stuff (also serves to clear any previous results if this is a rerun)
         self.model = None
@@ -907,13 +907,13 @@ class LSForce:
         else:
             A2 = None
 
-        if self.maxduration is not None:
+        if self.max_duration is not None:
             if self.zero_time is None:
                 zerotime = 0.0
             else:
                 zerotime = self.zero_time
             startind = int(
-                (zerotime + self.T0 + self.maxduration) * self.force_sampling_rate
+                (zerotime + self.T0 + self.max_duration) * self.force_sampling_rate
             )
             len2 = int(gl - startind)
             len3 = int(
@@ -1412,9 +1412,11 @@ class LSForce:
 
             if self.impose_zero:
                 [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
-            if self.maxduration is not None:
+            if self.max_duration is not None:
                 [
-                    axe.axvline(self.maxduration, color='gray', linestyle='solid', lw=3)
+                    axe.axvline(
+                        self.max_duration, color='gray', linestyle='solid', lw=3
+                    )
                     for axe in axes
                 ]
             if highf_tr is not None:
@@ -1488,8 +1490,8 @@ class LSForce:
             ax.set_ylim(ylim)
             if self.impose_zero:
                 ax.axvline(0, color='gray', linestyle='solid', lw=3)
-            if self.maxduration is not None:
-                ax.axvline(self.maxduration, color='gray', linestyle='solid', lw=3)
+            if self.max_duration is not None:
+                ax.axvline(self.max_duration, color='gray', linestyle='solid', lw=3)
 
         t0 = self.st[0].stats.starttime
         if self.zero_time:
@@ -1649,9 +1651,9 @@ class LSForce:
 
         if self.impose_zero:
             [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
-        if self.maxduration is not None:
+        if self.max_duration is not None:
             [
-                axe.axvline(self.maxduration, color='gray', linestyle='solid', lw=3)
+                axe.axvline(self.max_duration, color='gray', linestyle='solid', lw=3)
                 for axe in axes
             ]
 
