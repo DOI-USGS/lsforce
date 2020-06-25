@@ -1974,7 +1974,7 @@ def _makeconvmat(c, size=None):
 
     Args:
         c: TODO
-        size (int): TODO
+        size (list or tuple): TODO
 
     Returns:
         :class:`~numpy.ndarray`: Convolution matrix
