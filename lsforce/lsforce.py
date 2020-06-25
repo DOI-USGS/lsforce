@@ -37,7 +37,7 @@ class LSForce:
         model_file:
         T0:
         triangle_half_width:
-        sacdir:
+        gf_sac_dir:
         moddir:
         filter:
         datalength:
@@ -156,7 +156,7 @@ class LSForce:
             % (self.nickname, os.path.splitext(os.path.basename(model_file))[0]),
         )
         tmp_gf_dir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
-        self.sacdir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
+        self.gf_sac_dir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
 
         # Make all the directories
         if not os.path.exists(self.main_folder):
@@ -165,8 +165,8 @@ class LSForce:
             os.mkdir(self.moddir)
         if not os.path.exists(tmp_gf_dir):
             os.mkdir(tmp_gf_dir)
-        if not os.path.exists(self.sacdir):
-            os.mkdir(self.sacdir)
+        if not os.path.exists(self.gf_sac_dir):
+            os.mkdir(self.gf_sac_dir)
 
         # write T0 file
         with open(os.path.join(self.moddir, 'T0.txt'), 'w') as f:
@@ -211,7 +211,7 @@ class LSForce:
         with open(shellscript, 'w') as f:
             f.write('#!/bin/bash\n')
             f.write('rm %s\n' % os.path.join(tmp_gf_dir, '*.sac'))
-            f.write('rm %s\n' % os.path.join(self.sacdir, '*.sac'))
+            f.write('rm %s\n' % os.path.join(self.gf_sac_dir, '*.sac'))
             f.write(
                 'hprep96 -HR 0. -HS 0. -M %s -d %s -R -EXF\n'
                 % (self.model_file, 'dist')
@@ -225,7 +225,7 @@ class LSForce:
             else:
                 f.write('hpulse96 -d %s -V -OD -p > Green\n' % 'dist')
             f.write('f96tosac Green\n')
-            f.write('cp *.sac %s\n' % os.path.join(self.sacdir, '.'))
+            f.write('cp *.sac %s\n' % os.path.join(self.gf_sac_dir, '.'))
             f.write('mv *.sac %s\n' % os.path.join(tmp_gf_dir, '.'))
 
         os.chmod(shellscript, stat.S_IRWXU)
@@ -245,7 +245,8 @@ class LSForce:
 
         # copy and rename files
         files = [
-            os.path.basename(x) for x in glob.glob(os.path.join(self.sacdir, '*.sac'))
+            os.path.basename(x)
+            for x in glob.glob(os.path.join(self.gf_sac_dir, '*.sac'))
         ]
         files.sort()
         for file1 in files:
@@ -260,7 +261,8 @@ class LSForce:
                 GFt,
             )
             os.rename(
-                os.path.join(self.sacdir, file1), os.path.join(self.sacdir, newname)
+                os.path.join(self.gf_sac_dir, file1),
+                os.path.join(self.gf_sac_dir, newname),
             )
 
         os.chdir(currentdir)
@@ -291,10 +293,10 @@ class LSForce:
         )
         if os.path.exists(os.path.join(self.moddir, 'sacorig_%s' % self.method)):
             tmp_gf_dir = os.path.join(self.moddir, 'sacorig_%s' % self.method)
-            self.sacdir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
+            self.gf_sac_dir = os.path.join(self.moddir, 'sacdata_%s' % self.method)
         else:
             tmp_gf_dir = os.path.join(self.moddir, 'sacorig')
-            self.sacdir = os.path.join(self.moddir, 'sacdata')
+            self.gf_sac_dir = os.path.join(self.moddir, 'sacdata')
 
         # read T0 file
         with open(os.path.join(self.moddir, 'T0.txt'), 'r') as f:
@@ -305,7 +307,7 @@ class LSForce:
                 self.triangle_half_width = float(f.read())
 
         # Read a file to get greenlength
-        temp = read(glob.glob(os.path.join(self.sacdir, '*RVF*.sac'))[0])
+        temp = read(glob.glob(os.path.join(self.gf_sac_dir, '*RVF*.sac'))[0])
         self.greenlength = len(temp[0])
         self.greens_computed = True
 
@@ -436,12 +438,12 @@ class LSForce:
                 component = trace.stats.channel[2]
                 station = trace.stats.station
                 if component == 'Z':
-                    zvf = read(os.path.join(self.sacdir, '*_%s_*ZVF.sac' % station))
+                    zvf = read(os.path.join(self.gf_sac_dir, '*_%s_*ZVF.sac' % station))
                     if len(zvf) > 1:
                         raise ValueError(f'Found more than one ZVF GF for {station}.')
                     else:
                         zvf = zvf[0]
-                    zhf = read(os.path.join(self.sacdir, '*_%s_*ZHF.sac' % station))
+                    zhf = read(os.path.join(self.gf_sac_dir, '*_%s_*ZHF.sac' % station))
                     if len(zhf) > 1:
                         raise ValueError(f'Found more than one ZHF GF for {station}.')
                     else:
@@ -480,12 +482,12 @@ class LSForce:
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
                     )
                 elif component == 'R':
-                    rvf = read(os.path.join(self.sacdir, '*_%s_*RVF.sac' % station))
+                    rvf = read(os.path.join(self.gf_sac_dir, '*_%s_*RVF.sac' % station))
                     if len(rvf) > 1:
                         raise ValueError(f'Found more than one RVF GF for {station}.')
                     else:
                         rvf = rvf[0]
-                    rhf = read(os.path.join(self.sacdir, '*_%s_*RHF.sac' % station))
+                    rhf = read(os.path.join(self.gf_sac_dir, '*_%s_*RHF.sac' % station))
                     if len(rhf) > 1:
                         raise ValueError(f'Found more than one RHF GF for {station}.')
                     else:
@@ -525,7 +527,7 @@ class LSForce:
                         (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
                     )
                 elif component == 'T':
-                    thf = read(os.path.join(self.sacdir, '*_%s_*THF.sac' % station))
+                    thf = read(os.path.join(self.gf_sac_dir, '*_%s_*THF.sac' % station))
                     if len(thf) > 1:
                         raise ValueError(f'Found more than one THF GF for {station}.')
                     else:
@@ -602,12 +604,12 @@ class LSForce:
                 component = trace.stats.channel[2]
                 station = trace.stats.station
                 if component == 'Z':
-                    zvf = read(os.path.join(self.sacdir, '*%s*ZVF.sac' % station))
+                    zvf = read(os.path.join(self.gf_sac_dir, '*%s*ZVF.sac' % station))
                     if len(zvf) > 1:
                         raise ValueError(f'Found more than one ZVF GF for {station}.')
                     else:
                         zvf = zvf[0]
-                    zhf = read(os.path.join(self.sacdir, '*%s*ZHF.sac' % station))
+                    zhf = read(os.path.join(self.gf_sac_dir, '*%s*ZHF.sac' % station))
                     if len(zhf) > 1:
                         raise ValueError(f'Found more than one ZHF GF for {station}.')
                     else:
@@ -635,12 +637,12 @@ class LSForce:
                         (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
                     )
                 elif component == 'R':
-                    rvf = read(os.path.join(self.sacdir, '*%s*RVF.sac' % station))
+                    rvf = read(os.path.join(self.gf_sac_dir, '*%s*RVF.sac' % station))
                     if len(rvf) > 1:
                         raise ValueError(f'Found more than one RVF GF for {station}.')
                     else:
                         rvf = rvf[0]
-                    rhf = read(os.path.join(self.sacdir, '*%s*RHF.sac' % station))
+                    rhf = read(os.path.join(self.gf_sac_dir, '*%s*RHF.sac' % station))
                     if len(rhf) > 1:
                         raise ValueError(f'Found more than one RHF GF for {station}.')
                     else:
@@ -669,7 +671,7 @@ class LSForce:
                         (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
                     )
                 elif component == 'T':
-                    thf = read(os.path.join(self.sacdir, '*%s*THF.sac' % station))
+                    thf = read(os.path.join(self.gf_sac_dir, '*%s*THF.sac' % station))
                     if len(thf) > 1:
                         raise ValueError(f'Found more than one THF GF for {station}.')
                     else:
