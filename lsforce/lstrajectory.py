@@ -122,7 +122,7 @@ class LSTrajectory:
             ax.set_xlabel('East distance (km)')
             ax.set_ylabel('North distance (km)')
 
-        t0 = self.force.st[0].stats.starttime
+        t0 = self.force.data.st_proc[0].stats.starttime
         if self.force.zero_time:
             t0 += self.force.zero_time
         cbar = plt.colorbar(
