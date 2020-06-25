@@ -173,7 +173,8 @@ class LSForce:
             ) as f:
                 f.write('%3.2f' % triangle_half_width)
 
-        # Make sure there is only one occurrence of each station in list (ignore channels)
+        # Make sure there is only one occurrence of each station in list (ignore
+        # channels)
         stacods = np.unique([tr.stats.station for tr in self.data.st_proc])
         dists = [
             self.data.st_proc.select(station=sta)[0].stats.distance for sta in stacods
@@ -365,7 +366,8 @@ class LSForce:
         # check if sampling rate specified is compatible with period_range
         if 2.0 * self.filter['freqmax'] > self.data_sampling_rate:
             raise ValueError(
-                'data_sampling_rate and period_range are not compatible (violates Nyquist).'
+                'data_sampling_rate and period_range are not compatible (violates '
+                'Nyquist).'
             )
 
         # Always work on copy of data
@@ -387,7 +389,8 @@ class LSForce:
         lens = [len(trace.data) for trace in st]
         if len(set(lens)) != 1:
             print(
-                'Resampled records are of differing lengths, interpolating all records to same start time and sampling rate'
+                'Resampled records are of differing lengths. Interpolating all records '
+                'to same start time and sampling rate.'
             )
             stts = [tr.stats.starttime for tr in st]
             lens = [tr.stats.npts for tr in st]
@@ -406,12 +409,13 @@ class LSForce:
             )
 
         if self.domain == 'time':
-            # ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH - ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
+            # TODO: ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH -
+            #  ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
             lenUall = self.data_length * len(st)
         elif self.domain == 'frequency':
-            nfft = next_pow_2(
-                self.data_length
-            )  # +gf_length) #needs to be the length of the two added together because convolution length M+N-1
+            # Needs to be the length of the two added together because convolution
+            # length M+N-1
+            nfft = next_pow_2(self.data_length)  # + gf_length)
             lenUall = nfft * len(st)
         else:
             raise ValueError(
@@ -611,7 +615,8 @@ class LSForce:
                     else:
                         zhf = zhf[0]
                     # process the same way as st (except shouldn't need to resample)
-                    """ Don't need to filter these GFs? Has non-zero offset so filtering does weird things, already convolved with LP source-time function
+                    """ Don't need to filter these GFs? Has non-zero offset so filtering
+                    does weird things, already convolved with LP source-time function
                     zvf.detrend()
                     zvf.taper(max_percentage=0.05)
                     zvf.filter('bandpass', freqmin=self.filter['freqmin'],
@@ -726,10 +731,9 @@ class LSForce:
             raise ValueError(
                 'G and d sizes are not compatible, fix something somewhere.'
             )
-        self.G = (
-            G * 1.0 / self.data_sampling_rate
-        )  # need to multiply G by sample interval (sec) since convolution is an integral
-        self.d = d * 100.0  # WHY?convert data from m to cm
+        # Need to multiply G by sample interval [s] since convolution is an integral
+        self.G = G * 1.0 / self.data_sampling_rate
+        self.d = d * 100.0  # Convert data from m to cm
         if weights is not None:
             self.W = np.diag(self.Wvec)
         else:
@@ -780,7 +784,7 @@ class LSForce:
         self.impose_zero = impose_zero
         self.max_duration = max_duration
 
-        # Initialize stuff (also serves to clear any previous results if this is a rerun)
+        # Initialize (also serves to clear any previous results if this is a rerun)
         self.model = None
         self.Z = None
         self.N = None
@@ -1030,9 +1034,9 @@ class LSForce:
         )
         if self.zero_time is not None:
             tvec -= self.zero_time
-        if (
-            self.method == 'triangle'
-        ):  # Shift so that peak of triangle function lines up with time of force interval
+        if self.method == 'triangle':
+            # Shift so that peak of triangle function lines up with time of force
+            # interval
             tvec += self.triangle_half_width
         self.tvec = tvec
         self.dtvec = np.arange(
@@ -1040,7 +1044,8 @@ class LSForce:
         )
         if self.zero_time is not None:
             self.dtvec -= self.zero_time
-        # Use constant alpha parameter (found above, if not previously set) for jackknife iterations
+        # Use constant alpha parameter (found above, if not previously set) for
+        # jackknife iterations
         stasets = []
         if self.jackknife is not None:
             # Start jackknife iterations
@@ -1081,11 +1086,12 @@ class LSForce:
                 dhat1 = dhat1.T
                 Apart = Ghat1.conj().T @ Ghat1
 
+                # Combo of all regularization things (if any are zero they won't matter)
                 Aj = Apart + self.alpha ** 2 * (
                     tikhonov_ratios[0] * I
                     + tikhonov_ratios[1] * L1part
                     + tikhonov_ratios[2] * L2part
-                )  # Combo of all regularization things (if any are zero they won't matter)
+                )
                 xj = np.squeeze(Ghat1.conj().T @ dhat1)
 
                 if self.domain == 'frequency':
@@ -1783,9 +1789,9 @@ def _find_alpha(
         - **alphas** – TODO
     """
 
-    templ1 = np.ceil(
-        np.log10(np.linalg.norm(Ghat))
-    )  # Roughly estimate largest singular value (should not use alpha larger than expected largest singular value)
+    # Roughly estimate largest singular value (should not use alpha larger than expected
+    # largest singular value)
+    templ1 = np.ceil(np.log10(np.linalg.norm(Ghat)))
     templ2 = np.arange(templ1 - 6, templ1 - 2)
     alphas = 10 ** templ2
     fit1 = []
@@ -1826,7 +1832,8 @@ def _find_alpha(
     fit1 = np.array(fit1)
     size1 = np.array(size1)
     curves = _curvature(np.log10(fit1), np.log10(size1))
-    # Zero out any points where function is concave so avoid picking points form dropoff at end
+    # Zero out any points where function is concave to avoid picking points from dropoff
+    # at end
     slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
     alphas = np.array(alphas)
     tempcurve = curves.copy()
@@ -1862,7 +1869,8 @@ def _find_alpha(
         fit1 = np.array(fit1)
         size1 = np.array(size1)
         curves = _curvature(np.log10(fit1), np.log10(size1))
-        # Zero out any points where function is concave so avoid picking points form dropoff at end
+        # Zero out any points where function is concave to avoid picking points from
+        # dropoff at end
         slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
         alphas = np.array(alphas)
         tempcurve = curves.copy()
