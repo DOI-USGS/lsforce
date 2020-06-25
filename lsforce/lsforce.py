@@ -50,7 +50,7 @@ class LSForce:
         impose_zero:
         max_duration:
         jackknife:
-        angmag:
+        angle_magnitude:
         G:
         d:
         model: Model vector of concatenated components (n x 1) of solution
@@ -1662,7 +1662,13 @@ class LSForce:
 
         plt.xlabel('Time (s)')
 
-        self.angmag = dict(Mag=Mag, MagU=MagU, MagL=MagL, Vang=Vang, Haz=Haz)
+        self.angle_magnitude = AttribDict(
+            magnitude=Mag,
+            magnitude_upper=MagU,
+            magnitude_lower=MagL,
+            vertical_angle=Vang,
+            horizontal_angle=Haz,
+        )
 
         fig.tight_layout()
         fig.show()
