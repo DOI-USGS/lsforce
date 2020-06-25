@@ -30,7 +30,9 @@ data = LSData(st, source_lat=60.0273, source_lon=-153.0683)
 print('Done')
 
 # Create LSForce object
-force = LSForce(data=data, sampling_rate=1, nickname='test', main_folder=tmp_dir.name)
+force = LSForce(
+    data=data, data_sampling_rate=1, nickname='test', main_folder=tmp_dir.name
+)
 
 # Compute GFs
 print('Computing Green\'s functions...')

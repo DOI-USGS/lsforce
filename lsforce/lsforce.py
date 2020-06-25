@@ -27,7 +27,7 @@ class LSForce:
         data (:class:`~lsforce.lsdata.LSData`): The LSData object associated with this
             inversion
         domain:
-        sampling_rate:
+        data_sampling_rate:
         nickname:
         greens_computed:
         greenlength:
@@ -80,7 +80,7 @@ class LSForce:
     def __init__(
         self,
         data,
-        sampling_rate,
+        data_sampling_rate,
         domain='time',
         nickname=None,
         main_folder=None,
@@ -94,9 +94,9 @@ class LSForce:
         Args:
             data (:class:`~lsforce.lsdata.LSData`): LSData object, corrected for station
                 response but not filtered
-            sampling_rate (int or float): [Hz] Samples per second to use in inversion.
-                All data will be resampled to this rate, and Green's functions will be
-                created with this rate
+            data_sampling_rate (int or float): [Hz] Samples per second to use in
+                inversion. All data will be resampled to this rate, and Green's
+                functions will be created with this rate
             domain (str): Domain in which to do inversion, one of `'time'` or
                 `'frequency'`
             nickname (str): Nickname for this event, used for convenient naming of files
@@ -111,7 +111,7 @@ class LSForce:
 
         self.data = data
         self.domain = domain
-        self.sampling_rate = sampling_rate
+        self.data_sampling_rate = data_sampling_rate
         self.nickname = nickname
         self.greens_computed = False
         self.inversion_complete = False
@@ -193,12 +193,12 @@ class LSForce:
 
         # write dist file in free format
         # figure out how many samples
-        samples = next_pow_2(gf_duration * self.sampling_rate)
+        samples = next_pow_2(gf_duration * self.data_sampling_rate)
         f = open(os.path.join(self.moddir, 'dist'), 'w')
         for dis in dists:
             f.write(
                 '%0.1f %0.2f %i %i 0\n'
-                % (dis, 1.0 / self.sampling_rate, samples, self.T0)
+                % (dis, 1.0 / self.data_sampling_rate, samples, self.T0)
             )
         f.close()
         self.greenlength = samples
@@ -222,7 +222,7 @@ class LSForce:
             if self.method == 'triangle':
                 f.write(
                     'hpulse96 -d %s -V -D -t -l %d > Green\n'
-                    % ('dist', int(self.L / self.sampling_rate))
+                    % ('dist', int(self.L / self.data_sampling_rate))
                 )
             else:
                 f.write('hpulse96 -d %s -V -OD -p > Green\n' % 'dist')
@@ -369,9 +369,9 @@ class LSForce:
                 self.weightpre = weightpre
 
         # check if sampling rate specified is compatible with period_range
-        if 2.0 * self.filter['freqmax'] > self.sampling_rate:
+        if 2.0 * self.filter['freqmax'] > self.data_sampling_rate:
             raise ValueError(
-                'sampling_rate and period_range are not compatible (violates Nyquist).'
+                'data_sampling_rate and period_range are not compatible (violates Nyquist).'
             )
 
         # Always work on copy of data
@@ -386,8 +386,8 @@ class LSForce:
             zerophase=self.filter['zerophase'],
         )
 
-        # resample st to sampling_rate
-        st.resample(self.sampling_rate)
+        # resample st to data_sampling_rate
+        st.resample(self.data_sampling_rate)
 
         # make sure st data are all the same length
         lens = [len(trace.data) for trace in st]
@@ -398,7 +398,7 @@ class LSForce:
             stts = [tr.stats.starttime for tr in st]
             lens = [tr.stats.npts for tr in st]
             st.interpolate(
-                self.sampling_rate, starttime=np.max(stts), npts=np.min(lens) - 1
+                self.data_sampling_rate, starttime=np.max(stts), npts=np.min(lens) - 1
             )
 
         K = 1.0e-15  # CPS variable needed for conversion to meaningful units
@@ -426,7 +426,7 @@ class LSForce:
 
         if self.method == 'tik':
 
-            self.force_sampling_rate = self.sampling_rate
+            self.force_sampling_rate = self.data_sampling_rate
 
             # initialize weighting matrices
             Wvec = np.ones(self.lenUall)
@@ -592,7 +592,7 @@ class LSForce:
 
             n = self.datalength
             fshiftby = int(
-                self.L / self.sampling_rate
+                self.L / self.data_sampling_rate
             )  # Number of samples to shift each triangle by
             Flen = int(
                 np.floor(self.datalength / fshiftby)
@@ -729,7 +729,7 @@ class LSForce:
                 'G and d sizes are not compatible, fix something somewhere.'
             )
         self.G = (
-            G * 1.0 / self.sampling_rate
+            G * 1.0 / self.data_sampling_rate
         )  # need to multiply G by sample interval (sec) since convolution is an integral
         self.d = d * 100.0  # WHY?convert data from m to cm
         if weights is not None:
@@ -1034,7 +1034,7 @@ class LSForce:
             tvec += self.L
         self.tvec = tvec
         self.dtvec = np.arange(
-            0, self.datalength / self.sampling_rate, 1 / self.sampling_rate
+            0, self.datalength / self.data_sampling_rate, 1 / self.data_sampling_rate
         )
         if self.zero_time is not None:
             self.dtvec -= self.zero_time
