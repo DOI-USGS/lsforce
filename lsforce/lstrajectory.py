@@ -12,7 +12,7 @@ MASS_INC = int(1e7)  # [kg] Smaller increment is slower but more precise
 
 
 class LSTrajectory:
-    """Class for force inversion derived trajectories.
+    r"""Class for force inversion derived trajectories.
 
     Attributes:
         force (:class:`~lsforce.lsforce.LSForce`): Inversion results used to compute
@@ -42,7 +42,7 @@ class LSTrajectory:
         duration=None,
         detrend_velocity=None,
     ):
-        """Create an LSTrajectory object.
+        r"""Create an LSTrajectory object.
 
         Args:
             force (:class:`~lsforce.lsforce.LSForce`): Completed force inversion
@@ -81,7 +81,7 @@ class LSTrajectory:
         dem=None,
         reference_point=None,
     ):
-        """Plot trajectory results with context.
+        r"""Plot trajectory results with context.
 
         Args:
             elevation_profile (bool): If True, plot vertical displacement versus
@@ -190,7 +190,7 @@ class LSTrajectory:
     def _compute_trajectory(
         self, mass=None, target_length=None, duration=None, detrend_velocity=None,
     ):
-        """Integrate force time series to velocity and then to displacement.
+        r"""Integrate force time series to velocity and then to displacement.
 
         Either provide a mass or a target horizontal runout length. If a length is
         provided, the code will find the mass that achieves this length. Calls
@@ -248,7 +248,7 @@ class LSTrajectory:
     def _integrate_acceleration(
         self, z_force, e_force, n_force, mass, startidx, endidx, detrend=None
     ):
-        """Integrate forces (acceleration) to velocity and displacement."""
+        r"""Integrate forces (acceleration) to velocity and displacement."""
 
         traj_tvec = self.force.tvec[startidx : endidx + 1]
 
@@ -297,7 +297,7 @@ class LSTrajectory:
         duration=None,
         detrend=None,
     ):
-        """Calls :meth:`~lsforce.lstrajectory.LSTrajectory._integrate_acceleration()`.
+        r"""Calls :meth:`~lsforce.lstrajectory.LSTrajectory._integrate_acceleration()`.
         """
 
         # Check args
@@ -355,7 +355,7 @@ class LSTrajectory:
         )
 
     def _slice_dem(self, dem_file, interp_spacing=0.1):
-        """Slice through an input DEM along the trajectory path.
+        r"""Slice through an input DEM along the trajectory path.
 
         Args:
             dem_file (str): DEM GeoTIFF to slice (must be UTM-projected!)
@@ -427,7 +427,7 @@ class LSTrajectory:
 
 
 def _calculate_horizontal_distance(east_displacement, north_displacement):
-    """Calculate horizontal distance vector from east and north displacement vectors.
+    r"""Calculate horizontal distance vector from east and north displacement vectors.
 
     This is the horizontal distance "along the avalanche path" as a function of time.
     `horizontal_distance[-1]` is :math:`L`, the horizontal runout distance (which is
