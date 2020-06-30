@@ -52,8 +52,8 @@ Documentation
 
 A usage example is given in `example.py`.
 
-To build the documentation, first ensure that you installed the developer tools
-(`DEVELOPER=1` in `install.sh`), which are required for documentation building. Then:
+To build the documentation, first ensure that you installed the developer tools (`bash
+install.sh 1`), which are required for documentation building. Then:
 ```shell
 conda activate lsforce
 cd doc

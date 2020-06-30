@@ -1,0 +1,21 @@
+stages:
+  - test
+
+Install and test:
+  script:
+    # Install the lsforce package, its dependencies, and testing packages
+    - source /etc/profile.d/conda.sh
+    - conda config --add channels conda-forge
+    - conda install --yes cartopy obspy pyqt scikit-learn xarray
+    - conda install --yes black pytest-cov
+    - pip install --editable .
+    # Run tests
+    - black --skip-string-normalization --check .
+    - pytest --cov-report html:cov_html --cov=lsforce tests/
+  artifacts:
+    paths:
+      - cov_html
+  stage: test
+  image: ${DEVOPS_REGISTRY}usgs/conda:latest
+  tags:
+    - development
