@@ -1,136 +1,143 @@
 #!/bin/bash
 
-unamestr=`uname`
-if [ "$unamestr" == 'Linux' ]; then
-    prof=~/.bashrc
-    mini_conda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-elif [ "$unamestr" == 'FreeBSD' ] || [ "$unamestr" == 'Darwin' ]; then
-    prof=~/.bash_profile
-    mini_conda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
-else
-    echo "Unsupported environment. Exiting."
-    exit
-fi
+# USAGE:
+#   bash install.sh    # Standard (user) install
+#   bash install.sh 1  # Developer install
 
-source $prof
+platform=$(uname)
+if [ "$platform" == 'Linux' ]
+then
+    profile=~/.bashrc
+    miniconda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+elif [ "$platform" == 'FreeBSD' ] || [ "$platform" == 'Darwin' ]
+then
+    profile=~/.bash_profile
+    miniconda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+else
+    echo 'Unsupported platform. Exiting.'
+    exit 1
+fi
 
 # Name of package
 PACKAGE_NAME=lsforce
-# Name of new environment
+# Name of new conda environment
 ENV_NAME=$PACKAGE_NAME
-# Python version
-PYTHON_VERSION=3.8
-
-# Set to 1 if you are a developer and want Black, IPython, etc. installed
-DEVELOPER=0
 
 # Is conda installed?
-conda --version
-if [ $? -ne 0 ]; then
-    echo "No conda detected, installing miniconda..."
+if ! conda --version
+then
+    echo 'No conda detected, installing miniconda...'
 
-    curl -L $mini_conda_url -o miniconda.sh;
-
-    # If curl fails, bow out gracefully
-    if [ $? -ne 0 ];then
-        echo "Failed to create download miniconda installer shell script. Exiting."
+    # Try to download shell script using curl
+    if ! curl -L $miniconda_url -o miniconda.sh
+    then
+        echo 'Failed to create download miniconda installer shell script. Exiting.'
         exit 1
     fi
 
-    echo "Install directory: $HOME/miniconda"
-
-    bash miniconda.sh -f -b -p $HOME/miniconda
-
-    # If miniconda.sh fails, bow out gracefully
-    if [ $? -ne 0 ];then
-        echo "Failed to run miniconda installer shell script. Exiting."
+    # Try to install miniconda
+    echo 'Install directory: ~/miniconda'
+    if ! bash miniconda.sh -f -b -p ~/miniconda
+    then
+        echo 'Failed to run miniconda installer shell script. Exiting.'
         exit 1
     fi
 
-    . $HOME/miniconda/etc/profile.d/conda.sh
+    # Set up conda activate command, see:
+    # https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
+    eval "$(~/miniconda/bin/conda shell.bash hook)"
+    conda init
+
+    # Don't automatically activate the environment
+    conda config --set auto_activate_base false
+
 else
-    echo "conda detected, installing $ENV_NAME environment..."
+    echo "conda detected, installing the $ENV_NAME environment..."
 fi
 
-# Add source command to profile file if it isn't already there
-grep -q "/etc/profile.d/conda.sh" $prof
-if [ $? -ne 0 ]; then
-    echo ". $_CONDA_ROOT/etc/profile.d/conda.sh" >> $prof
-fi
+# This is needed to ensure that environment activation works
+source $profile
 
-# Start in conda base environment
-echo "Activating base environment"
-conda activate base
+# Try to activate the base conda environment
+echo 'Activating the base environment'
+if ! conda activate base
+then
+    echo '"conda activate" failed, trying "source activate" instead...'
+    if ! source activate base
+    then
+        echo 'Failed to activate the base environment. Exiting.'
+        exit 1
+    fi
+fi
 
 # Remove existing environment if it exists
 conda remove --yes --name $ENV_NAME --all
 
-dev_list=(
-    "black"
-    "ipython"
-    "sphinx"
-    "sphinx_rtd_theme"
-    "sphinxcontrib-apidoc"
-    "recommonmark"
+# Standard package list:
+PACKAGE_LIST=(
+    'cartopy'
+    'obspy'
+    'pyqt'
+    'scikit-learn'
+    'xarray'
 )
 
-# Package list:
-package_list=(
-    "python=$PYTHON_VERSION"
-    "cartopy"
-    "obspy"
-    "pyqt"
-    "scikit-learn"
-    "xarray"
+# Additional developer packages:
+DEVELOPER_PACKAGES=(
+    'black'
+    'ipython'
+    'pytest-cov'
+    'sphinx'
+    'sphinx_rtd_theme'
+    'sphinxcontrib-apidoc'
+    'recommonmark'
 )
 
-if [ $DEVELOPER == 1 ]; then
-    package_list=( "${package_list[@]}" "${dev_list[@]}" )
-    echo "Installing developer packages:"
-    echo ${dev_list[*]}
+# If user supplied the developer flag, add developer packages to package list
+if [ "$1" == 1 ]
+then
+    PACKAGE_LIST=( "${PACKAGE_LIST[@]}" "${DEVELOPER_PACKAGES[@]}" )
+    echo 'Installing developer packages:'
+    echo "${DEVELOPER_PACKAGES[@]}"
 fi
 
-# Create a conda environment
+# Try to create a conda environment
 echo "Creating the $ENV_NAME environment"
-conda create --yes --name $ENV_NAME --channel conda-forge ${package_list[*]}
-
-# Bail out at this point if the conda create command fails.
-# Clean up zip files we've downloaded
-if [ $? -ne 0 ]; then
-    echo "Failed to create conda environment. Resolve any conflicts, then try again."
-    exit
+if ! conda create --yes --name $ENV_NAME --channel conda-forge "${PACKAGE_LIST[@]}"
+then
+    echo 'Failed to create conda environment. Resolve any conflicts, then try again.'
+    exit 1
 fi
 
-# Activate the new environment
+# Try to activate the new conda environment
 echo "Activating the $ENV_NAME environment"
-conda activate $ENV_NAME
-
-# If conda activate fails, bow out gracefully
-if [ $? -ne 0 ];then
-    echo "Failed to activate $ENV_NAME conda environment. Exiting."
-    exit 1
+if ! conda activate $ENV_NAME
+then
+    echo '"conda activate" failed, trying "source activate" instead...'
+    if ! source activate $ENV_NAME
+    then
+        echo "Failed to activate the $ENV_NAME conda environment. Exiting."
+        exit 1
+    fi
 fi
 
-# Upgrade pip, mostly so pip doesn't complain about not being new...
-pip install --upgrade pip
-
-# If pip upgrade fails, complain but try to keep going
-if [ $? -ne 0 ];then
-    echo "Failed to upgrade pip, trying to continue..."
-    exit 1
+# Try to upgrade pip, mostly so pip doesn't complain about not being new...
+if ! pip install --upgrade pip
+then
+    echo 'Failed to upgrade pip. Trying to continue...'
 fi
 
-# Install this package
+# Try to install this package
+echo
 echo "Installing $PACKAGE_NAME"
-pip install --editable .
-
-# If pip install fails, bow out gracefully
-if [ $? -ne 0 ];then
-    echo "Failed to pip install this package. Exiting."
+if ! pip install --editable .
+then
+    echo 'Failed to pip install this package. Exiting.'
     exit 1
 fi
 
 # Tell user to install CPS
-echo "This code requires Computer Programs in Seismology (CPS), available at:"
-echo "http://www.eas.slu.edu/eqc/eqccps.html"
-echo "You'll need to add it to your PATH after installing."
+echo
+echo 'This code requires Computer Programs in Seismology (CPS), available at:'
+echo 'http://www.eas.slu.edu/eqc/eqccps.html'
+echo 'You will need to add it to your PATH after installing.'
