@@ -11,7 +11,7 @@ Install and test:
     - pip install --editable .
     # Run tests
     - black --skip-string-normalization --check .
-    - pytest --cov-report html:cov_html --cov=lsforce tests/
+    - pytest --cov-report term --cov-report html:cov_html --cov=lsforce tests/
   artifacts:
     paths:
       - cov_html
