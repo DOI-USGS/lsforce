@@ -1,7 +1,7 @@
 lsforce
 =======
 
-[![pipeline status](https://code.usgs.gov/ghsc/users/ltoney/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/-/commits/master)
+[![pipeline status](https://code.usgs.gov/ghsc/users/ltoney/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/pipelines/latest)
 
 🚨 _lsforce_ is currently under rapid development. Use at your own risk! 🚨
 
