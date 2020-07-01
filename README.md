@@ -1,6 +1,9 @@
 lsforce
 =======
 
+[![pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest)
+[![coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs)
+
 🚨 _lsforce_ is currently under rapid development. Use at your own risk! 🚨
 
 Installation
