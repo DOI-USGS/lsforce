@@ -52,8 +52,5 @@ def test_inversion():
     # Test resulting model
     print('Testing...')
     np.testing.assert_allclose(
-        force.model,
-        np.load(os.path.join(data_dir, 'model.npy')),
-        verbose=False,
-        rtol=RTOL,
+        force.model, np.load(os.path.join(data_dir, 'model.npy')), rtol=RTOL,
     )
