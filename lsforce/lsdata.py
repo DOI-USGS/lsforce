@@ -276,12 +276,13 @@ class LSData:
 def _rotate_to_rtz(st):
     r"""Rotate all components of a Stream into radial–transverse–vertical.
 
-    This function first rotates non-standard horizontals into EN, then rotates into RTZ.
-    It also checks that input components labeled as east, north, and vertical (e.g.,
-    BHE, BHN, BHZ, etc.) have the correct orientation.
+    This function performs a two-step rotation. First, it rotates all channels into ZNE
+    using IRIS metadata (even stations that claim to already be in ZNE!). Then, it
+    rotates into RTZ.
 
     Args:
-        st (:class:`~obspy.core.stream.Stream`): Input Stream to be rotated
+        st (:class:`~obspy.core.stream.Stream`): Input Stream to be rotated with
+            ``stats.back_azimuth`` defined
 
     Returns:
         :class:`~obspy.core.stream.Stream`: Rotated Stream
@@ -305,53 +306,26 @@ def _rotate_to_rtz(st):
         level='channel',
     )
 
-    # Rotate on a station-by-station basis
+    # Rotate to ZNE (must put 'ZNE' in list of components to handle ZNE!)
+    st_rot.rotate('->ZNE', components=['ZNE', 'Z12', '123'], inventory=inv)
+
+    # Report on what was modified by the above call
+    for tr, tr_rot in zip(st.copy().sort(), st_rot.copy().sort()):
+        try:
+            np.testing.assert_allclose(tr_rot.data, tr.data, verbose=True)
+        except AssertionError as error:
+            orientation = inv.get_orientation(tr.id)
+            message = '{} -> {}\n{}\n{}\n'.format(
+                tr.id,
+                tr_rot.id,
+                orientation,
+                error.__str__().strip().replace('\n\n', '\n'),
+            )
+            print(message)
+
+    # Rotate to ZRT on a station-by-station basis
     for station in stations:
-
         st_sta = st_rot.select(station=station)  # Just select Traces for this station
-        components = [tr.stats.channel[-1] for tr in st_sta]
-        components.sort()  # Increasing numerical, then alphabetical order
-
-        # ENZ case (or subset of ENZ)
-        if components in (
-            ['E', 'N', 'Z'],
-            ['E', 'N'],
-            ['E', 'Z'],
-            ['N', 'Z'],
-            ['E'],
-            ['N'],
-            ['Z'],
-        ):
-            # Just check for expected orientation, don't do any rotation
-            for component in components:
-
-                # Get orientation
-                tr_id = st_sta.select(component=component)[0].id  # Only one Trace here!
-                orient = inv.get_orientation(tr_id)
-                azimuth = orient['azimuth']
-                dip = orient['dip']
-
-                # Define what it means to be "bad"
-                bad_e = component == 'E' and not (azimuth == 90.0 and dip == 0.0)
-                bad_n = component == 'N' and not (azimuth == 0.0 and dip == 0.0)
-                bad_z = component == 'Z' and not (azimuth == 0.0 and dip == -90.0)
-
-                # Warn!
-                if bad_e or bad_n or bad_z:
-                    warnings.warn(
-                        f'Bad orientation for {tr_id}\n\tazimuth = '
-                        f'{azimuth}\n\tdip = {dip}'
-                    )
-
-        # 12Z and 123 cases
-        elif components in (['1', '2', 'Z'], ['1', '2', '3']):
-            st_sta.rotate('->ZNE', inventory=inv)  # Rotate to ENZ (in-place change!)
-
-        # Error out since we don't know how to handle this (yet)!
-        else:
-            raise ValueError(f'Unable to rotate station {station}')
-
-        # Now the data are ostensibly in correct ENZ orientation - do rotation to RTZ
         st_sta.rotate('NE->RT')
 
     return st_rot
