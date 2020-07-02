@@ -14,7 +14,7 @@ The following has only been tested on macOS Mojave.
 1. Install
    [Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html), and
    ensure it's on your `PATH`:
-   
+
    * Install [GCC](https://gcc.gnu.org/) with e.g. [Homebrew](https://brew.sh/):
      ```shell
      brew install gcc
@@ -33,7 +33,7 @@ The following has only been tested on macOS Mojave.
      ```shell
      export PATH="$PATH:/path/to/PROGRAMS.330/bin"
      ```
-     
+
 2. Clone this repo and run the installation script, which creates a
    [conda](https://docs.conda.io/en/latest/) environment named `lsforce` and installs
    the _lsforce_ package into the environment:
