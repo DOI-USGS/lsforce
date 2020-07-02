@@ -40,7 +40,7 @@ The following has only been tested on macOS Mojave.
    ```shell
    git clone https://code.usgs.gov/ghsc/lhp/lsforce.git
    cd lsforce
-   bash install.sh
+   bash install.sh  # Or `bash install.sh 1` if you want developer tools as well
    ```
 
 4. Set up an arbitrary run directory and grab model file:
@@ -67,9 +67,10 @@ open _build/html/index.html  # macOS command to open file in browser
 Testing
 -------
 
-A test script is provided in the `tests` directory. To run the script:
+Tests are located in the `tests` directory. To run the tests, first ensure that you
+installed the developer tools (`bash install.sh 1`), which are required for testing.
+Then:
 ```shell
 conda activate lsforce
-cd tests
-python test_inversion.py
+pytest --cov=lsforce tests/
 ```
