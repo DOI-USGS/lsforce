@@ -5,22 +5,49 @@ from pandas.core.common import SettingWithCopyWarning
 import numpy as np
 import os
 import warnings
+import sys
 
 # Ignore useless warning
 warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
 
-# [km] If not None, truncate model to this depth
-MAX_DEPTH = 1200
+# Limit model to this many layers; CPS supports up to 200
+NUM_LAYERS = 200
+
+# Model comment "can be no more than 80 characters long"
+MAX_CHARACTERS = 80
+
+# Four-space tab for help message and output model file
+TAB = '    '
+
+# From http://ds.iris.edu/ds/products/emc-syngine/
+MODELS = dict(
+    ak135f='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_ak135f.txt',
+    iasp91='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_iasp91.txt',
+    prem_crust20_ocean='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREM_ocean.txt',
+    prem_ani='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREMani.txt',
+    prem_iso='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREMiso.txt',
+)
+
+help_message = (
+    'Convert model files used for IRIS Syngine AxiSEM runs to\nComputer Programs in '
+    f'Seismology (CPS) format.\n\nUsage:\n{TAB}{os.path.basename(__file__)} <model>\n\n'
+    f'Where <model> is one of:\n{TAB}' + f'\n{TAB}'.join(MODELS.keys())
+)
+
+# Print help message if the user messed up
+if len(sys.argv) != 2 or sys.argv[1] not in MODELS.keys():
+    print(help_message)
+    sys.exit(1)
 
 # Read in model cleanly
-tmp = read_table(
-    'http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_ak135f.txt',
-    delim_whitespace=True,
-    header=4,
-    comment='#',
-)
+model_nickname = sys.argv[1]
+model_url = MODELS[model_nickname]
+tmp = read_table(model_url, delim_whitespace=True, header=4, comment='#',)
 model = tmp[tmp.columns[:-1]]
 model.columns = tmp.columns[1:]
+
+# Only retain the first 6 columns (this discards vph, vsh, eta for models with those)
+model = model[model.columns[:6]]
 
 # Unit conversions
 model.radius = model.radius / 1000.0  # To km
@@ -59,28 +86,28 @@ COLUMNS = [
 ]
 model = model[COLUMNS]
 
-# Truncate to desired depth, if specified
-if MAX_DEPTH:
-    depth = np.cumsum(model['H(KM)'])  # [km]
-    ind = depth.index[depth == MAX_DEPTH].tolist()[0]
-    model = model[: ind + 1]
+# Truncate to NUM_LAYERS and find maximum depth
+model = model[:NUM_LAYERS]
+max_depth = np.sum(model['H(KM)'])  # [km]
 
-    # Make sure things worked
-    assert model['H(KM)'].sum() == MAX_DEPTH, 'Truncation failure!'
+# Form model file description and ensure it's not too long
+description = (
+    f'AxiSEM input file "{os.path.basename(model_url)}" truncated to {max_depth:g} km '
+    f'({NUM_LAYERS} layers)'
+)
+assert (
+    len(description) <= MAX_CHARACTERS
+), f'Description is more than {MAX_CHARACTERS} long!'
 
-    comment = f', truncated to {MAX_DEPTH:g} km'
-
-else:
-    comment = ''
-
-TAB = '    '  # Four-space tab
-with open(os.path.join(os.getcwd(), 'ak135f_truncated.mod'), 'w') as f:
+# Write to the file
+output_filename = f'{model_nickname}.mod'
+with open(os.path.join(os.getcwd(), output_filename), 'w') as f:
 
     def line(string):
         return f.write(string + '\n')
 
     line('MODEL.01')
-    line('AxiSEM input file "1dmodel_ak135f.txt" (from IRIS)' + comment)
+    line(description)
     line('ISOTROPIC')
     line('KGS')
     line('SPHERICAL EARTH')
@@ -108,3 +135,7 @@ with open(os.path.join(os.getcwd(), 'ak135f_truncated.mod'), 'w') as f:
                 ]
             )
         )
+
+print(
+    f'{output_filename} created ({NUM_LAYERS} layers, maximum depth = {max_depth:g} km)'
+)
