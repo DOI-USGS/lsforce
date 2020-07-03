@@ -872,13 +872,8 @@ class LSForce:
             )
             if self.method == 'triangle':
                 len2 = int(
-                    np.floor(
-                        (
-                            (self.zero_time - self.triangle_half_width)
-                            * self.force_sampling_rate
-                        )
-                    )
-                )  # Potentially need to adjust for T0 here too?
+                    np.floor(((self.zero_time + self.T0) * self.force_sampling_rate))
+                )
             if self.method == 'tik':
                 len3 = int(
                     zero_taper_length * self.force_sampling_rate
