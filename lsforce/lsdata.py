@@ -1,12 +1,11 @@
-from obspy.geodetics import gps2dist_azimuth
-from obspy.clients.fdsn import Client
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import matplotlib.pyplot as plt
-import matplotlib.patheffects as path_effects
 import matplotlib.dates as mdates
+import matplotlib.patheffects as path_effects
+import matplotlib.pyplot as plt
 import numpy as np
-import warnings
+from obspy.clients.fdsn import Client
+from obspy.geodetics import gps2dist_azimuth
 
 DETREND_POLY_ORDER = 2
 
