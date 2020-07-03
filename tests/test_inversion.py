@@ -1,7 +1,9 @@
-from lsforce import LSData, LSForce
-from obspy import read
-import numpy as np
 import os
+
+import numpy as np
+from obspy import read
+
+from lsforce import LSData, LSForce
 
 # Relative tolerance for test, see:
 # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html

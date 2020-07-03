@@ -1,8 +1,10 @@
-from lsforce import LSData, LSForce, LSTrajectory
-from obspy import read, UTCDateTime
+import os
+
+from obspy import UTCDateTime, read
 from obspy.clients.fdsn import Client
 from obspy.geodetics import gps2dist_azimuth
-import os
+
+from lsforce import LSData, LSForce, LSTrajectory
 
 # Arbitrary run directory containing model file
 LSFORCE_RUN_DIR = os.path.join(os.getcwd(), 'meow')

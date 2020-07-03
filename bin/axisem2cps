@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
+import os
+import sys
+import warnings
+
+import numpy as np
 from pandas import read_table
 from pandas.core.common import SettingWithCopyWarning
-import numpy as np
-import os
-import warnings
-import sys
 
 # Ignore useless warning
 warnings.filterwarnings('ignore', category=SettingWithCopyWarning)

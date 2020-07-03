@@ -1,19 +1,20 @@
-import numpy as np
-from obspy import Trace, read, UTCDateTime
-from obspy.signal.util import next_pow_2
-import math
-import glob
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
-import scipy as sp
-import random as rnd
-import pickle
-import os
-import stat
-import shutil
-import subprocess
 import copy
+import glob
+import math
+import os
+import pickle
+import random as rnd
+import shutil
+import stat
+import subprocess
+
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy as sp
+from obspy import Trace, UTCDateTime, read
 from obspy.core import AttribDict
+from obspy.signal.util import next_pow_2
 
 
 class LSForce:
