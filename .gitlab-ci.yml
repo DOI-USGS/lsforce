@@ -7,9 +7,10 @@ Install and test:
     - source /etc/profile.d/conda.sh
     - conda config --add channels conda-forge
     - conda install --yes cartopy obspy pyqt scikit-learn xarray
-    - conda install --yes black pytest-cov
+    - conda install --yes black isort pytest-cov
     - pip install --editable .
     # Run tests
+    - isort --conda-env base --check-only
     - black --skip-string-normalization --check .
     - pytest --capture=no --cov-report term --cov-report html:cov_html --cov=lsforce tests/
   artifacts:
