@@ -1,5 +1,7 @@
-lsforce
-=======
+*lsforce*
+=========
+
+*lsforce* is a Python-based seismic force inversion framework for massive landslides.
 
 | [Main](https://code.usgs.gov/ghsc/lhp/lsforce) | [Develop](https://code.usgs.gov/ghsc/users/ltoney/lsforce) |
 |:----------------------------------------------:|:----------------------------------------------------------:|
