@@ -86,11 +86,12 @@ PACKAGE_LIST=(
 DEVELOPER_PACKAGES=(
     'black'
     'ipython'
+    'isort'
     'pytest-cov'
+    'recommonmark'
     'sphinx'
     'sphinx_rtd_theme'
     'sphinxcontrib-apidoc'
-    'recommonmark'
 )
 
 # If user supplied the developer flag, add developer packages to package list
