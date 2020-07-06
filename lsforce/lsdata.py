@@ -162,7 +162,7 @@ class LSData:
 
         return fig
 
-    def plot_stations(self, region=None, label_stations=False):
+    def plot_stations(self, region=None, label_stations=False, gshhs_scale='auto'):
         r"""Create a map showing stations and event location.
 
         Args:
@@ -170,6 +170,8 @@ class LSData:
                 specifying the desired map region in decimal degrees. If `None`, we
                 automatically pick a region that includes the event and stations
             label_stations (bool): If `True`, label stations with their codes
+            gshhs_scale: (str): Resolution for coastlines; one of 'auto', 'coarse',
+                'low', 'intermediate', 'high', or 'full'
 
         Returns:
             :class:`~matplotlib.figure.Figure`: Output figure handle
@@ -196,7 +198,9 @@ class LSData:
 
         # Add geographic context
         ax.add_feature(
-            cfeature.GSHHSFeature(), facecolor=cfeature.COLORS['land'], zorder=1
+            cfeature.GSHHSFeature(scale=gshhs_scale),
+            facecolor=cfeature.COLORS['land'],
+            zorder=1,
         )
         ax.background_patch.set_facecolor(cfeature.COLORS['water'])
         ax.add_feature(
