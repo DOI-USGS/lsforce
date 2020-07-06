@@ -188,7 +188,9 @@ class LSForce:
 
         # write dist file in free format
         # figure out how many samples
+        print(f'Requested GF length = {gf_duration:g} s')
         samples = next_pow_2(gf_duration * self.data_sampling_rate)
+        print(f'Optimized GF length = {samples / self.data_sampling_rate:g} s')
         f = open(os.path.join(self.gf_run_dir, 'dist'), 'w')
         for dis in dists:
             f.write(f'{dis:0.1f} {self.data_sampling_rate:0.2f} {samples:d} {T0:d} 0\n')
