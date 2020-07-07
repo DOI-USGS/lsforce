@@ -208,6 +208,7 @@ class LSForce:
             f.write(f'rm {os.path.join(self.gf_sac_dir, "*.sac")}\n')
             f.write(f'hprep96 -HR 0. -HS 0. -M {self.model_file} -d dist -R -EXF\n')
             f.write('hspec96 > hspec96.out\n')
+            # 10^15 dynes is the default pulse here, equal to 10^10 Newtons
             if self.method == 'triangle':
                 f.write(
                     'hpulse96 -d dist -V -D -t -l {} > Green\n'.format(
@@ -389,7 +390,9 @@ class LSForce:
                 self.data_sampling_rate, starttime=np.max(stts), npts=np.min(lens) - 1
             )
 
-        K = 1.0e-15  # CPS variable needed for conversion to meaningful units
+        # Since GFs are computed for a 10^15 dyne impulse, this converts GFs to what
+        # they'd be for a 1 dyne impulse
+        K = 1e-15
         self.data_length = len(st[0].data)
 
         if self.gf_length > self.data_length:
