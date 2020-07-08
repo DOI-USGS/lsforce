@@ -12,7 +12,7 @@ from pandas.core.common import SettingWithCopyWarning
 warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
 
 # Limit model to this many layers; CPS supports up to 200
-NUM_LAYERS = 200
+NUM_LAYERS = 195
 
 # Model comment "can be no more than 80 characters long"
 MAX_CHARACTERS = 80
