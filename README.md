@@ -47,7 +47,7 @@ The following has only been tested on macOS Mojave.
    bash install.sh  # Or `bash install.sh 1` if you want developer tools as well
    ```
 
-4. Set up an arbitrary run directory and grab model file:
+3. Set up an arbitrary run directory and grab model file:
    ```shell
    mkdir meow
    cd meow
