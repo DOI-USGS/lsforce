@@ -10,7 +10,7 @@ Install and test:
     - conda install --yes black isort pytest-cov
     - pip install --editable .
     # Run tests
-    - isort --conda-env base --check-only
+    - isort --conda-env base --check-only .
     - black --skip-string-normalization --check .
     - pytest --capture=no --cov-report term --cov-report html:cov_html --cov=lsforce tests/
   artifacts:
