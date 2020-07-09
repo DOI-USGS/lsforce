@@ -213,7 +213,7 @@ class LSForce:
             # 10^15 dynes is the default pulse here, equal to 10^10 Newtons
             if self.method == 'triangle':
                 f.write(
-                    'hpulse96 -d dist -V -D -t -l {} > Green\n'.format(
+                    'hpulse96 -d dist -D -t -l {} > Green\n'.format(
                         int(self.triangle_half_width / self.data_sampling_rate)
                     )
                 )
