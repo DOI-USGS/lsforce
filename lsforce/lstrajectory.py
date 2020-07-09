@@ -1,10 +1,10 @@
 import warnings
 
-import cartopy.crs as ccrs
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from cartopy import crs as ccrs
 from matplotlib import cm
+from matplotlib import pyplot as plt
 from obspy.core import AttribDict
 
 KM_PER_M = 1 / 1000  # [km/m]

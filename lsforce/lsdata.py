@@ -1,9 +1,9 @@
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
-import matplotlib.dates as mdates
-import matplotlib.patheffects as path_effects
-import matplotlib.pyplot as plt
 import numpy as np
+from cartopy import crs as ccrs
+from cartopy import feature as cfeature
+from matplotlib import dates as mdates
+from matplotlib import patheffects as path_effects
+from matplotlib import pyplot as plt
 from obspy.clients.fdsn import Client
 from obspy.geodetics import gps2dist_azimuth
 
