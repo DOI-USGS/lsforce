@@ -193,7 +193,9 @@ class LSForce:
         print(f'Optimized GF length = {samples / self.data_sampling_rate:g} s')
         f = open(os.path.join(self.gf_run_dir, 'dist'), 'w')
         for dis in dists:
-            f.write(f'{dis:0.1f} {self.data_sampling_rate:0.2f} {samples:d} {T0:d} 0\n')
+            f.write(
+                f'{dis:0.1f} {1 / self.data_sampling_rate:0.2f} {samples:d} {T0:d} 0\n'
+            )
         f.close()
         self.gf_length = samples
 
@@ -214,7 +216,7 @@ class LSForce:
             if self.method == 'triangle':
                 f.write(
                     'hpulse96 -d dist -D -t -l {} > Green\n'.format(
-                        int(self.triangle_half_width / self.data_sampling_rate)
+                        int(self.triangle_half_width * self.data_sampling_rate)
                     )
                 )
             else:
@@ -588,7 +590,7 @@ class LSForce:
 
             n = self.data_length
             fshiftby = int(
-                self.triangle_half_width / self.data_sampling_rate
+                self.triangle_half_width * self.data_sampling_rate
             )  # Number of samples to shift each triangle by
             Flen = int(
                 np.floor(self.data_length / fshiftby)
