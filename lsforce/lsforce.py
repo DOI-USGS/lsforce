@@ -424,6 +424,9 @@ class LSForce:
 
             self.force_sampling_rate = self.data_sampling_rate
 
+            # [s] For the "-p" flag, half-width is 2 L dt and L is 1 here
+            stf_half_width = 2 * (1 / self.data_sampling_rate)
+
             # initialize weighting matrices
             Wvec = np.ones(lenUall)
             indx = 0
@@ -447,6 +450,13 @@ class LSForce:
                     else:
                         zhf = zhf[0]
                     # process the same way as st (except shouldn't need to resample)
+                    # Adjust for pulse not being centered on zero
+                    zvf.trim(
+                        zvf.stats.starttime + stf_half_width,
+                        zvf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
                     zvf.detrend()
                     zvf.taper(max_percentage=0.05)
                     zvf.filter(
@@ -456,7 +466,13 @@ class LSForce:
                         corners=self.filter['order'],
                         zerophase=self.filter['zerophase'],
                     )
-
+                    # Adjust for pulse not being centered on zero
+                    zhf.trim(
+                        zhf.stats.starttime + stf_half_width,
+                        zhf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
                     zhf.detrend()
                     zhf.taper(max_percentage=0.05)
                     zhf.filter(
@@ -492,6 +508,13 @@ class LSForce:
                         rhf = rhf[0]
 
                     # process the same way as st
+                    # Adjust for pulse not being centered on zero
+                    rvf.trim(
+                        rvf.stats.starttime + stf_half_width,
+                        rvf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
                     rvf.detrend()
                     rvf.taper(max_percentage=0.05)
 
@@ -502,7 +525,13 @@ class LSForce:
                         corners=self.filter['order'],
                         zerophase=self.filter['zerophase'],
                     )
-
+                    # Adjust for pulse not being centered on zero
+                    rhf.trim(
+                        rhf.stats.starttime + stf_half_width,
+                        rhf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
                     rhf.detrend()
                     rhf.taper(max_percentage=0.05)
                     rhf.filter(
@@ -531,6 +560,13 @@ class LSForce:
                     else:
                         thf = thf[0]
                     # process the same way as st
+                    # Adjust for pulse not being centered on zero
+                    thf.trim(
+                        thf.stats.starttime + stf_half_width,
+                        thf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
                     thf.detrend()
                     thf.taper(max_percentage=0.05)
                     thf.filter(
@@ -583,6 +619,10 @@ class LSForce:
 
         elif self.method == 'triangle':
 
+            # [s] For the "-t" flag, half-width is 1 L dt and L * dt is
+            # self.triangle_half_width
+            stf_half_width = self.triangle_half_width  # [s]
+
             # initialize weighting matrices
             Wvec = np.ones(lenUall)
             indx = 0
@@ -612,6 +652,20 @@ class LSForce:
                         raise ValueError(f'Found more than one ZHF GF for {station}.')
                     else:
                         zhf = zhf[0]
+                    # Adjust for pulse not being centered on zero
+                    zvf.trim(
+                        zvf.stats.starttime + stf_half_width,
+                        zvf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
+                    # Adjust for pulse not being centered on zero
+                    zhf.trim(
+                        zhf.stats.starttime + stf_half_width,
+                        zhf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
                     # process the same way as st (except shouldn't need to resample)
                     """ Don't need to filter these GFs? Has non-zero offset so filtering
                     does weird things, already convolved with LP source-time function
@@ -646,6 +700,20 @@ class LSForce:
                         raise ValueError(f'Found more than one RHF GF for {station}.')
                     else:
                         rhf = rhf[0]
+                    # Adjust for pulse not being centered on zero
+                    rvf.trim(
+                        rvf.stats.starttime + stf_half_width,
+                        rvf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
+                    # Adjust for pulse not being centered on zero
+                    rhf.trim(
+                        rhf.stats.starttime + stf_half_width,
+                        rhf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
                     """ Don't need to filter these GFs?
                     #process the same way as st
                     rvf.detrend()
@@ -675,6 +743,13 @@ class LSForce:
                         raise ValueError(f'Found more than one THF GF for {station}.')
                     else:
                         thf = thf[0]
+                    # Adjust for pulse not being centered on zero
+                    thf.trim(
+                        thf.stats.starttime + stf_half_width,
+                        thf.stats.endtime + stf_half_width,
+                        pad=True,
+                        fill_value=0,
+                    )
                     """ Don't need to filter these GFs?
                     #process the same way as st
                     thf.detrend()
