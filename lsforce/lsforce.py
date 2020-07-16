@@ -1810,9 +1810,6 @@ def _find_alpha(
     Computes model with many values of alpha, plots L-curve, and finds point of steepest
     curvature where slope is negative.
 
-    TODO:
-        Finish this docstring!
-
     Args:
         Ghat (array): (m x n) matrix
         dhat (array): (1 x n) array of weighted data
@@ -1833,10 +1830,10 @@ def _find_alpha(
     Returns:
         tuple: Tuple containing:
 
-        - **bestalpha** – TODO
-        - **fit1** – TODO
-        - **size1** – TODO
-        - **alphas** – TODO
+        - **bestalpha** (float) – The optimal alpha
+        - **fit1** (1D array) – List of model norms
+        - **size1** (1D array) – List of residuals
+        - **alphas** (1D array) – List of alphas tried
     """
 
     # Roughly estimate largest singular value (should not use alpha larger than expected
