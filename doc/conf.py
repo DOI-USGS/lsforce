@@ -18,6 +18,7 @@ extensions = [
     'sphinxcontrib.apidoc',
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
+    'sphinx_markdown_tables',
 ]
 
 # List of patterns, relative to source directory, that match files and
