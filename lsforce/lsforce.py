@@ -72,9 +72,6 @@ class LSForce:
     ):
         r"""Create an LSForce object.
 
-        TODO:
-            Implement sinusoid method!
-
         Args:
             data (:class:`~lsforce.lsdata.LSData`): LSData object, corrected for station
                 response but not filtered
