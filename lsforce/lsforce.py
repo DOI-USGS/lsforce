@@ -1939,13 +1939,10 @@ def _find_alpha(
 def _Lcurve(fit1, size1, alphas):
     r"""Plot an L-curve.
 
-    TODO:
-        Finish this docstring!
-
     Args:
-        fit1: TODO
-        size1: TODO
-        alphas: TODO
+        fit1 (1D array): List of residuals
+        size1 (1D array): List of model norms
+        alphas (1D array): List of alphas tried
     """
 
     fig, ax = plt.subplots(figsize=(7, 6))
