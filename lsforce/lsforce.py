@@ -20,40 +20,30 @@ from obspy.signal.util import next_pow_2
 class LSForce:
     r"""Class for performing force inversions.
 
-    TODO:
-        Make sure all attributes are defined in :meth:`__init__()` and complete this
-        docstring!
-
     Attributes:
-        data (:class:`~lsforce.lsdata.LSData`): The LSData object associated with this
-            inversion
-        domain: TODO
-        data_sampling_rate: TODO
-        nickname: TODO
-        gf_computed: TODO
-        gf_length: TODO
-        inversion_complete: TODO
-        main_folder: TODO
-        method: TODO
-        model_file: TODO
-        T0: TODO
-        triangle_half_width: TODO
-        gf_sac_dir: TODO
-        gf_run_dir: TODO
-        filter: TODO
-        data_length: TODO
-        force_sampling_rate: TODO
-        W: TODO
-        Wvec: TODO
-        weights: TODO
-        add_to_zero: TODO
-        zero_time: TODO
-        impose_zero: TODO
-        max_duration: TODO
-        jackknife: TODO
-        angle_magnitude: TODO
-        G: TODO
-        d: TODO
+        gf_computed (bool): Whether or not Green's functions have been computed for this
+            object
+        gf_length (int): Length in samples of Green's functions
+        inversion_complete (bool): Whether or not the inversion has been run
+        gf_sac_dir (str): Directory containing Green's function SAC files
+        gf_run_dir (str): Directory where CPS commands are run
+        filter (dict): Dictionary with keys ``'freqmin'``, ``'freqmax'``,
+            ``'zerophase'``, ``'periodmin'``, ``'periodmax'``, and ``'order'``
+            specifying filter parameters
+        data_length (int): Length in samples of each data trace
+        force_sampling_rate (int or float): [Hz] The sampling rate of the force-time
+            function
+        W (2D arrau): Weight matrix
+        Wvec (1D array): Weight vector
+        jackknife (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary with
+            keys ``'Z'``, ``'N'``, ``'E'``, ``'VR_all'``, ``'num_iter'``, and
+            ``'frac_delete'`` containing jackknife parameters and results
+        angle_magnitude (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary
+            with keys ``'magnitude'``, ``'magnitude_upper'``, ``'magnitude_lower'``,
+            ``'vertical_angle'``, and ``'horizontal_angle'`` containing inversion angle
+            and magnitude information
+        G (2D array): Design matrix
+        d (1D array): Data vector
         model: Model vector of concatenated components (n x 1) of solution
         Z: [N] Vertical force time series extracted from model (positive up)
         N: [N] North force time series extracted from model (positive north)
@@ -67,7 +57,8 @@ class LSForce:
         dtnew: Modeled data vector (Gm-d) (converted to time domain if domain is
             `'frequency'`)
         alpha: Regularization parameter that was used
-        alphafit: TODO
+        alphafit (dict): Dictionary with keys ``'alphas'``, ``'fit'``, and ``'size'``
+            specifying regularization parameters tested
     """
 
     def __init__(
