@@ -83,11 +83,9 @@ class LSForce:
             nickname (str): Nickname for this event, used for convenient naming of files
             main_folder (str): If `None`, will use current folder
             method (str): One of `'tik'` — full waveform inversion using Tikhonov
-                regularization (L2 norm minimization); `'triangle'` — inversion
+                regularization (L2 norm minimization) or `'triangle'` — inversion
                 parameterized using overlapping triangles, variation on method of
-                Ekström & Stark (2013); `'basis'` — parameterized using many Hanning
-                basis functions; `'sinusoid'` — parameterized using a single sinusoid,
-                variation on method of ????
+                Ekström & Stark (2013)
         """
 
         self.data = data
