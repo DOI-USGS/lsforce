@@ -33,7 +33,7 @@ class LSForce:
         data_length (int): Length in samples of each data trace
         force_sampling_rate (int or float): [Hz] The sampling rate of the force-time
             function
-        W (2D arrau): Weight matrix
+        W (2D array): Weight matrix
         Wvec (1D array): Weight vector
         jackknife (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary with
             keys ``'Z'``, ``'N'``, ``'E'``, ``'VR_all'``, ``'num_iter'``, and
