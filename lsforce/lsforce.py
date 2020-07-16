@@ -1831,8 +1831,8 @@ def _find_alpha(
         tuple: Tuple containing:
 
         - **bestalpha** (float) – The optimal alpha
-        - **fit1** (1D array) – List of model norms
-        - **size1** (1D array) – List of residuals
+        - **fit1** (1D array) – List of residuals
+        - **size1** (1D array) – List of model norms
         - **alphas** (1D array) – List of alphas tried
     """
 
