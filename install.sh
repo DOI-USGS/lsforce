@@ -138,9 +138,3 @@ then
     echo 'Failed to pip install this package. Exiting.'
     exit 1
 fi
-
-# Tell user to install CPS
-echo
-echo 'This code requires Computer Programs in Seismology (CPS), available at:'
-echo 'http://www.eas.slu.edu/eqc/eqccps.html'
-echo 'You will need to add it to your PATH after installing.'
