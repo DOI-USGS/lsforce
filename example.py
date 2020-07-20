@@ -6,8 +6,8 @@ from obspy.geodetics import gps2dist_azimuth
 
 from lsforce import LSData, LSForce, LSTrajectory
 
-# Arbitrary run directory containing model file
-LSFORCE_RUN_DIR = os.path.join(os.getcwd(), 'meow')
+# Arbitrary run directory
+LSFORCE_RUN_DIR = os.getcwd()
 
 RUN_NAME = 'iliamna_2016_paper'  # Nickname for this run
 
@@ -20,19 +20,15 @@ STARTTIME = ORIGIN_TIME - 100
 ENDTIME = ORIGIN_TIME + 300
 
 # Set up folder structure
-model_file = os.path.join(LSFORCE_RUN_DIR, 'tak135sph.mod')
 main_folder = os.path.join(LSFORCE_RUN_DIR, RUN_NAME)
 if not os.path.exists(main_folder):
     os.mkdir(main_folder)
-
-# If GF's don't exist yet, or if the Stream has been modified, this must be True
-CALCULATE_GF = True
 
 #%% GATHER INVERSION WAVEFORMS
 
 TONEY_ET_AL_NUM_CHANS = 32  # Number of channels used in paper's 2016 Iliamna inversion
 
-data_filename = os.path.join(main_folder, f'{RUN_NAME}_data.pkl')
+data_filename = os.path.join(main_folder, 'data.pkl')
 
 # Download data if it doesn't exist as a file
 if not os.path.exists(data_filename):
@@ -188,12 +184,13 @@ force = LSForce(
     data=data, data_sampling_rate=1, nickname=RUN_NAME, main_folder=main_folder
 )
 
-if CALCULATE_GF:
-    force.compute_greens(model_file=model_file, gf_duration=200, T0=-10)
-else:
-    force.load_greens(model_file=model_file)
-
-force.setup(period_range=PERIOD_RANGE, zerophase=True)
+force.setup(
+    period_range=PERIOD_RANGE,
+    zerophase=True,
+    syngine_model='iasp91_2s',
+    gf_duration=200,
+    T0=-10,
+)
 
 #%% INVERT
 
@@ -204,7 +201,7 @@ force.invert(
     jackknife=True,
     num_iter=20,
     frac_delete=0.3,
-    alphaset=4.8e-20,
+    alphaset=4.8e-17,
     zero_scaler=2,
     tikhonov_ratios=[0.4, 0.0, 0.6],
 )

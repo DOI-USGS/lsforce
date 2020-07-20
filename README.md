@@ -15,9 +15,19 @@ Installation
 
 The following has only been tested on macOS Mojave.
 
-1. Install
-   [Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html), and
-   ensure it's on your `PATH`:
+Clone this repo and run the installation script, which creates a
+[conda](https://docs.conda.io/en/latest/) environment named `lsforce` and installs
+the _lsforce_ package into the environment:
+```shell
+git clone https://code.usgs.gov/ghsc/lhp/lsforce.git
+cd lsforce
+bash install.sh  # Or `bash install.sh 1` if you want developer tools as well
+```
+
+If you would like to compute your own Green's functions using a custom model, you can
+optionally install
+[Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html) via the
+following:
 
    * Install [GCC](https://gcc.gnu.org/) with e.g. [Homebrew](https://brew.sh/):
      ```shell
@@ -37,22 +47,6 @@ The following has only been tested on macOS Mojave.
      ```shell
      export PATH="$PATH:/path/to/PROGRAMS.330/bin"
      ```
-
-2. Clone this repo and run the installation script, which creates a
-   [conda](https://docs.conda.io/en/latest/) environment named `lsforce` and installs
-   the _lsforce_ package into the environment:
-   ```shell
-   git clone https://code.usgs.gov/ghsc/lhp/lsforce.git
-   cd lsforce
-   bash install.sh  # Or `bash install.sh 1` if you want developer tools as well
-   ```
-
-3. Set up an arbitrary run directory and grab model file:
-   ```shell
-   mkdir meow
-   cd meow
-   curl -O http://www.eas.slu.edu/eqc/eqc_cps/TUTORIAL/SPHERICITY/AK135/tak135sph.mod
-   ```
 
 Documentation
 -------------

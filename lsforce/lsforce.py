@@ -1,32 +1,41 @@
 import copy
 import glob
-import math
 import os
 import pickle
 import random as rnd
-import shutil
-import stat
 import subprocess
+import tempfile
+from shutil import which
+from urllib.request import urlretrieve
 
 import numpy as np
 import scipy as sp
 from matplotlib import lines as mlines
 from matplotlib import pyplot as plt
-from obspy import Trace, UTCDateTime, read
+from obspy import Stream, Trace, UTCDateTime, read
 from obspy.core import AttribDict
 from obspy.signal.util import next_pow_2
+from scipy.signal.windows import triang
+
+# TODO: This is the "beta" URL!
+SYNGINE_BASE_URL = 'http://service.iris.washington.edu/iriswsbeta/syngine/1/query?'
+
+# [s] Sampling interval for Green's functions downloaded from Syngine
+SYNGINE_DT = 0.25
+
+# [s] Sampling interval for the triangular source time function given to Syngine
+TRIANGLE_STF_DT = 0.5
 
 
 class LSForce:
     r"""Class for performing force inversions.
 
     Attributes:
+        gf_dir (str): Directory containing Green's functions
         gf_computed (bool): Whether or not Green's functions have been computed for this
             object
         gf_length (int): Length in samples of Green's functions
         inversion_complete (bool): Whether or not the inversion has been run
-        gf_sac_dir (str): Directory containing Green's function SAC files
-        gf_run_dir (str): Directory where CPS commands are run
         filter (dict): Dictionary with keys ``'freqmin'``, ``'freqmax'``,
             ``'zerophase'``, ``'periodmin'``, ``'periodmax'``, and ``'order'``
             specifying filter parameters
@@ -95,7 +104,7 @@ class LSForce:
         self.gf_computed = False
         self.inversion_complete = False
 
-        if main_folder is None:
+        if not main_folder:
             self.main_folder = os.getcwd()
         else:
             self.main_folder = main_folder
@@ -107,201 +116,388 @@ class LSForce:
         if self.method == 'triangle' and self.domain == 'frequency':
             raise ValueError('The triangle method must be done in the time domain.')
 
-    def compute_greens(self, model_file, gf_duration, T0, triangle_half_width=5.0):
-        r"""Compute Green's functions for inversion.
+    def _get_greens(self):
 
-        Use CPS to compute the necessary Green's functions (GFs) for the source location
-        and seismic stations being used. Computes the type of GFs appropriate for the
-        method defined during class creation.
-
-        Args:
-            model_file (str): Full path to location of CPS model file
-            gf_duration (int or float): [s] Duration of GFs
-            T0 (int or float): [s] Amount of extra time prior to impulse application
-            triangle_half_width (int or float): [s] Half width of isosceles triangle.
-                Only needed for triangle method. This relates to the sampling interval
-                of the force-time function since the triangles overlap by 50%
-        """
-
-        self.model_file = model_file
-        self.T0 = T0
-
-        self.triangle_half_width = triangle_half_width
-
-        if self.nickname is None:
-            self.nickname = ''
-
-        self.gf_run_dir = os.path.join(
-            self.main_folder,
-            f'{self.nickname}_{os.path.splitext(os.path.basename(model_file))[0]}',
-        )
-        tmp_sac_dir = os.path.join(self.gf_run_dir, f'sacorig_{self.method}')
-        self.gf_sac_dir = os.path.join(self.gf_run_dir, f'sacdata_{self.method}')
-
-        # Make all the directories
-        if not os.path.exists(self.main_folder):
-            os.mkdir(self.main_folder)
-        if not os.path.exists(self.gf_run_dir):
-            os.mkdir(self.gf_run_dir)
-        if not os.path.exists(tmp_sac_dir):
-            os.mkdir(tmp_sac_dir)
-        if not os.path.exists(self.gf_sac_dir):
-            os.mkdir(self.gf_sac_dir)
-
-        # write T0 file
-        with open(os.path.join(self.gf_run_dir, 'T0.txt'), 'w') as f:
-            f.write(f'{T0:3.2f}')
-
-        # write triangle_half_width file, if applicable
-        if self.method == 'triangle':
-            with open(
-                os.path.join(self.gf_run_dir, 'triangle_half_width.txt'), 'w'
-            ) as f:
-                f.write(f'{triangle_half_width:3.2f}')
-
-        # Make sure there is only one occurrence of each station in list (ignore
-        # channels)
-        stacods = np.unique([tr.stats.station for tr in self.data.st_proc])
-        dists = [
-            self.data.st_proc.select(station=sta)[0].stats.distance for sta in stacods
-        ]
-
-        # write stadistlist.txt
-        f = open(os.path.join(self.gf_run_dir, 'stadistlist.txt'), 'w')
-        for sta, dis in zip(stacods, dists):
-            f.write(f'{sta}\t{dis:5.1f}\n')
-        f.close()
-
-        # write dist file in free format
-        # figure out how many samples
-        print(f'Requested GF length = {gf_duration:g} s')
-        samples = next_pow_2(gf_duration * self.data_sampling_rate)
-        print(f'Optimized GF length = {samples / self.data_sampling_rate:g} s')
-        f = open(os.path.join(self.gf_run_dir, 'dist'), 'w')
-        for dis in dists:
-            f.write(
-                f'{dis:0.1f} {1 / self.data_sampling_rate:0.2f} {samples:d} {T0:d} 0\n'
-            )
-        f.close()
-        self.gf_length = samples
-
-        # move copy of model_file to current directory for recordkeeping
-        shutil.copy2(
-            model_file, os.path.join(self.gf_run_dir, os.path.basename(model_file))
-        )
-
-        # write shell script to run Green's functions
-        shellscript = os.path.join(self.gf_run_dir, 'CPScommands.sh')
-        with open(shellscript, 'w') as f:
-            f.write('#!/bin/bash\n')
-            f.write(f'rm {os.path.join(tmp_sac_dir, "*.sac")}\n')
-            f.write(f'rm {os.path.join(self.gf_sac_dir, "*.sac")}\n')
-            f.write(f'hprep96 -HR 0. -HS 0. -M {self.model_file} -d dist -R -EXF\n')
-            f.write('hspec96 > hspec96.out\n')
-            # 10^15 dynes is the default pulse here, equal to 10^10 Newtons
-            if self.method == 'triangle':
-                f.write(
-                    'hpulse96 -d dist -D -t -l {} > Green\n'.format(
-                        int(self.triangle_half_width * self.data_sampling_rate)
-                    )
-                )
-            else:
-                f.write('hpulse96 -d dist -V -OD -p > Green\n')
-            f.write('f96tosac Green\n')
-            f.write(f'cp *.sac {os.path.join(self.gf_sac_dir, ".")}\n')
-            f.write(f'mv *.sac {os.path.join(tmp_sac_dir, ".")}\n')
-
-        os.chmod(shellscript, stat.S_IRWXU)
-
-        # Now actually run the codes
-        currentdir = os.getcwd()
-        os.chdir(self.gf_run_dir)
-        proc = subprocess.Popen(
-            shellscript, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        stdout, stderr = proc.communicate()
-        retcode = proc.returncode
-        if retcode != 0:
-            os.chdir(currentdir)  # Change back to previous directory
-            print(stderr)
-            raise OSError(f'Green\'s functions were not computed:\n{stderr}')
-
-        # copy and rename files
-        files = [
-            os.path.basename(x)
-            for x in glob.glob(os.path.join(self.gf_sac_dir, '*.sac'))
-        ]
-        files.sort()
-        for file1 in files:
-            # get number of event
-            indx = int(file1[1:4]) - 1
-            GFt = file1[6:9]
-            # rename
-            newname = (
-                f'GF_{self.nickname}_{stacods[indx]}_{dists[indx]:1.0f}km_{GFt}.sac'
-            )
-            os.rename(
-                os.path.join(self.gf_sac_dir, file1),
-                os.path.join(self.gf_sac_dir, newname),
-            )
-
-        os.chdir(currentdir)
-        self.gf_computed = True
-
-    def load_greens(self, model_file):
-        r"""Load Green's functions for inversion.
-
-        If Green's functions (GFs) were already computed for this exact data selection,
-        this simply loads them for setup.
-
-        TODO:
-            Add error catching in case the stations in st don't line up with computed
-            GFs in folder!
-
-        Args:
-            model_file (str): Full path to location of CPS model file. Used to locate
-                appropriate directory containing GFs
-        """
-
-        if self.nickname is None:
-            self.nickname = ''
-
-        self.gf_run_dir = os.path.join(
-            self.main_folder,
-            f'{self.nickname}_{os.path.splitext(os.path.basename(model_file))[0]}',
-        )
-        if os.path.exists(os.path.join(self.gf_run_dir, f'sacorig_{self.method}')):
-            self.gf_sac_dir = os.path.join(self.gf_run_dir, f'sacdata_{self.method}')
+        # Name the directory where GFs will be stored based on method
+        if self.cps_model:
+            gf_dir_name = f'cps_{os.path.basename(self.cps_model).split(".")[-2]}'
         else:
-            self.gf_sac_dir = os.path.join(self.gf_run_dir, 'sacdata')
+            gf_dir_name = f'syngine_{self.syngine_model}'
+        self.gf_dir = os.path.join(self.main_folder, gf_dir_name)
 
-        # read T0 file
-        with open(os.path.join(self.gf_run_dir, 'T0.txt'), 'r') as f:
-            self.T0 = float(f.read())
-
+        # Label directories containing triangular GFs as such
         if self.method == 'triangle':
-            with open(
-                os.path.join(self.gf_run_dir, 'triangle_half_width.txt'), 'r'
-            ) as f:
-                self.triangle_half_width = float(f.read())
+            self.gf_dir += f'_triangle_{self.triangle_half_width:g}s'
 
-        # Read a file to get gf_length
-        temp = read(glob.glob(os.path.join(self.gf_sac_dir, '*RVF*.sac'))[0])
-        self.gf_length = len(temp[0])
+        # Make GF directory if it doesn't exist
+        if not os.path.exists(self.gf_dir):
+            os.mkdir(self.gf_dir)
+
+        # Choose the correct delta
+        if self.cps_model:
+            gf_dt = 1 / self.data_sampling_rate
+        else:
+            gf_dt = SYNGINE_DT
+
+        # Get list of unique stations
+        unique_stations = np.unique([tr.stats.station for tr in self.data.st_proc])
+
+        # Make lists of stations with and without GFs calculated/downloaded
+        existing_stations = []
+        stations_to_calculate = []
+        for station in unique_stations:
+
+            distance = self.data.st_proc.select(station=station)[0].stats.distance
+            filename = os.path.join(self.gf_dir, f'{station}.pkl')
+
+            # Check if this EXACT GF exists already
+            if os.path.exists(filename):
+                stats = read(filename)[0].stats
+                if (
+                    stats.syngine_model == self.syngine_model
+                    and stats.cps_model == self.cps_model
+                    and stats.triangle_half_width == self.triangle_half_width
+                    and stats.sourcedepthinmeters == self.source_depth
+                    and stats.distance == distance
+                    and stats.T0 == self.T0
+                    and stats.duration == self.gf_duration
+                    and stats.delta == gf_dt
+                ):
+                    gf_exists = True
+                else:
+                    gf_exists = False
+            else:
+                gf_exists = False
+
+            # Append to the correct vector
+            if gf_exists:
+                existing_stations.append(station)
+            else:
+                stations_to_calculate.append(station)
+
+        # Initalize empty Stream to hold all GFs
+        st_gf = Stream()
+
+        # CPS
+        if self.cps_model:
+
+            # If we have to calculate some stations, go through the process
+            if stations_to_calculate:
+
+                # Print status
+                print(
+                    f'Calculating Green\'s functions for {len(stations_to_calculate)} '
+                    'station(s):'
+                )
+                for station in stations_to_calculate:
+                    print(f'\t{station}')
+
+                # Create a temporary directory to run CPS in, and change into it
+                cwd = os.getcwd()
+                temp_dir = tempfile.TemporaryDirectory()
+                os.chdir(temp_dir.name)
+
+                # Write the "dist" file
+                gf_length_samples = next_pow_2(
+                    self.gf_duration * self.data_sampling_rate
+                )
+                with open('dist', 'w') as f:
+                    for sta in stations_to_calculate:
+                        dist = self.data.st_proc.select(station=sta)[0].stats.distance
+                        f.write(f'{dist} {gf_dt} {gf_length_samples} {self.T0} 0\n')
+
+                # Run hprep96 and hspec96
+                subprocess.call(
+                    [
+                        'hprep96',
+                        '-HR',
+                        '0.',
+                        '-HS',
+                        str(self.source_depth / 1000),  # Converting to km for CPS
+                        '-M',
+                        self.cps_model,
+                        '-d',
+                        'dist',
+                        '-R',
+                        '-EXF',
+                    ]
+                )
+                with open('hspec96.out', 'w') as f:
+                    subprocess.call('hspec96', stdout=f)
+
+                # Run hpulse96 (using the multiplier here to get a 1 N impulse), also
+                # keep track of pulse half-width so we can make the GFs acausal later
+                args = ['hpulse96', '-d', 'dist', '-m', f'{1e-10:.10f}', '-OD', '-V']
+                if self.triangle_half_width is not None:
+                    args += ['-t', '-l', str(int(self.triangle_half_width / gf_dt))]
+                    pulse_half_width = self.triangle_half_width  # [s]
+                else:
+                    args += ['-p']
+                    pulse_half_width = 2 * gf_dt  # [s]
+                with open('Green', 'w') as f:
+                    subprocess.call(args, stdout=f)
+
+                # Convert to SAC files
+                subprocess.call(['f96tosac', 'Green'])
+
+                # Go through and read in files (same order as dist file)
+                for i, station in enumerate(stations_to_calculate):
+                    for file in glob.glob(f'B{i + 1:03d}1???F.sac'):
+
+                        # Grab stats of data trace
+                        stats = self.data.st_proc.select(station=station)[0].stats
+
+                        # Read GF in as an ObsPy Trace
+                        gf_tr = read(file)[0]
+
+                        # Add metadata
+                        gf_tr.stats.network = stats.network
+                        gf_tr.stats.station = station
+                        gf_tr.stats.location = 'SE'
+                        gf_tr.stats.distance = stats.distance
+                        gf_tr.stats.syngine_model = self.syngine_model
+                        gf_tr.stats.cps_model = self.cps_model
+                        gf_tr.stats.sourcedepthinmeters = self.source_depth
+                        gf_tr.stats.T0 = self.T0
+                        gf_tr.stats.duration = self.gf_duration
+                        gf_tr.stats.triangle_half_width = self.triangle_half_width
+
+                        gf_tr.data *= 0.01  # Convert from cm to m
+
+                        # Add Trace to overall GF Stream
+                        st_gf += gf_tr
+
+                # Clean up
+                temp_dir.cleanup()
+                os.chdir(cwd)
+
+                # Trim to length (gf_duration - T0) seconds, and correct for the pulse
+                # half-width to make GFs acausal (since the -Z flag doesn't work!)
+                starttime = st_gf[0].stats.starttime
+                endtime = starttime + self.gf_duration - self.T0
+                st_gf.trim(starttime + pulse_half_width, endtime + pulse_half_width)
+
+                # Save as individual files
+                for station in stations_to_calculate:
+                    filename = os.path.join(self.gf_dir, f'{station}.pkl')
+                    st_gf.select(station=station).write(filename, format='PICKLE')
+
+            # Now just load in the GFs which already exist
+            for i, station in enumerate(existing_stations):
+                filename = os.path.join(self.gf_dir, f'{station}.pkl')
+                st_gf += read(filename)
+
+                # Print status
+                progress = len(stations_to_calculate) + i + 1
+                print(f'Found {station} ({progress}/{len(unique_stations)})')
+
+        # Syngine
+        else:
+
+            # Go station-by-station
+            for i, station in enumerate(unique_stations):
+
+                filename = os.path.join(self.gf_dir, f'{station}.pkl')
+
+                # Either load this GF if it already exists, or download it
+                if station in existing_stations:
+                    st_syn = read(filename)
+                else:
+                    # Grab stats of data trace
+                    stats = self.data.st_proc.select(station=station)[0].stats
+
+                    # Get GFs for this station
+                    st_syn = self._get_greens_for_station(
+                        network=stats.network,
+                        station=station,
+                        back_azimuth=stats.back_azimuth,
+                        distance=stats.distance,
+                    )
+
+                    # TODO: Understand why we have to invert these!
+                    for channel in 'RHF', 'RVF', 'THF':
+                        for tr in st_syn.select(channel=channel):
+                            tr.data *= -1
+
+                    st_syn.write(filename, format='PICKLE')
+
+                # Add this station's GF's to overall Stream
+                st_gf += st_syn
+
+                # Print status
+                if station in existing_stations:
+                    action_string = 'Found'
+                else:
+                    action_string = 'Downloaded'
+                print(f'{action_string} {station} ({i + 1}/{len(unique_stations)})')
+
         self.gf_computed = True
+
+        return st_gf
+
+    def _get_greens_for_station(self, network, station, back_azimuth, distance):
+
+        # Provide triangle STF params if we're using the triangle method
+        if self.method == 'triangle':
+            stf_offset = self.triangle_half_width  # Ensure peak of triangle at t=0
+            stf_spacing = TRIANGLE_STF_DT
+            # The below construction ensures the triangle is centered on 1 and goes to 0
+            # at each end, e.g. [0, 0.5, 1, 0.5, 0] instead of [0.25, 0.75, 0.75, 0.25]
+            stf_data = np.hstack(
+                [
+                    0,
+                    triang((int(self.triangle_half_width / TRIANGLE_STF_DT) * 2) - 1),
+                    0,
+                ]
+            )
+            read_func = _read  # Use the long-URL wrapper for ObsPy read
+        else:
+            stf_offset = None
+            stf_spacing = None
+            stf_data = None
+            read_func = read  # Just directly read using ObsPy
+
+        # Convert to radians for NumPy
+        back_azimuth_radians = np.deg2rad(back_azimuth)
+
+        # Vertical force (downward)
+        st_vf = read_func(
+            self._build_syngine_url(
+                network=network,
+                station=station,
+                components='ZR',
+                forces=(-1, 0, 0),
+                stf_offset=stf_offset,
+                stf_spacing=stf_spacing,
+                stf_data=stf_data,
+            )
+        )
+        for tr in st_vf.select(component='Z'):
+            tr.stats.channel = 'ZVF'
+        for tr in st_vf.select(component='R'):
+            tr.stats.channel = 'RVF'
+
+        # Horizontal force (radial)
+        st_hf_r = read_func(
+            self._build_syngine_url(
+                network=network,
+                station=station,
+                components='ZR',
+                forces=(0, np.cos(back_azimuth_radians), -np.sin(back_azimuth_radians)),
+                stf_offset=stf_offset,
+                stf_spacing=stf_spacing,
+                stf_data=stf_data,
+            )
+        )
+        for tr in st_hf_r.select(component='Z'):
+            tr.stats.channel = 'ZHF'
+        for tr in st_hf_r.select(component='R'):
+            tr.stats.channel = 'RHF'
+
+        # Horizontal force (transverse)
+        st_hf_t = read_func(
+            self._build_syngine_url(
+                network=network,
+                station=station,
+                components='T',
+                forces=(
+                    0,
+                    -np.sin(back_azimuth_radians),
+                    -np.cos(back_azimuth_radians),
+                ),
+                stf_offset=stf_offset,
+                stf_spacing=stf_spacing,
+                stf_data=stf_data,
+            )
+        )
+        for tr in st_hf_t.select(component='T'):
+            tr.stats.channel = 'THF'
+
+        # Assemble big Stream
+        st_syn = st_vf + st_hf_r + st_hf_t
+
+        # Add metadata and sort
+        for tr in st_syn:
+            tr.stats.distance = distance
+            tr.stats.cps_model = self.cps_model
+            tr.stats.syngine_model = self.syngine_model
+            tr.stats.sourcedepthinmeters = self.source_depth
+            tr.stats.T0 = self.T0
+            tr.stats.duration = self.gf_duration
+            tr.stats.triangle_half_width = self.triangle_half_width
+        st_syn.sort(keys=['channel'])
+
+        return st_syn
+
+    def _build_syngine_url(
+        self,
+        network,
+        station,
+        components,
+        forces,
+        stf_offset=None,
+        stf_spacing=None,
+        stf_data=None,
+    ):
+
+        parameters = [
+            'format=miniseed',
+            'components=' + components,
+            'units=displacement',
+            'model=' + self.syngine_model,
+            'dt=' + str(SYNGINE_DT),
+            'starttime=' + str(self.T0),
+            'endtime=' + str(self.gf_duration - self.T0),
+            'network=' + network,
+            'station=' + station,
+            'sourcelatitude=' + str(self.data.source_lat),
+            'sourcelongitude=' + str(self.data.source_lon),
+            'sourcedepthinmeters=' + str(self.source_depth),
+            'sourceforce=' + ','.join([str(force) for force in forces]),
+            'nodata=404',
+        ]
+
+        if stf_offset is not None and stf_spacing is not None and stf_data is not None:
+            parameters += [
+                'cstf-relative-origin-time-in-sec=' + str(stf_offset),
+                'cstf-sample-spacing-in-sec=' + str(stf_spacing),
+                'cstf-data=' + ','.join([str(sample) for sample in stf_data]),
+            ]
+        elif stf_offset is not None or stf_spacing is not None or stf_data is not None:
+            raise ValueError('All three CSTF parameters must be provided!')
+
+        url = SYNGINE_BASE_URL + '&'.join(parameters)
+
+        return url
 
     def setup(
         self,
         period_range,
+        gf_duration,
+        T0,
+        syngine_model=None,
+        cps_model=None,
+        triangle_half_width=None,
+        source_depth=0,
         weights=None,
         noise_window_dur=None,
         filter_order=2,
         zerophase=False,
     ):
-        r"""Loads in GFs and creates all necessary matrices.
+        r"""Downloads/computes Green's functions (GFs) and creates all matrices.
 
         Args:
             period_range (list or tuple): [s] Bandpass filter corners
+            gf_duration (int or float): [s] Duration of GFs
+            T0 (int or float): [s] Amount of extra time prior to impulse application
+                (not included in `gf_duration`)
+            syngine_model (str): Name of Syngine model to use. If this is not None, then
+                we calculate GFs using Syngine (preferred)
+            cps_model (str): Filename of CPS model to use. If this is not None, then we
+                calculate GFs using CPS
+            triangle_half_width (int or float): [s] Half-width of triangles; only used
+                if the triangle method is being used
+            source_depth (int or float): [m] Source depth in meters
             weights (list or tuple or str): If `None`, no weighting is applied. An array
                 of floats with length ``st.count()`` and in the order of the `st`
                 applies manual weighting. If `'prenoise'`, uses standard deviation of
@@ -313,8 +509,48 @@ class LSForce:
             zerophase (bool): If `True`, zero-phase filtering will be used
         """
 
-        # Create filter dictionary to keep track of filter used without
-        # creating too many new attributes
+        self.syngine_model = syngine_model
+        self.T0 = T0
+        self.gf_duration = gf_duration
+        self.source_depth = source_depth
+
+        # Explicitly ignore the triangle half-width parameter if it's not relevant
+        if self.method != 'triangle' and triangle_half_width is not None:
+            triangle_half_width = None
+            print(
+                'Ignoring `triangle_half_width` parameter since you\'re not using the '
+                'triangle method.'
+            )
+
+        # Make sure user specifies the triangle half-width if they want that method
+        if self.method == 'triangle' and triangle_half_width is None:
+            raise ValueError('triangle method is specified but no half-width given!')
+        self.triangle_half_width = triangle_half_width
+
+        # If user wants CPS to be run, make sure that 1) they have it installed and 2)
+        # they have provided a valid filepath
+        if cps_model:
+            # 1) Is CPS installed?
+            if not which('hprep96'):
+                raise OSError(
+                    'CPS Green\'s function calculation requested, but CPS not found on '
+                    'system. Install CPS and try again.'
+                )
+            # 2) Is `cps_model` a file?
+            if not os.path.exists(cps_model):
+                raise OSError(f'Could not find CPS model file "{cps_model}"')
+            else:
+                cps_model = os.path.abspath(cps_model)  # Get full path
+        self.cps_model = cps_model
+
+        # The user must specify ONE of `syngine_model` and `cps_model`
+        if (self.syngine_model and self.cps_model) or (
+            not self.syngine_model and not self.cps_model
+        ):
+            raise ValueError('You must specify ONE of `syngine_model` or `cps_model`!')
+
+        # Create filter dictionary to keep track of filter used without creating too
+        # many new attributes
         self.filter = {
             'freqmin': 1.0 / period_range[1],
             'freqmax': 1.0 / period_range[0],
@@ -380,94 +616,70 @@ class LSForce:
                 self.data_sampling_rate, starttime=np.max(stts), npts=np.min(lens) - 1
             )
 
-        # Since GFs are computed for a 10^15 dyne impulse, this converts GFs to what
-        # they'd be for a 1 dyne impulse
-        K = 1e-15
-        self.data_length = len(st[0].data)
-
-        if self.gf_length > self.data_length:
-            raise ValueError(
-                'gf_length is greater than data_length. Reselect data and/or '
-                'recompute Green\'s functions so that data is longer than Green\'s '
-                'functions'
-            )
-
+        self.data_length = st[0].stats.npts
         if self.domain == 'time':
             # TODO: ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH -
             #  ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
-            lenUall = self.data_length * len(st)
+            lenUall = self.data_length * st.count()
         elif self.domain == 'frequency':
             # Needs to be the length of the two added together because convolution
             # length M+N-1
-            nfft = next_pow_2(self.data_length)  # + gf_length)
-            lenUall = nfft * len(st)
+            nfft = next_pow_2(self.data_length)
+            lenUall = nfft * st.count()
         else:
             raise ValueError(
                 'domain not recognized. Must be \'time\' or \'frequency\'.'
             )
 
+        # Load in GFs
+        print('Getting Green\'s functions...')
+        st_gf = self._get_greens()
+
+        # Process GFs in bulk
+        st_gf.detrend()
+        st_gf.taper(max_percentage=0.05)
+        st_gf.filter(
+            'bandpass',
+            freqmin=self.filter['freqmin'],
+            freqmax=self.filter['freqmax'],
+            corners=self.filter['order'],
+            zerophase=self.filter['zerophase'],
+        )
+        if self.syngine_model:  # Only need to do this if Syngine
+            st_gf.interpolate(
+                sampling_rate=self.data_sampling_rate, method='lanczos', a=20
+            )
+
+        # Now that we've interpolated, check the GF length is appropriate
+        self.gf_length = st_gf[0].stats.npts
+        if self.gf_length > self.data_length:
+            raise ValueError(
+                'gf_length is greater than data_length. Reselect data and/or recompute '
+                'Green\'s functions so that data is longer than Green\'s functions'
+            )
+
+        # Initialize weighting matrices
+        Wvec = np.ones(lenUall)
+        indx = 0
+        weight = np.ones(self.data.st_proc.count())
+
+        # Store data length
+        n = self.data_length
+
         if self.method == 'tik':
 
+            # Set sampling rate
             self.force_sampling_rate = self.data_sampling_rate
 
-            # [s] For the "-p" flag, half-width is 2 L dt and L is 1 here
-            stf_half_width = 2 * (1 / self.data_sampling_rate)
+            for i, tr in enumerate(st):
 
-            # initialize weighting matrices
-            Wvec = np.ones(lenUall)
-            indx = 0
-            weight = np.ones(self.data.st_proc.count())
+                # Find component and station of Trace
+                component = tr.stats.channel[-1]
+                station = tr.stats.station
 
-            n = self.data_length
-
-            for i, trace in enumerate(st):
-                # find component of st
-                component = trace.stats.channel[2]
-                station = trace.stats.station
                 if component == 'Z':
-                    zvf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*ZVF.sac'))
-                    if len(zvf) > 1:
-                        raise ValueError(f'Found more than one ZVF GF for {station}.')
-                    else:
-                        zvf = zvf[0]
-                    zhf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*ZHF.sac'))
-                    if len(zhf) > 1:
-                        raise ValueError(f'Found more than one ZHF GF for {station}.')
-                    else:
-                        zhf = zhf[0]
-                    # process the same way as st (except shouldn't need to resample)
-                    # Adjust for pulse not being centered on zero
-                    zvf.trim(
-                        zvf.stats.starttime + stf_half_width,
-                        zvf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    zvf.detrend()
-                    zvf.taper(max_percentage=0.05)
-                    zvf.filter(
-                        'bandpass',
-                        freqmin=self.filter['freqmin'],
-                        freqmax=self.filter['freqmax'],
-                        corners=self.filter['order'],
-                        zerophase=self.filter['zerophase'],
-                    )
-                    # Adjust for pulse not being centered on zero
-                    zhf.trim(
-                        zhf.stats.starttime + stf_half_width,
-                        zhf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    zhf.detrend()
-                    zhf.taper(max_percentage=0.05)
-                    zhf.filter(
-                        'bandpass',
-                        freqmin=self.filter['freqmin'],
-                        freqmax=self.filter['freqmax'],
-                        corners=self.filter['order'],
-                        zerophase=self.filter['zerophase'],
-                    )
+                    zvf = st_gf.select(station=station, channel='ZVF')[0]
+                    zhf = st_gf.select(station=station, channel='ZHF')[0]
 
                     if self.domain == 'time':
                         ZVF = _makeconvmat(zvf.data, size=(n, n))
@@ -477,56 +689,15 @@ class LSForce:
                         zhff = np.fft.fft(zhf.data, nfft)
                         ZVF = np.diag(zvff)
                         ZHF = np.diag(zhff)
-                    az = math.radians(trace.stats.azimuth)
+                    az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
-                        (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
+                        [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
                     )
+
                 elif component == 'R':
-                    rvf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*RVF.sac'))
-                    if len(rvf) > 1:
-                        raise ValueError(f'Found more than one RVF GF for {station}.')
-                    else:
-                        rvf = rvf[0]
-                    rhf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*RHF.sac'))
-                    if len(rhf) > 1:
-                        raise ValueError(f'Found more than one RHF GF for {station}.')
-                    else:
-                        rhf = rhf[0]
+                    rvf = st_gf.select(station=station, channel='RVF')[0]
+                    rhf = st_gf.select(station=station, channel='RHF')[0]
 
-                    # process the same way as st
-                    # Adjust for pulse not being centered on zero
-                    rvf.trim(
-                        rvf.stats.starttime + stf_half_width,
-                        rvf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    rvf.detrend()
-                    rvf.taper(max_percentage=0.05)
-
-                    rvf.filter(
-                        'bandpass',
-                        freqmin=self.filter['freqmin'],
-                        freqmax=self.filter['freqmax'],
-                        corners=self.filter['order'],
-                        zerophase=self.filter['zerophase'],
-                    )
-                    # Adjust for pulse not being centered on zero
-                    rhf.trim(
-                        rhf.stats.starttime + stf_half_width,
-                        rhf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    rhf.detrend()
-                    rhf.taper(max_percentage=0.05)
-                    rhf.filter(
-                        'bandpass',
-                        freqmin=self.filter['freqmin'],
-                        freqmax=self.filter['freqmax'],
-                        corners=self.filter['order'],
-                        zerophase=self.filter['zerophase'],
-                    )
                     if self.domain == 'time':
                         RVF = _makeconvmat(rvf.data, size=(n, n))
                         RHF = _makeconvmat(rhf.data, size=(n, n))
@@ -535,50 +706,33 @@ class LSForce:
                         rhff = np.fft.fft(rhf.data, nfft)
                         RVF = np.diag(rvff)
                         RHF = np.diag(rhff)
-                    az = math.radians(trace.stats.azimuth)
+                    az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
-                        (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
+                        [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
                     )
+
                 elif component == 'T':
-                    thf = read(os.path.join(self.gf_sac_dir, f'*_{station}_*THF.sac'))
-                    if len(thf) > 1:
-                        raise ValueError(f'Found more than one THF GF for {station}.')
-                    else:
-                        thf = thf[0]
-                    # process the same way as st
-                    # Adjust for pulse not being centered on zero
-                    thf.trim(
-                        thf.stats.starttime + stf_half_width,
-                        thf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    thf.detrend()
-                    thf.taper(max_percentage=0.05)
-                    thf.filter(
-                        'bandpass',
-                        freqmin=self.filter['freqmin'],
-                        freqmax=self.filter['freqmax'],
-                        corners=self.filter['order'],
-                        zerophase=self.filter['zerophase'],
-                    )
+                    thf = st_gf.select(station=station, channel='THF')[0]
+
                     if self.domain == 'time':
                         THF = _makeconvmat(thf.data, size=(n, n))
                     else:
                         thff = np.fft.fft(thf.data, nfft)
                         THF = np.diag(thff)
-                    TVF = 0.0 * THF.copy()
-                    az = math.radians(trace.stats.azimuth)
+                    TVF = 0.0 * THF.copy()  # Just zeros for TVF
+                    az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
-                        (TVF, K * THF * math.sin(az), -K * THF * math.cos(az))
+                        [TVF, THF * np.sin(az_radians), -THF * np.cos(az_radians)]
                     )
+
                 else:
-                    raise ValueError(f'st not rotated to T and R for {station}.')
+                    raise ValueError(f'Data not rotated to ZRT for {station}.')
+
                 # Deal with data
                 if self.domain == 'time':
-                    datline = trace.data
+                    datline = tr.data
                 else:
-                    datline = np.fft.fft(trace.data, nfft)
+                    datline = np.fft.fft(tr.data, nfft)
 
                 if i == 0:  # initialize G and d if first station
                     G = newline.copy()
@@ -591,170 +745,78 @@ class LSForce:
                         weight[i] = weights[i]
                     elif weights == 'prenoise':
                         weight[i] = 1.0 / np.std(
-                            trace.data[
-                                0 : int(noise_window_dur * trace.stats.sampling_rate)
-                            ]
+                            tr.data[0 : int(noise_window_dur * tr.stats.sampling_rate)]
                         )
                     elif weights == 'distance':
-                        weight[i] = trace.stats.distance
+                        weight[i] = tr.stats.distance
 
                     Wvec[indx : indx + self.data_length] = (
                         Wvec[indx : indx + self.data_length] * weight[i]
                     )
                     indx += self.data_length
+
+            # Need to multiply G by sample interval [s] since convolution is an integral
+            self.G = G * 1.0 / self.data_sampling_rate
 
         elif self.method == 'triangle':
 
-            # [s] For the "-t" flag, half-width is 1 L dt and L * dt is
-            # self.triangle_half_width
-            stf_half_width = self.triangle_half_width  # [s]
+            # Set sampling rate
+            self.force_sampling_rate = 1.0 / self.triangle_half_width
 
-            # initialize weighting matrices
-            Wvec = np.ones(lenUall)
-            indx = 0
-            weight = np.ones(self.data.st_proc.count())
+            # Number of samples to shift each triangle by
+            fshiftby = int(self.triangle_half_width * self.data_sampling_rate)
+            # Number of shifts, corresponds to length of force time function
+            Flen = int(np.floor(self.data_length / fshiftby))
 
-            n = self.data_length
-            fshiftby = int(
-                self.triangle_half_width * self.data_sampling_rate
-            )  # Number of samples to shift each triangle by
-            Flen = int(
-                np.floor(self.data_length / fshiftby)
-            )  # Number of shifts, corresponds to length of force time function
-            self.force_sampling_rate = 1.0 / fshiftby
+            # Triangle GFs are multiplied by the triangle half-width so that they
+            # reflect the ground motion induced for a triangle with PEAK 1 N instead of
+            # AREA of 1 N*s
+            for tr in st_gf:
+                tr.data = tr.data * self.triangle_half_width
 
-            for i, trace in enumerate(st):
-                # find component of st
-                component = trace.stats.channel[2]
-                station = trace.stats.station
+            for i, tr in enumerate(st):
+
+                # Find component and station of Trace
+                component = tr.stats.channel[-1]
+                station = tr.stats.station
+
                 if component == 'Z':
-                    zvf = read(os.path.join(self.gf_sac_dir, f'*{station}*ZVF.sac'))
-                    if len(zvf) > 1:
-                        raise ValueError(f'Found more than one ZVF GF for {station}.')
-                    else:
-                        zvf = zvf[0]
-                    zhf = read(os.path.join(self.gf_sac_dir, f'*{station}*ZHF.sac'))
-                    if len(zhf) > 1:
-                        raise ValueError(f'Found more than one ZHF GF for {station}.')
-                    else:
-                        zhf = zhf[0]
-                    # Adjust for pulse not being centered on zero
-                    zvf.trim(
-                        zvf.stats.starttime + stf_half_width,
-                        zvf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    # Adjust for pulse not being centered on zero
-                    zhf.trim(
-                        zhf.stats.starttime + stf_half_width,
-                        zhf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    # process the same way as st (except shouldn't need to resample)
-                    """ Don't need to filter these GFs? Has non-zero offset so filtering
-                    does weird things, already convolved with LP source-time function
-                    zvf.detrend()
-                    zvf.taper(max_percentage=0.05)
-                    zvf.filter('bandpass', freqmin=self.filter['freqmin'],
-                               freqmax=self.filter['freqmax'],
-                               corners=self.filter['order'],
-                               zerophase=self.filter['zerophase'])
+                    zvf = st_gf.select(station=station, channel='ZVF')[0]
+                    zhf = st_gf.select(station=station, channel='ZHF')[0]
 
-                    zhf.detrend()
-                    zhf.taper(max_percentage=0.05)
-                    zhf.filter('bandpass', freqmin=self.filter['freqmin'],
-                               freqmax=self.filter['freqmax'],
-                               corners=self.filter['order'],
-                               zerophase=self.filter['zerophase'])
-                    """
                     ZVF = _makeshiftmat(zvf.data, shiftby=fshiftby, size1=(n, Flen))
                     ZHF = _makeshiftmat(zhf.data, shiftby=fshiftby, size1=(n, Flen))
-                    az = math.radians(trace.stats.azimuth)
+                    az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
-                        (K * ZVF, K * ZHF * math.cos(az), K * ZHF * math.sin(az))
+                        [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
                     )
+
                 elif component == 'R':
-                    rvf = read(os.path.join(self.gf_sac_dir, f'*{station}*RVF.sac'))
-                    if len(rvf) > 1:
-                        raise ValueError(f'Found more than one RVF GF for {station}.')
-                    else:
-                        rvf = rvf[0]
-                    rhf = read(os.path.join(self.gf_sac_dir, f'*{station}*RHF.sac'))
-                    if len(rhf) > 1:
-                        raise ValueError(f'Found more than one RHF GF for {station}.')
-                    else:
-                        rhf = rhf[0]
-                    # Adjust for pulse not being centered on zero
-                    rvf.trim(
-                        rvf.stats.starttime + stf_half_width,
-                        rvf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    # Adjust for pulse not being centered on zero
-                    rhf.trim(
-                        rhf.stats.starttime + stf_half_width,
-                        rhf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    """ Don't need to filter these GFs?
-                    #process the same way as st
-                    rvf.detrend()
-                    rvf.taper(max_percentage=0.05)
+                    rvf = st_gf.select(station=station, channel='RVF')[0]
+                    rhf = st_gf.select(station=station, channel='RHF')[0]
 
-                    rvf.filter('bandpass', freqmin=self.filter['freqmin'],
-                               freqmax=self.filter['freqmax'],
-                               corners=self.filter['order'],
-                               zerophase=self.filter['zerophase'])
-
-                    rhf.detrend()
-                    rhf.taper(max_percentage=0.05)
-                    rhf.filter('bandpass', freqmin=self.filter['freqmin'],
-                               freqmax=self.filter['freqmax'],
-                               corners=self.filter['order'],
-                               zerophase=self.filter['zerophase'])
-                    """
                     RVF = _makeshiftmat(rvf.data, shiftby=fshiftby, size1=(n, Flen))
                     RHF = _makeshiftmat(rhf.data, shiftby=fshiftby, size1=(n, Flen))
-                    az = math.radians(trace.stats.azimuth)
+                    az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
-                        (K * RVF, K * RHF * math.cos(az), K * RHF * math.sin(az))
+                        [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
                     )
+
                 elif component == 'T':
-                    thf = read(os.path.join(self.gf_sac_dir, f'*{station}*THF.sac'))
-                    if len(thf) > 1:
-                        raise ValueError(f'Found more than one THF GF for {station}.')
-                    else:
-                        thf = thf[0]
-                    # Adjust for pulse not being centered on zero
-                    thf.trim(
-                        thf.stats.starttime + stf_half_width,
-                        thf.stats.endtime + stf_half_width,
-                        pad=True,
-                        fill_value=0,
-                    )
-                    """ Don't need to filter these GFs?
-                    #process the same way as st
-                    thf.detrend()
-                    thf.taper(max_percentage=0.05)
-                    thf.filter('bandpass', freqmin=self.filter['freqmin'],
-                               freqmax=self.filter['freqmax'],
-                               corners=self.filter['order'],
-                               zerophase=self.filter['zerophase'])
-                    """
+                    thf = st_gf.select(station=station, channel='THF')[0]
+
                     THF = _makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
-                    TVF = 0.0 * THF.copy()
-                    az = math.radians(trace.stats.azimuth)
+                    TVF = 0.0 * THF.copy()  # Just zeros for TVF
+                    az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
-                        (TVF, K * THF * math.sin(az), -K * THF * math.cos(az))
+                        [TVF, THF * np.sin(az_radians), -THF * np.cos(az_radians)]
                     )
+
                 else:
-                    raise ValueError(f'st not rotated to T and R for {station}.')
+                    raise ValueError(f'Data not rotated to ZRT for {station}.')
+
                 # Deal with data
-                datline = trace.data
+                datline = tr.data
 
                 if i == 0:  # initialize G and d if first station
                     G = newline.copy()
@@ -762,22 +824,26 @@ class LSForce:
                 else:  # otherwise build on G and d
                     G = np.vstack((G, newline.copy()))
                     d = np.hstack((d, datline.copy()))
+
+                # TODO: Check if this is still working right
                 if weights is not None:
                     if weight_method == 'Manual':
                         weight[i] = weights[i]
                     elif weights == 'prenoise':
                         weight[i] = 1.0 / np.std(
-                            trace.data[
-                                0 : int(noise_window_dur * trace.stats.sampling_rate)
-                            ]
+                            tr.data[0 : int(noise_window_dur * tr.stats.sampling_rate)]
                         )
                     elif weights == 'distance':
-                        weight[i] = trace.stats.distance
+                        weight[i] = tr.stats.distance
 
                     Wvec[indx : indx + self.data_length] = (
                         Wvec[indx : indx + self.data_length] * weight[i]
                     )
                     indx += self.data_length
+
+            # We don't need to scale the triangle method GFs by the sample rate since
+            # this method is not a convolution
+            self.G = G
 
         else:
             raise ValueError(f'Method {self.method} not supported.')
@@ -790,9 +856,8 @@ class LSForce:
             raise ValueError(
                 'G and d sizes are not compatible, fix something somewhere.'
             )
-        # Need to multiply G by sample interval [s] since convolution is an integral
-        self.G = G * 1.0 / self.data_sampling_rate
-        self.d = d * 100.0  # Convert data from m to cm
+
+        self.d = d
         if weights is not None:
             self.W = np.diag(self.Wvec)
         else:
@@ -914,7 +979,7 @@ class LSForce:
         Ghatnorm = np.linalg.norm(Ghat)
 
         dl = self.data_length
-        gl = int(n / 3)  # self.data_length
+        gl = int(n / 3)  # Force vector length
 
         if self.add_to_zero is True:  # constrain forces to add to zero
             scaler = Ghatnorm
@@ -929,31 +994,31 @@ class LSForce:
 
         scaler = Ghatnorm / zero_scaler
         if self.impose_zero:  # tell model when there should be no forces
-            # TODO get this to work for triangle method (need to change len methods)
             len2 = int(
                 np.floor(((self.zero_time + self.T0) * self.force_sampling_rate))
             )
             if self.method == 'triangle':
-                len2 = int(
-                    np.floor(((self.zero_time + self.T0) * self.force_sampling_rate))
-                )
-            if self.method == 'tik':
+                # No taper
+                vals2 = np.hstack((np.ones(len2), np.zeros(gl - len2)))
+            elif self.method == 'tik':
+                # Taper
                 len3 = int(
                     zero_taper_length * self.force_sampling_rate
                 )  # make it constant
                 temp = np.hanning(2 * len3)
                 temp = temp[len3:]
                 vals2 = np.hstack((np.ones(len2 - len3), temp))
-            else:  # No taper
-                vals2 = np.hstack((np.ones(len2), np.zeros(gl - len2)))
+            else:
+                raise NotImplementedError
 
             for i, val in enumerate(vals2):
                 first1 = np.zeros(3 * gl)
                 second1 = first1.copy()
                 third1 = first1.copy()
-                first1[i] = val
-                second1[i + gl] = val
-                third1[i + 2 * gl] = val
+                if i > 0:
+                    first1[i] = val
+                    second1[i + gl] = val
+                    third1[i + 2 * gl] = val
                 if i == 0:
                     A2 = np.vstack((first1, second1, third1))
                 else:
@@ -972,25 +1037,43 @@ class LSForce:
             startind = int(
                 (zerotime + self.T0 + self.max_duration) * self.force_sampling_rate
             )
-            len2 = int(gl - startind)
-            len3 = int(
-                np.round(0.2 * len2)
-            )  # 20% taper so zero imposition isn't sudden
-            temp = np.hanning(2 * len3)
-            temp = temp[:len3]
-            vals3 = np.hstack((temp, np.ones(len2 - len3)))
-            for i, val in enumerate(vals3):
-                place = i + startind
-                first1 = np.zeros(3 * gl)
-                second1 = first1.copy()
-                third1 = first1.copy()
-                first1[place] = val
-                second1[place + gl] = val
-                third1[place + 2 * gl] = val
-                if i == 0:
-                    A3 = np.vstack((first1, second1, third1))
-                else:
-                    A3 = np.vstack((A3, first1, second1, third1))
+            if self.method == 'triangle':
+                vals3 = np.zeros(gl)
+                vals3[startind:] = 1.0  # no taper
+                for i, val in enumerate(vals3):
+                    first1 = np.zeros(3 * gl)
+                    second1 = first1.copy()
+                    third1 = first1.copy()
+                    if val > 0:
+                        first1[i] = val
+                        second1[i + gl] = val
+                        third1[i + 2 * gl] = val
+                    if i == 0:
+                        A3 = np.vstack((first1, second1, third1))
+                    else:
+                        A3 = np.vstack((A3, first1, second1, third1))
+            if self.method == 'tik':
+                len2 = int(gl - startind)
+                len3 = int(
+                    np.round(0.2 * len2)
+                )  # 20% taper so zero imposition isn't sudden
+                temp = np.hanning(2 * len3)
+                temp = temp[:len3]
+                vals3 = np.hstack((temp, np.ones(len2 - len3)))
+
+                for i, val in enumerate(vals3):
+                    place = i + startind
+                    first1 = np.zeros(3 * gl)
+                    second1 = first1.copy()
+                    third1 = first1.copy()
+                    if val > 0:
+                        first1[place] = val
+                        second1[place + gl] = val
+                        third1[place + 2 * gl] = val
+                    if i == 0:
+                        A3 = np.vstack((first1, second1, third1))
+                    else:
+                        A3 = np.vstack((A3, first1, second1, third1))
             A3 *= scaler
 
             Ghat = np.vstack((Ghat, A3))
@@ -1025,7 +1108,7 @@ class LSForce:
 
         if alphaset is None:
             alpha, fit1, size1, alphas = _find_alpha(
-                Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq',
+                Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq'
             )
             print(f'best alpha is {alpha:6.1e}')
             self.alpha = alpha
@@ -1049,10 +1132,10 @@ class LSForce:
             self.model = model.copy()
             div = len(model) / 3
 
-            # Convert from dynes to newtons, flip so up is positive
-            self.Z = -np.real(np.fft.ifft(model[0:div]) / 10 ** 5)
-            self.N = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
-            self.E = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
+            # Flip so up is positive
+            self.Z = -np.real(np.fft.ifft(model[0:div]))
+            self.N = np.real(np.fft.ifft(model[div : 2 * div]))
+            self.E = np.real(np.fft.ifft(model[2 * div :]))
 
             # run forward model
             df_new = self.G @ model.T
@@ -1066,10 +1149,10 @@ class LSForce:
             self.model = model.copy()
             div = int(len(model) / 3)
 
-            # Convert from dynes to newtons, flip so up is positive
-            self.Z = -model[0:div] / 10 ** 5
-            self.N = model[div : 2 * div] / 10 ** 5
-            self.E = model[2 * div :] / 10 ** 5
+            # Flip so up is positive
+            self.Z = -model[0:div]
+            self.N = model[div : 2 * div]
+            self.E = model[2 * div :]
 
             dtnew = self.G.dot(model)
             self.dtnew = np.reshape(dtnew, (self.data.st_proc.count(), dl))
@@ -1092,6 +1175,7 @@ class LSForce:
             # Shift so that peak of triangle function lines up with time of force
             # interval
             tvec += self.triangle_half_width
+
         self.tvec = tvec
         self.dtvec = np.arange(
             0, self.data_length / self.data_sampling_rate, 1 / self.data_sampling_rate
@@ -1151,11 +1235,9 @@ class LSForce:
                 if self.domain == 'frequency':
                     model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
                     div = len(model) / 3
-                    Zf = -np.real(
-                        np.fft.ifft(model[0:div]) / 10 ** 5
-                    )  # convert from dynes to newtons, flip so up is positive
-                    Nf = np.real(np.fft.ifft(model[div : 2 * div]) / 10 ** 5)
-                    Ef = np.real(np.fft.ifft(model[2 * div :]) / 10 ** 5)
+                    Zf = -np.real(np.fft.ifft(model[0:div]))  # Flip so up is positive
+                    Nf = np.real(np.fft.ifft(model[div : 2 * div]))
+                    Ef = np.real(np.fft.ifft(model[2 * div :]))
                     # run forward model
                     df_new = Gtemp @ model.T
                     # convert d and df_new back to time domain
@@ -1164,11 +1246,9 @@ class LSForce:
                 else:  # domain is time
                     model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
                     div = int(len(model) / 3)
-                    Zf = (
-                        -model[0:div] / 10 ** 5
-                    )  # convert from dynes to netwons, flip so up is positive
-                    Nf = model[div : 2 * div] / 10 ** 5
-                    Ef = model[2 * div :] / 10 ** 5
+                    Zf = -model[0:div]  # Flip so up is positive
+                    Nf = model[div : 2 * div]
+                    Ef = model[2 * div :]
                     dtnew = Gtemp.dot(model)
                     dt = np.reshape(dtemp, (numkeep, dl))
 
@@ -1837,7 +1917,7 @@ def _find_alpha(
     # Roughly estimate largest singular value (should not use alpha larger than expected
     # largest singular value)
     templ1 = np.ceil(np.log10(np.linalg.norm(Ghat)))
-    templ2 = np.arange(templ1 - 6, templ1 - 2)
+    templ2 = np.arange(templ1 - 5, templ1 - 1, 0.5)
     alphas = 10 ** templ2
     fit1 = []
     size1 = []
@@ -1876,6 +1956,7 @@ def _find_alpha(
         )
     fit1 = np.array(fit1)
     size1 = np.array(size1)
+
     curves = _curvature(np.log10(fit1), np.log10(size1))
     # Zero out any points where function is concave to avoid picking points from dropoff
     # at end
@@ -1889,7 +1970,7 @@ def _find_alpha(
     if not rough:
         # Then hone in
         alphas = np.logspace(
-            np.round(np.log10(alpha)) - 1, np.round(np.log10(alpha)) + 1, 10
+            np.round(np.log10(alpha)) - 1, np.round(np.log10(alpha)) + 1, 14
         )
         fit1 = []
         size1 = []
@@ -2133,3 +2214,10 @@ def _curvature(x, y):
         )  # get distance from any point to intercept of bisectors to get radius
 
     return R_2
+
+
+def _read(url):
+    r"""Wrapper for :func:`obspy.core.stream.read` for long URLs."""
+    with tempfile.NamedTemporaryFile() as f:
+        urlretrieve(url, f.name)
+        return read(f.name)
