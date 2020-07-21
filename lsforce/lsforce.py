@@ -893,6 +893,13 @@ class LSForce:
         if impose_zero and not zero_time:
             raise ValueError('impose_zero set to True but no zero_time provided.')
 
+        # Raise errors for non-implemented frequency domain constraints
+        if self.domain == 'frequency' and (impose_zero or max_duration is not None):
+            raise NotImplementedError(
+                'impose_zero and max_duration are not implemented for the frequency '
+                'domain.'
+            )
+
         # Save input choices
         self.add_to_zero = add_to_zero
         self.zero_time = zero_time
