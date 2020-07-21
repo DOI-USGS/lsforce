@@ -184,13 +184,7 @@ force = LSForce(
     data=data, data_sampling_rate=1, nickname=RUN_NAME, main_folder=main_folder
 )
 
-force.setup(
-    period_range=PERIOD_RANGE,
-    zerophase=True,
-    syngine_model='iasp91_2s',
-    gf_duration=200,
-    T0=-10,
-)
+force.setup(period_range=PERIOD_RANGE, zerophase=True, syngine_model='iasp91_2s')
 
 #%% INVERT
 
