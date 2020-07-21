@@ -51,7 +51,8 @@ following:
 Documentation
 -------------
 
-A usage example is given in `example.py`.
+Usage examples for the two currently-supported parameterization methods are given in
+`example_full.py` and `example_triangle.py`.
 
 To build the documentation, first ensure that you installed the developer tools (`bash
 install.sh 1`), which are required for documentation building. Then:
