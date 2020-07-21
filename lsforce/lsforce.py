@@ -197,7 +197,7 @@ class LSForce:
                 os.chdir(temp_dir.name)
 
                 # Write the "dist" file
-                gf_length_samples = self.gf_duration * self.data_sampling_rate
+                gf_length_samples = int(self.gf_duration * self.data_sampling_rate)
                 if self.domain == 'frequency':
                     # Use a fast length
                     gf_length_samples = next_pow_2(gf_length_samples)
