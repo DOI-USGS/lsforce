@@ -8,16 +8,10 @@ from lsforce import LSForce
 
 # Relative tolerance for test, see:
 # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html
-RTOL = 3e-7
+RTOL = 1e-6
 
 # Shared parameters for both inversion methods
-SETUP_KWARGS = dict(
-    period_range=(15, 80),
-    zerophase=True,
-    syngine_model='iasp91_2s',
-    gf_duration=200,
-    T0=-10,
-)
+SETUP_KWARGS = dict(period_range=(15, 80), zerophase=True, syngine_model='iasp91_2s')
 INVERT_KWARGS = dict(
     zero_time=119,
     impose_zero=True,

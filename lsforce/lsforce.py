@@ -34,7 +34,6 @@ class LSForce:
         gf_dir (str): Directory containing Green's functions
         gf_computed (bool): Whether or not Green's functions have been computed for this
             object
-        gf_length (int): Length in samples of Green's functions
         inversion_complete (bool): Whether or not the inversion has been run
         filter (dict): Dictionary with keys ``'freqmin'``, ``'freqmax'``,
             ``'zerophase'``, ``'periodmin'``, ``'periodmax'``, and ``'order'``
@@ -198,9 +197,10 @@ class LSForce:
                 os.chdir(temp_dir.name)
 
                 # Write the "dist" file
-                gf_length_samples = next_pow_2(
-                    self.gf_duration * self.data_sampling_rate
-                )
+                gf_length_samples = self.gf_duration * self.data_sampling_rate
+                if self.domain == 'frequency':
+                    # Use a fast length
+                    gf_length_samples = next_pow_2(gf_length_samples)
                 with open('dist', 'w') as f:
                     for sta in stations_to_calculate:
                         dist = self.data.st_proc.select(station=sta)[0].stats.distance
@@ -473,8 +473,6 @@ class LSForce:
     def setup(
         self,
         period_range,
-        gf_duration,
-        T0,
         syngine_model=None,
         cps_model=None,
         triangle_half_width=None,
@@ -488,9 +486,6 @@ class LSForce:
 
         Args:
             period_range (list or tuple): [s] Bandpass filter corners
-            gf_duration (int or float): [s] Duration of GFs
-            T0 (int or float): [s] Amount of extra time prior to impulse application
-                (not included in `gf_duration`)
             syngine_model (str): Name of Syngine model to use. If this is not None, then
                 we calculate GFs using Syngine (preferred)
             cps_model (str): Filename of CPS model to use. If this is not None, then we
@@ -510,8 +505,6 @@ class LSForce:
         """
 
         self.syngine_model = syngine_model
-        self.T0 = T0
-        self.gf_duration = gf_duration
         self.source_depth = source_depth
 
         # Explicitly ignore the triangle half-width parameter if it's not relevant
@@ -548,6 +541,15 @@ class LSForce:
             not self.syngine_model and not self.cps_model
         ):
             raise ValueError('You must specify ONE of `syngine_model` or `cps_model`!')
+
+        # Automatically choose an appropriate T0 and GF duration based on data/method
+        if self.method == 'triangle':
+            self.T0 = -2 * self.triangle_half_width  # [s] Double the half-width
+        else:
+            self.T0 = -10  # [s]
+        min_time = np.min([tr.stats.starttime for tr in self.data.st_proc])
+        max_time = np.max([tr.stats.endtime for tr in self.data.st_proc])
+        self.gf_duration = max_time - min_time  # [s]
 
         # Create filter dictionary to keep track of filter used without creating too
         # many new attributes
@@ -648,14 +650,6 @@ class LSForce:
         if self.syngine_model:  # Only need to do this if Syngine
             st_gf.interpolate(
                 sampling_rate=self.data_sampling_rate, method='lanczos', a=20
-            )
-
-        # Now that we've interpolated, check the GF length is appropriate
-        self.gf_length = st_gf[0].stats.npts
-        if self.gf_length > self.data_length:
-            raise ValueError(
-                'gf_length is greater than data_length. Reselect data and/or recompute '
-                'Green\'s functions so that data is longer than Green\'s functions'
             )
 
         # Initialize weighting matrices
