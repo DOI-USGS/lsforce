@@ -1130,7 +1130,7 @@ class LSForce:
         if self.domain == 'frequency':
             model, residuals, rank, s = sp.linalg.lstsq(A, x)
             self.model = model.copy()
-            div = len(model) / 3
+            div = int(len(model) / 3)
 
             # Flip so up is positive
             self.Z = -np.real(np.fft.ifft(model[0:div]))
@@ -1234,7 +1234,7 @@ class LSForce:
 
                 if self.domain == 'frequency':
                     model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
-                    div = len(model) / 3
+                    div = int(len(model) / 3)
                     Zf = -np.real(np.fft.ifft(model[0:div]))  # Flip so up is positive
                     Nf = np.real(np.fft.ifft(model[div : 2 * div]))
                     Ef = np.real(np.fft.ifft(model[2 * div :]))
