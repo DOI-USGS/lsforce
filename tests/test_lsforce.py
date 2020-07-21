@@ -37,9 +37,9 @@ with open(os.path.join(data_dir, 'lsdata.pkl'), 'rb') as f:
     data = pickle.load(f)
 
 
-def test_lsforce_tik():
+def test_lsforce_full():
 
-    print('Testing tik method...')
+    print('Testing full method...')
 
     # A temporary directory to run tests in
     temp_dir = tempfile.TemporaryDirectory()
@@ -48,9 +48,9 @@ def test_lsforce_tik():
     force = LSForce(
         data=data,
         data_sampling_rate=1,
-        nickname='tik',
+        nickname='full',
         main_folder=temp_dir.name,
-        method='tik',
+        method='full',
     )
 
     # Set up for inversion
@@ -69,7 +69,7 @@ def test_lsforce_tik():
     # Test resulting model
     print('Testing...')
     np.testing.assert_allclose(
-        force.model, np.load(os.path.join(data_dir, 'model_tik.npy')), rtol=RTOL,
+        force.model, np.load(os.path.join(data_dir, 'model_full.npy')), rtol=RTOL,
     )
 
 

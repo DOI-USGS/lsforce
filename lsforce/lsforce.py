@@ -77,7 +77,7 @@ class LSForce:
         domain='time',
         nickname=None,
         main_folder=None,
-        method='tik',
+        method='full',
     ):
         r"""Create an LSForce object.
 
@@ -91,10 +91,10 @@ class LSForce:
                 `'frequency'`
             nickname (str): Nickname for this event, used for convenient naming of files
             main_folder (str): If `None`, will use current folder
-            method (str): One of `'tik'` — full waveform inversion using Tikhonov
-                regularization (L2 norm minimization) or `'triangle'` — inversion
-                parameterized using overlapping triangles, variation on method of
-                Ekström & Stark (2013)
+            method (str): How to parameterize the force-time function. One of `'full'`
+                — full waveform inversion using Tikhonov regularization (L2 norm
+                minimization) or `'triangle'` — inversion parameterized using
+                overlapping triangles, variation on method of Ekström & Stark (2013)
         """
 
         self.data = data
@@ -109,7 +109,7 @@ class LSForce:
         else:
             self.main_folder = main_folder
 
-        if method not in ['tik', 'triangle']:
+        if method not in ['full', 'triangle']:
             raise ValueError(f'Method {method} not yet implemented.')
 
         self.method = method
@@ -666,7 +666,7 @@ class LSForce:
         # Store data length
         n = self.data_length
 
-        if self.method == 'tik':
+        if self.method == 'full':
 
             # Set sampling rate
             self.force_sampling_rate = self.data_sampling_rate
@@ -1000,7 +1000,7 @@ class LSForce:
             if self.method == 'triangle':
                 # No taper
                 vals2 = np.hstack((np.ones(len2), np.zeros(gl - len2)))
-            elif self.method == 'tik':
+            elif self.method == 'full':
                 # Taper
                 len3 = int(
                     zero_taper_length * self.force_sampling_rate
@@ -1052,7 +1052,7 @@ class LSForce:
                         A3 = np.vstack((first1, second1, third1))
                     else:
                         A3 = np.vstack((A3, first1, second1, third1))
-            if self.method == 'tik':
+            if self.method == 'full':
                 len2 = int(gl - startind)
                 len3 = int(
                     np.round(0.2 * len2)
