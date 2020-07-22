@@ -26,6 +26,9 @@ SYNGINE_DT = 0.25
 # [s] Sampling interval for the triangular source time function given to Syngine
 TRIANGLE_STF_DT = 0.5
 
+# A nice constant starttime for Syngine and CPS GFs
+GF_STARTTIME = UTCDateTime(1900, 1, 1)
+
 
 class LSForce:
     r"""Class for performing force inversions.
@@ -34,6 +37,8 @@ class LSForce:
         gf_dir (str): Directory containing Green's functions
         gf_computed (bool): Whether or not Green's functions have been computed for this
             object
+        filtered_gf_st (:class:`~obspy.core.stream.Stream`): Stream containing filtered
+            Green's functions
         inversion_complete (bool): Whether or not the inversion has been run
         filter (dict): Dictionary with keys ``'freqmin'``, ``'freqmax'``,
             ``'zerophase'``, ``'periodmin'``, ``'periodmax'``, and ``'order'``
@@ -274,6 +279,10 @@ class LSForce:
                 endtime = starttime + self.gf_duration - self.T0
                 st_gf.trim(starttime + pulse_half_width, endtime + pulse_half_width)
 
+                # Give a nice start time
+                for tr in st_gf:
+                    tr.stats.starttime = GF_STARTTIME
+
                 # Save as individual files
                 for station in stations_to_calculate:
                     filename = os.path.join(self.gf_dir, f'{station}.pkl')
@@ -422,6 +431,7 @@ class LSForce:
             tr.stats.T0 = self.T0
             tr.stats.duration = self.gf_duration
             tr.stats.triangle_half_width = self.triangle_half_width
+            tr.stats.starttime = GF_STARTTIME  # Give a nice start time
         st_syn.sort(keys=['channel'])
 
         return st_syn
@@ -648,6 +658,10 @@ class LSForce:
             st_gf.interpolate(
                 sampling_rate=self.data_sampling_rate, method='lanczos', a=20
             )
+        st_gf.sort(keys=['channel'])
+
+        # Store the filtered GFs
+        self.filtered_gf_st = st_gf
 
         # Initialize weighting matrices
         Wvec = np.ones(lenUall)
