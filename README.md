@@ -29,24 +29,24 @@ optionally install
 [Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html) via the
 following:
 
-   * Install [GCC](https://gcc.gnu.org/) with e.g. [Homebrew](https://brew.sh/):
-     ```shell
-     brew install gcc
-     ```
-   * Complete the
-     [CPS license form](http://www.eas.slu.edu/eqc/eqc_cps/CPS/cpslisc.html), download
-     the resulting archive, and unzip
-   * Move the directory `PROGRAMS.330` to where you'd like to install, then:
-     ```shell
-     cd PROGRAMS.330
-     ./Setup OSX40
-     ./C
-     ```
-   * Add the executables to your `PATH` by adding the following line to your e.g.
-     `~/.bash_profile`:
-     ```shell
-     export PATH="$PATH:/path/to/PROGRAMS.330/bin"
-     ```
+   1. Install [GCC](https://gcc.gnu.org/) with e.g. [Homebrew](https://brew.sh/):
+      ```shell
+      brew install gcc
+      ```
+   2. Complete the
+      [CPS license form](http://www.eas.slu.edu/eqc/eqc_cps/CPS/cpslisc.html), download
+      the resulting archive, and unzip
+   3. Move the directory `PROGRAMS.330` to where you'd like to install, then:
+      ```shell
+      cd PROGRAMS.330
+      ./Setup OSX40
+      ./C
+      ```
+   4. Add the executables to your `PATH` by adding the following line to your e.g.
+      `~/.bash_profile`:
+      ```shell
+      export PATH="$PATH:/path/to/PROGRAMS.330/bin"
+      ```
 
 Documentation
 -------------
