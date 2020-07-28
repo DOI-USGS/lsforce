@@ -629,12 +629,12 @@ class LSForce:
         if self.domain == 'time':
             # TODO: ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH -
             #  ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
-            lenUall = self.data_length * st.count()
+            total_data_length = self.data_length * st.count()
         elif self.domain == 'frequency':
             # Needs to be the length of the two added together because convolution
             # length M+N-1
             nfft = next_pow_2(self.data_length)
-            lenUall = nfft * st.count()
+            total_data_length = nfft * st.count()
         else:
             raise ValueError(
                 'domain not recognized. Must be \'time\' or \'frequency\'.'
@@ -664,7 +664,7 @@ class LSForce:
         self.filtered_gf_st = st_gf
 
         # Initialize weighting matrices
-        Wvec = np.ones(lenUall)
+        Wvec = np.ones(total_data_length)
         indx = 0
         weight = np.ones(self.data.st_proc.count())
 
