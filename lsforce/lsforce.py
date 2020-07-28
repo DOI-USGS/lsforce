@@ -2083,20 +2083,17 @@ def _varred(dt, dtnew):
 def _back2time(d, df_new, numsta, datlenorig):
     r"""Convert data back to the time domain and cut off zero padding.
 
-    TODO:
-        Finish this docstring!
-
     Args:
-        d: TODO
-        df_new: TODO
-        numsta: TODO
-        datlenorig: TODO
+        d (1D array): Original data in frequency domain
+        df_new (1D array): Modeled data in frequency domain
+        numsta (int): Number of data channels, e.g. ``st.count()``
+        datlenorig (int): Length in samples of original data in time domain
 
     Returns:
         tuple: Tuple containing:
 
-        - **dt** – TODO
-        - **dtnew** – TODO
+        - **dt** (1D array) – Original data in time domain
+        - **dtnew** (1D array) – Modeled data in time domain
     """
 
     datlength = int(len(d) / numsta)
@@ -2111,17 +2108,12 @@ def _back2time(d, df_new, numsta, datlenorig):
 
 
 def _makeconvmat(c, size=None):
-    r"""Build matrix that used for convolution as implemented by matrix multiplication.
-
-    `size` is optional input for desired size as ``(nrows, ncols)``; this will just
-    shift ``cflip`` until it reaches the right size.
-
-    TODO:
-        Finish this docstring!
+    r"""Build matrix used for convolution as implemented by matrix multiplication.
 
     Args:
-        c: TODO
-        size (list or tuple): TODO
+        c (1D array): Signal to make convolution matrix for
+        size (list or tuple): Optional input for desired size as ``(nrows, ncols)``;
+            this will just shift ``cflip`` until it reaches the right size
 
     Returns:
         :class:`~numpy.ndarray`: Convolution matrix
