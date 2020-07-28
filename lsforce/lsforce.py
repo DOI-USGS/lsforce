@@ -627,10 +627,10 @@ class LSForce:
 
         self.data_length = st[0].stats.npts
         if self.domain == 'time':
-            # TODO: ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH -
-            #  ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
             total_data_length = self.data_length * st.count()
         elif self.domain == 'frequency':
+            # TODO: ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH -
+            #  ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
             # Needs to be the length of the two added together because convolution
             # length M+N-1
             nfft = next_pow_2(self.data_length)
