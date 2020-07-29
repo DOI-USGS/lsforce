@@ -51,8 +51,15 @@ following:
 Documentation
 -------------
 
-Usage examples for the two currently-supported parameterization methods are given in
-`example_full.py` and `example_triangle.py`.
+Usage examples for the two currently-supported parameterization methods are given in the
+two [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb` and
+`example_triangle.ipynb`. To open the notebooks, run:
+```shell
+conda activate lsforce
+jupyter notebook example_full.ipynb  # or example_triangle.ipynb
+```
+This will start a Jupyter Notebook server and open a new window or tab in your browser
+with the interactive notebook displayed.
 
 To build the documentation, first ensure that you installed the developer tools (`bash
 install.sh 1`), which are required for documentation building. Then:
