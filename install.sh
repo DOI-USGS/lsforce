@@ -76,6 +76,7 @@ conda remove --yes --name $ENV_NAME --all
 # Standard package list:
 PACKAGE_LIST=(
     'cartopy'
+    'notebook'
     'obspy'
     'pyqt'
     'scikit-learn'
