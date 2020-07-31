@@ -29,6 +29,9 @@ TRIANGLE_STF_DT = 0.5
 # A nice constant starttime for Syngine and CPS GFs
 GF_STARTTIME = UTCDateTime(1900, 1, 1)
 
+# Convert m/s to μm/s
+UMS_PER_MS = 1e6
+
 
 class LSForce:
     r"""Class for performing force inversions.
@@ -1518,8 +1521,7 @@ class LSForce:
                 if self.zero_time:
                     tvec2 -= self.zero_time
                 tvec2 -= hfshift
-                ms2ums = 1e6
-                ax4.plot(tvec2, highf_tr.data * ms2ums, 'black')
+                ax4.plot(tvec2, highf_tr.data * UMS_PER_MS, 'black')
                 ax4.set_ylabel('Velocity (μm/s)')
 
             if infra_tr is not None:
@@ -1595,7 +1597,8 @@ class LSForce:
                 if self.zero_time:
                     tvec2 -= self.zero_time
                 tvec2 -= hfshift
-                ax4.plot(tvec2, highf_tr.data)
+                ax4.plot(tvec2, highf_tr.data * UMS_PER_MS, 'black')
+                ax4.set_ylabel('Velocity (μm/s)')
                 if hfshift != 0:
                     ax4.annotate(
                         f'{highf_tr.id} - shifted –{hfshift:1.0f} s', **annot_kwargs
