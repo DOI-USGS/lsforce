@@ -32,7 +32,7 @@ napoleon_numpy_docstring = False
 
 master_doc = 'index'
 
-apidoc_module_dir = '../lsforce'
+apidoc_module_dir = os.path.join('..', 'lsforce')
 apidoc_output_dir = 'api'
 apidoc_separate_modules = True
 apidoc_toc_file = False
