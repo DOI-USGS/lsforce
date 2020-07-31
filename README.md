@@ -53,13 +53,14 @@ Documentation
 
 Usage examples for the two currently-supported parameterization methods are given in the
 two [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb` and
-`example_triangle.ipynb`. To open the notebooks, run:
+`example_triangle.ipynb`, which are located in the `notebooks` directory. To open the
+notebooks, run:
 ```shell
 conda activate lsforce
-jupyter notebook example_full.ipynb  # or example_triangle.ipynb
+jupyter notebook notebooks
 ```
 This will start a Jupyter Notebook server and open a new window or tab in your browser
-with the interactive notebook displayed.
+with the interactive notebooks displayed.
 
 To build the documentation, first ensure that you installed the developer tools (`bash
 install.sh 1`), which are required for documentation building. Then:
@@ -78,5 +79,5 @@ installed the developer tools (`bash install.sh 1`), which are required for test
 Then:
 ```shell
 conda activate lsforce
-pytest --capture=no --cov=lsforce tests/
+pytest --capture=no --cov=lsforce tests
 ```
