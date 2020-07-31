@@ -97,8 +97,7 @@ DEVELOPER_PACKAGES=(
 )
 
 # If user supplied the developer flag, add developer packages to package list
-# TODO: Remove `|| true` to actually use this flag. Currently we always install as dev!
-if [ "$1" == 1 ] || true
+if [ "$1" == 1 ]
 then
     PACKAGE_LIST=( "${PACKAGE_LIST[@]}" "${DEVELOPER_PACKAGES[@]}" )
     echo 'Installing developer packages:'
