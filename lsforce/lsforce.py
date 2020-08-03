@@ -632,11 +632,9 @@ class LSForce:
         if self.domain == 'time':
             total_data_length = self.data_length * st.count()
         elif self.domain == 'frequency':
-            # TODO: ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH -
-            #  ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
-            # Needs to be the length of the two added together because convolution
-            # length M+N-1
-            nfft = next_pow_2(self.data_length)
+            # Needs to be the length of the two added together to avoid wrapping
+            # error because convolution length M+N-1
+            nfft = next_pow_2(self.data_length + self.gf_duration-1)
             total_data_length = nfft * st.count()
         else:
             raise ValueError(
@@ -763,7 +761,11 @@ class LSForce:
                     )
                     indx += self.data_length
 
-            # Need to multiply G by sample interval [s] since convolution is an integral
+            """
+            Need to multiply G by sample interval [s] since convolution is an integral
+            for time domain and for freq. domain because need to multiply discrete
+            fft by delta t to approximate continuous fft (other two get canceled out)
+            """
             self.G = G * 1.0 / self.data_sampling_rate
 
         elif self.method == 'triangle':
@@ -969,7 +971,7 @@ class LSForce:
                 constraint, but the higher the risk of high frequency oscillations due
                 to a sudden release of the constraint
             zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
-                Shorter tapers can result in sharp artifacts, so longer is better
+                Tapers that are toos hort can result in sharp spiky artifacts.
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
@@ -1008,6 +1010,7 @@ class LSForce:
             A1 = None
 
         scaler = Ghatnorm / zero_scaler
+
         if self.impose_zero:  # tell model when there should be no forces
             len2 = int(
                 np.floor(((self.zero_time + self.T0) * self.force_sampling_rate))
