@@ -69,9 +69,8 @@ class LSForce:
         VR: [%] Variance reduction. Rule of thumb: This should be ~50–80%, if ~100%,
             solution is fitting data exactly and results are suspect. If ~5%, model may
             be wrong or something else may be wrong with setup
-        dtorig: Original data vector (time domain)
-        dtnew: Modeled data vector (Gm-d) (converted to time domain if domain is
-            `'frequency'`)
+        dtorig: Original data vector
+        dtnew: Modeled data vector (Gm-d)
         alpha: Regularization parameter that was used
         alphafit (dict): Dictionary with keys ``'alphas'``, ``'fit'``, and ``'size'``
             specifying regularization parameters tested
@@ -81,7 +80,6 @@ class LSForce:
         self,
         data,
         data_sampling_rate,
-        domain='time',
         nickname=None,
         main_folder=None,
         method='full',
@@ -94,8 +92,6 @@ class LSForce:
             data_sampling_rate (int or float): [Hz] Samples per second to use in
                 inversion. All data will be resampled to this rate, and Green's
                 functions will be created with this rate
-            domain (str): Domain in which to do inversion, one of `'time'` or
-                `'frequency'`
             nickname (str): Nickname for this event, used for convenient naming of files
             main_folder (str): If `None`, will use current folder
             method (str): How to parameterize the force-time function. One of `'full'`
@@ -105,7 +101,6 @@ class LSForce:
         """
 
         self.data = data
-        self.domain = domain
         self.data_sampling_rate = data_sampling_rate
         self.nickname = nickname
         self.gf_computed = False
@@ -120,8 +115,6 @@ class LSForce:
             raise ValueError(f'Method {method} not yet implemented.')
 
         self.method = method
-        if self.method == 'triangle' and self.domain == 'frequency':
-            raise ValueError('The triangle method must be done in the time domain.')
 
     def _get_greens(self):
 
@@ -629,17 +622,7 @@ class LSForce:
             )
 
         self.data_length = st[0].stats.npts
-        if self.domain == 'time':
-            total_data_length = self.data_length * st.count()
-        elif self.domain == 'frequency':
-            # Needs to be the length of the two added together to avoid wrapping
-            # error because convolution length M+N-1
-            nfft = next_pow_2(self.data_length + self.gf_duration-1)
-            total_data_length = nfft * st.count()
-        else:
-            raise ValueError(
-                'domain not recognized. Must be \'time\' or \'frequency\'.'
-            )
+        total_data_length = self.data_length * st.count()
 
         # Load in GFs
         print('Getting Green\'s functions...')
@@ -686,15 +669,8 @@ class LSForce:
                 if component == 'Z':
                     zvf = st_gf.select(station=station, channel='ZVF')[0]
                     zhf = st_gf.select(station=station, channel='ZHF')[0]
-
-                    if self.domain == 'time':
-                        ZVF = _makeconvmat(zvf.data, size=(n, n))
-                        ZHF = _makeconvmat(zhf.data, size=(n, n))
-                    else:
-                        zvff = np.fft.fft(zvf.data, nfft)
-                        zhff = np.fft.fft(zhf.data, nfft)
-                        ZVF = np.diag(zvff)
-                        ZHF = np.diag(zhff)
+                    ZVF = _makeconvmat(zvf.data, size=(n, n))
+                    ZHF = _makeconvmat(zhf.data, size=(n, n))
                     az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
                         [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
@@ -704,14 +680,9 @@ class LSForce:
                     rvf = st_gf.select(station=station, channel='RVF')[0]
                     rhf = st_gf.select(station=station, channel='RHF')[0]
 
-                    if self.domain == 'time':
-                        RVF = _makeconvmat(rvf.data, size=(n, n))
-                        RHF = _makeconvmat(rhf.data, size=(n, n))
-                    else:
-                        rvff = np.fft.fft(rvf.data, nfft)
-                        rhff = np.fft.fft(rhf.data, nfft)
-                        RVF = np.diag(rvff)
-                        RHF = np.diag(rhff)
+                    RVF = _makeconvmat(rvf.data, size=(n, n))
+                    RHF = _makeconvmat(rhf.data, size=(n, n))
+
                     az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
                         [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
@@ -720,11 +691,8 @@ class LSForce:
                 elif component == 'T':
                     thf = st_gf.select(station=station, channel='THF')[0]
 
-                    if self.domain == 'time':
-                        THF = _makeconvmat(thf.data, size=(n, n))
-                    else:
-                        thff = np.fft.fft(thf.data, nfft)
-                        THF = np.diag(thff)
+                    THF = _makeconvmat(thf.data, size=(n, n))
+
                     TVF = 0.0 * THF.copy()  # Just zeros for TVF
                     az_radians = np.deg2rad(tr.stats.azimuth)
                     newline = np.hstack(
@@ -735,10 +703,7 @@ class LSForce:
                     raise ValueError(f'Data not rotated to ZRT for {station}.')
 
                 # Deal with data
-                if self.domain == 'time':
-                    datline = tr.data
-                else:
-                    datline = np.fft.fft(tr.data, nfft)
+                datline = tr.data
 
                 if i == 0:  # initialize G and d if first station
                     G = newline.copy()
@@ -761,11 +726,8 @@ class LSForce:
                     )
                     indx += self.data_length
 
-            """
-            Need to multiply G by sample interval [s] since convolution is an integral
-            for time domain and for freq. domain because need to multiply discrete
-            fft by delta t to approximate continuous fft (other two get canceled out)
-            """
+            #Need to multiply G by sample interval [s] since convolution is an integral
+
             self.G = G * 1.0 / self.data_sampling_rate
 
         elif self.method == 'triangle':
@@ -911,13 +873,6 @@ class LSForce:
         # Check inputs for consistency
         if impose_zero and not zero_time:
             raise ValueError('impose_zero set to True but no zero_time provided.')
-
-        # Raise errors for non-implemented frequency domain constraints
-        if self.domain == 'frequency' and (impose_zero or max_duration is not None):
-            raise NotImplementedError(
-                'impose_zero and max_duration are not implemented for the frequency '
-                'domain.'
-            )
 
         # Save input choices
         self.add_to_zero = add_to_zero
@@ -1145,36 +1100,18 @@ class LSForce:
         )  # Combo of all regularization things (if any are zero they won't matter)
         x = np.squeeze(Ghat.conj().T @ dhat)
 
-        if self.domain == 'frequency':
-            model, residuals, rank, s = sp.linalg.lstsq(A, x)
-            self.model = model.copy()
-            div = int(len(model) / 3)
+        model, residuals, rank, s = sp.linalg.lstsq(A, x)
+        self.model = model.copy()
+        div = int(len(model) / 3)
 
-            # Flip so up is positive
-            self.Z = -np.real(np.fft.ifft(model[0:div]))
-            self.N = np.real(np.fft.ifft(model[div : 2 * div]))
-            self.E = np.real(np.fft.ifft(model[2 * div :]))
+        # Flip so up is positive
+        self.Z = -model[0:div]
+        self.N = model[div : 2 * div]
+        self.E = model[2 * div :]
 
-            # run forward model
-            df_new = self.G @ model.T
-            # convert d and df_new back to time domain
-            dt, dtnew = _back2time(self.d, df_new, self.data.st_proc.count(), dl)
-            self.dtorig = dt
-            self.dtnew = dtnew
-
-        else:  # domain is time
-            model, residuals, rank, s = sp.linalg.lstsq(A, x)
-            self.model = model.copy()
-            div = int(len(model) / 3)
-
-            # Flip so up is positive
-            self.Z = -model[0:div]
-            self.N = model[div : 2 * div]
-            self.E = model[2 * div :]
-
-            dtnew = self.G.dot(model)
-            self.dtnew = np.reshape(dtnew, (self.data.st_proc.count(), dl))
-            self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
+        dtnew = self.G.dot(model)
+        self.dtnew = np.reshape(dtnew, (self.data.st_proc.count(), dl))
+        self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
 
         # compute variance reduction
         self.VR = _varred(self.dtorig, self.dtnew)
@@ -1250,25 +1187,13 @@ class LSForce:
                 )
                 xj = np.squeeze(Ghat1.conj().T @ dhat1)
 
-                if self.domain == 'frequency':
-                    model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
-                    div = int(len(model) / 3)
-                    Zf = -np.real(np.fft.ifft(model[0:div]))  # Flip so up is positive
-                    Nf = np.real(np.fft.ifft(model[div : 2 * div]))
-                    Ef = np.real(np.fft.ifft(model[2 * div :]))
-                    # run forward model
-                    df_new = Gtemp @ model.T
-                    # convert d and df_new back to time domain
-                    dt, dtnew = _back2time(dtemp, df_new, numkeep, dl)
-
-                else:  # domain is time
-                    model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
-                    div = int(len(model) / 3)
-                    Zf = -model[0:div]  # Flip so up is positive
-                    Nf = model[div : 2 * div]
-                    Ef = model[2 * div :]
-                    dtnew = Gtemp.dot(model)
-                    dt = np.reshape(dtemp, (numkeep, dl))
+                model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
+                div = int(len(model) / 3)
+                Zf = -model[0:div]  # Flip so up is positive
+                Nf = model[div : 2 * div]
+                Ef = model[2 * div :]
+                dtnew = Gtemp.dot(model)
+                dt = np.reshape(dtemp, (numkeep, dl))
 
                 VR = _varred(dt, dtnew)
                 self.jackknife.Z.all.append(Zf.copy())
@@ -2056,33 +1981,6 @@ def _varred(dt, dtnew):
     VR = (1 - (np.sum(d_dnew2) / np.sum(d2))) * 100
 
     return VR
-
-
-def _back2time(d, df_new, numsta, datlenorig):
-    r"""Convert data back to the time domain and cut off zero padding.
-
-    Args:
-        d (1D array): Original data in frequency domain
-        df_new (1D array): Modeled data in frequency domain
-        numsta (int): Number of data channels, e.g. ``st.count()``
-        datlenorig (int): Length in samples of original data in time domain
-
-    Returns:
-        tuple: Tuple containing:
-
-        - **dt** (1D array) – Original data in time domain
-        - **dtnew** (1D array) – Modeled data in time domain
-    """
-
-    datlength = int(len(d) / numsta)
-    dfrsp = np.reshape(d, (numsta, datlength))
-    dfnrsp = np.reshape(df_new, (numsta, datlength))
-    dt = np.real(np.fft.ifft(dfrsp, axis=1))
-    dt = dt[0:, 0:datlenorig]
-    dtnew = np.real(np.fft.ifft(dfnrsp, axis=1))
-    dtnew = dtnew[0:, 0:datlenorig]
-
-    return dt, dtnew
 
 
 def _makeconvmat(c, size=None):
