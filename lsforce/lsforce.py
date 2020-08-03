@@ -1992,7 +1992,7 @@ def _find_alpha(
             fit1 = []
             size1 = []
 
-    _Lcurve(fit1, size1, alphas)
+    _Lcurve(fit1, size1, alphas, bestalpha=bestalpha)
     if type(bestalpha) == list:
         if len(bestalpha) > 1:
             raise ValueError('Returned more than one alpha value, check codes.')
@@ -2001,30 +2001,23 @@ def _find_alpha(
     return bestalpha, fit1, size1, alphas
 
 
-def _loopalphas():
+def _Lcurve(fit1, size1, alphas, bestalpha=None):
     r"""Plot an L-curve.
 
     Args:
         fit1 (1D array): List of residuals
         size1 (1D array): List of model norms
         alphas (1D array): List of alphas tried
-    """
-    pass
-
-
-def _Lcurve(fit1, size1, alphas):
-    r"""Plot an L-curve.
-
-    Args:
-        fit1 (1D array): List of residuals
-        size1 (1D array): List of model norms
-        alphas (1D array): List of alphas tried
+        bestalpha (float): The alpha value chosen
     """
 
     fig, ax = plt.subplots(figsize=(7, 6))
     ax.loglog(fit1, size1, '.', markersize=10, color='black')
     for i, alpha in enumerate(alphas):
         ax.text(fit1[i], size1[i], f'  {alpha:.1e}', va='center')
+    if bestalpha is not None:
+        idx = np.argmin(np.abs(alphas-bestalpha))
+        ax.plot(fit1[idx], size1[idx], 'or')
     ax.set_xlabel(r'Residual norm $||{\bfG}{\bfm}-{\bfd}||^2$')
     ax.set_ylabel(r'Solution norm $||{\bfm}||^2$')
 
