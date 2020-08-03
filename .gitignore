@@ -6,5 +6,7 @@
 lsforce.egg-info/
 doc/_build/
 doc/api/
+cov_html/
+.coverage
 notebooks/hunza_*
 notebooks/iliamna_*
