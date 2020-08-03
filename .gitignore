@@ -6,3 +6,5 @@
 lsforce.egg-info/
 doc/_build/
 doc/api/
+notebooks/hunza_*
+notebooks/iliamna_*

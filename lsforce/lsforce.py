@@ -14,7 +14,6 @@ from matplotlib import lines as mlines
 from matplotlib import pyplot as plt
 from obspy import Stream, Trace, UTCDateTime, read
 from obspy.core import AttribDict
-from obspy.signal.util import next_pow_2
 from scipy.signal.windows import triang
 
 # TODO: This is the "beta" URL!
@@ -912,7 +911,7 @@ class LSForce:
     def _tikinvert(
         self,
         alphaset=None,
-        zero_scaler=15.0,
+        zero_scaler=2.,
         zero_taper_length=20.0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
@@ -921,16 +920,20 @@ class LSForce:
         Args:
             alphaset (int or float): Set regularization parameter. If `None`, will
                 search for best alpha using the L-curve method
-            zero_scaler (int or float): Factor by which to divide Gnorm to get scaling
-                factor used for zero constraint. The lower the number, the stronger the
-                constraint, but the higher the risk of high frequency oscillations due
-                to a sudden release of the constraint
+            zero_scaler (int or float): Relative strength of zero constraint from
+                0 to 10. The lower the number, the weaker
+                the constraint. Values up to 30 are technically allowed but
+                discouraged because high zero_scaler values risk
+                the addition of high frequency oscillations due to the sudden release
+                of the constraint.
             zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
                 Tapers that are toos hort can result in sharp spiky artifacts.
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
         """
+        if zero_scaler < 0. or zero_scaler > 30.:
+            raise ValueError('zero_scaler cannot be less than 0 or more than 30')
 
         if np.sum(tikhonov_ratios) != 1.0:
             raise ValueError('Tikhonov ratios must add to 1.')
@@ -964,7 +967,7 @@ class LSForce:
         else:
             A1 = None
 
-        scaler = Ghatnorm / zero_scaler
+        scaler = Ghatnorm * (zero_scaler/30.)
 
         if self.impose_zero:  # tell model when there should be no forces
             len2 = int(
