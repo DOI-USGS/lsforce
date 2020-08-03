@@ -1126,7 +1126,7 @@ class LSForce:
 
         if alphaset is None:
             alpha, fit1, size1, alphas = _find_alpha(
-                Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq'
+                Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios
             )
             print(f'best alpha is {alpha:6.1e}')
             self.alpha = alpha
@@ -1897,7 +1897,6 @@ def _find_alpha(
     I,
     L1=0,
     L2=0,
-    invmethod='lsq',
     tikhonov_ratios=(1.0, 0.0, 0.0),
     rough=False,
 ):
@@ -1914,8 +1913,6 @@ def _find_alpha(
             Tikhonov regularization
         L2 (array): Second order roughening matrix. If `0`, will use only 0th-order
             Tikhonov regularization
-        invmethod (str): `'lsq'` — use least squares (regular Tikhonov); `'nnls'` — use
-            non-negative least squares
         tikhonov_ratios (list or tuple): Proportion each regularization method
             contributes to the overall regularization effect, where values correspond to
             [0th order, 1st order, 2nd order]. Must sum to 1
@@ -1952,56 +1949,19 @@ def _find_alpha(
 
     x = np.squeeze(Ghat.conj().T @ dhat)
 
-    # rough first iteration
-    for alpha in alphas:
-        A = Apart + alpha ** 2 * (
-            tikhonov_ratios[0] * I
-            + tikhonov_ratios[1] * L1part
-            + tikhonov_ratios[2] * L2part
-        )  # Combo of all regularization things
-        if invmethod == 'lsq':
-            model, residuals, rank, s = sp.linalg.lstsq(A, x)
-        elif invmethod == 'nnls':
-            model, residuals = sp.optimize.nnls(A, x)
-        else:
-            raise ValueError(f'Inversion method {invmethod} not recognized.')
-        temp1 = Ghat @ model.T - dhat
-        fit1.append(sp.linalg.norm(temp1))
-        size1.append(
-            sp.linalg.norm(tikhonov_ratios[0] * model)
-            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, model))
-            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, model))
-        )
-    fit1 = np.array(fit1)
-    size1 = np.array(size1)
-
-    curves = _curvature(np.log10(fit1), np.log10(size1))
-    # Zero out any points where function is concave to avoid picking points from dropoff
-    # at end
-    slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
-    alphas = np.array(alphas)
-    tempcurve = curves.copy()
-    tempcurve[slp2 < 0] = np.max(curves)
-    idx = np.argmin(tempcurve)
-    alpha = alphas[idx]
-
-    if not rough:
-        # Then hone in
-        alphas = np.logspace(
-            np.round(np.log10(alpha)) - 1, np.round(np.log10(alpha)) + 1, 14
-        )
-        fit1 = []
-        size1 = []
-        for newalpha in alphas:
-            A = Apart + newalpha ** 2 * (
+    if rough:
+        maxloops = 1
+    else:
+        maxloops = 2
+    loop = 1
+    while loop <= maxloops:
+        for alpha in alphas:
+            A = Apart + alpha ** 2 * (
                 tikhonov_ratios[0] * I
                 + tikhonov_ratios[1] * L1part
                 + tikhonov_ratios[2] * L2part
             )  # Combo of all regularization things
-            if invmethod == 'lsq':
-                model, residuals, rank, s = sp.linalg.lstsq(A, x)
-            elif invmethod == 'nnls':
-                model, residuals = sp.optimize.nnls(A, x)
+            model, residuals, rank, s = sp.linalg.lstsq(A, x)
 
             temp1 = Ghat @ model.T - dhat
             fit1.append(sp.linalg.norm(temp1))
@@ -2012,17 +1972,25 @@ def _find_alpha(
             )
         fit1 = np.array(fit1)
         size1 = np.array(size1)
+    
         curves = _curvature(np.log10(fit1), np.log10(size1))
-        # Zero out any points where function is concave to avoid picking points from
-        # dropoff at end
+        # Zero out any points where function is concave to avoid picking points from dropoff
+        # at end
         slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
         alphas = np.array(alphas)
         tempcurve = curves.copy()
-        tempcurve[slp2 < 0] = np.max(curves)
+        tempcurve[slp2 < 0] = np.inf
         idx = np.argmin(tempcurve)
         bestalpha = alphas[idx]
-    else:
-        bestalpha = alpha
+        loop += 1
+        if loop > maxloops:
+            break
+        else: # Loop again over smaller range
+            alphas = np.logspace(
+                np.round(np.log10(bestalpha)) - 1, np.round(np.log10(bestalpha)) + 1, 12
+            )
+            fit1 = []
+            size1 = []
 
     _Lcurve(fit1, size1, alphas)
     if type(bestalpha) == list:
@@ -2031,6 +1999,17 @@ def _find_alpha(
         bestalpha = bestalpha[0]
 
     return bestalpha, fit1, size1, alphas
+
+
+def _loopalphas():
+    r"""Plot an L-curve.
+
+    Args:
+        fit1 (1D array): List of residuals
+        size1 (1D array): List of model norms
+        alphas (1D array): List of alphas tried
+    """
+    pass
 
 
 def _Lcurve(fit1, size1, alphas):
