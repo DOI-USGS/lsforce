@@ -43,7 +43,7 @@ if len(sys.argv) != 2 or sys.argv[1] not in MODELS.keys():
 # Read in model cleanly
 model_nickname = sys.argv[1]
 model_url = MODELS[model_nickname]
-tmp = read_table(model_url, delim_whitespace=True, header=4, comment='#',)
+tmp = read_table(model_url, sep='\s+', header=4, comment='#')
 model = tmp[tmp.columns[:-1]]
 model.columns = tmp.columns[1:]
 
