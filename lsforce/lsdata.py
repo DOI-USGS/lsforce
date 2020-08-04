@@ -276,7 +276,7 @@ class LSData:
         return fig
 
 
-def _rotate_to_rtz(st):
+def _rotate_to_rtz(st, skip_zne_rotation=False):
     r"""Rotate all components of a Stream into radial–transverse–vertical.
 
     This function performs a two-step rotation. First, it rotates all channels into ZNE
@@ -286,6 +286,9 @@ def _rotate_to_rtz(st):
     Args:
         st (:class:`~obspy.core.stream.Stream`): Input Stream to be rotated with
             ``stats.back_azimuth`` defined
+        skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is skipped.
+            This is a necessary flag if your stations do not have metadata on IRIS
+            (e.g., for synthetic cases)
 
     Returns:
         :class:`~obspy.core.stream.Stream`: Rotated Stream
@@ -298,33 +301,36 @@ def _rotate_to_rtz(st):
     stations = np.unique([tr.stats.station for tr in st_rot])
     channels = np.unique([tr.stats.channel for tr in st_rot])
 
-    # Grab inventory for orientation info (relying only on IRIS FDSN here!)
-    client = Client('IRIS')
-    inv = client.get_stations(
-        network=','.join(networks),
-        station=','.join(stations),
-        channel=','.join(channels),
-        starttime=st_rot[0].stats.starttime,
-        endtime=st_rot[0].stats.endtime,
-        level='channel',
-    )
+    # If we're doing the full ->ZNE rotation step prior to NE->RT
+    if not skip_zne_rotation:
 
-    # Rotate to ZNE (must put 'ZNE' in list of components to handle ZNE!)
-    st_rot.rotate('->ZNE', components=['ZNE', 'Z12', '123'], inventory=inv)
+        # Grab inventory for orientation info (relying only on IRIS FDSN here!)
+        client = Client('IRIS')
+        inv = client.get_stations(
+            network=','.join(networks),
+            station=','.join(stations),
+            channel=','.join(channels),
+            starttime=st_rot[0].stats.starttime,
+            endtime=st_rot[0].stats.endtime,
+            level='channel',
+        )
 
-    # Report on what was modified by the above call
-    for tr, tr_rot in zip(st.copy().sort(), st_rot.copy().sort()):
-        try:
-            np.testing.assert_allclose(tr_rot.data, tr.data, verbose=True)
-        except AssertionError as error:
-            orientation = inv.get_orientation(tr.id)
-            message = '{} -> {}\n{}\n{}\n'.format(
-                tr.id,
-                tr_rot.id,
-                orientation,
-                error.__str__().strip().replace('\n\n', '\n'),
-            )
-            print(message)
+        # Rotate to ZNE (must put 'ZNE' in list of components to handle ZNE!)
+        st_rot.rotate('->ZNE', components=['ZNE', 'Z12', '123'], inventory=inv)
+
+        # Report on what was modified by the above call
+        for tr, tr_rot in zip(st.copy().sort(), st_rot.copy().sort()):
+            try:
+                np.testing.assert_allclose(tr_rot.data, tr.data, verbose=True)
+            except AssertionError as error:
+                orientation = inv.get_orientation(tr.id)
+                message = '{} -> {}\n{}\n{}\n'.format(
+                    tr.id,
+                    tr_rot.id,
+                    orientation,
+                    error.__str__().strip().replace('\n\n', '\n'),
+                )
+                print(message)
 
     # Rotate to ZRT on a station-by-station basis
     for station in stations:
