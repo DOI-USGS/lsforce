@@ -38,7 +38,9 @@ class LSData:
             source location
     """
 
-    def __init__(self, st, source_lat, source_lon, remove_response=True):
+    def __init__(
+        self, st, source_lat, source_lon, remove_response=True, skip_zne_rotation=False
+    ):
         r"""Create an LSData object.
 
         Args:
@@ -51,6 +53,9 @@ class LSData:
                 landslide source location
             remove_response (bool): Toggle response removal to displacement units. Set
                 to `False` if you want to handle response removal yourself
+            skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is
+                skipped. This is a necessary flag if your stations do not have metadata
+                on IRIS (e.g., for synthetic cases)
         """
 
         # Before we do anything, verify that tr.stats.latitude/longitude are defined
@@ -73,7 +78,7 @@ class LSData:
             tr.stats.back_azimuth = baz  # [deg]
 
         # Rotate into RTZ
-        self.st_proc = _rotate_to_rtz(self.st_proc)
+        self.st_proc = _rotate_to_rtz(self.st_proc, skip_zne_rotation)
 
         # Now that we're rotated, sort
         self.st_proc.sort(keys=['distance', 'channel'])
@@ -276,7 +281,7 @@ class LSData:
         return fig
 
 
-def _rotate_to_rtz(st, skip_zne_rotation=False):
+def _rotate_to_rtz(st, skip_zne_rotation):
     r"""Rotate all components of a Stream into radial–transverse–vertical.
 
     This function performs a two-step rotation. First, it rotates all channels into ZNE
