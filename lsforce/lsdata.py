@@ -81,7 +81,7 @@ class LSData:
         self.st_proc = _rotate_to_rtz(self.st_proc, skip_zne_rotation)
 
         # Now that we're rotated, sort
-        self.st_proc.sort(keys=['distance', 'channel'])
+        self.st_proc.sort(keys=['distance', 'station', 'channel'])
 
         if remove_response:
             self.st_proc.detrend('polynomial', order=DETREND_POLY_ORDER)
