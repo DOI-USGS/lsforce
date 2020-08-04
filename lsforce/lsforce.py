@@ -655,169 +655,103 @@ class LSForce:
         n = self.data_length
 
         if self.method == 'full':
-
             # Set sampling rate
             self.force_sampling_rate = self.data_sampling_rate
-
-            for i, tr in enumerate(st):
-
-                # Find component and station of Trace
-                component = tr.stats.channel[-1]
-                station = tr.stats.station
-
-                if component == 'Z':
-                    zvf = st_gf.select(station=station, channel='ZVF')[0]
-                    zhf = st_gf.select(station=station, channel='ZHF')[0]
-                    ZVF = _makeconvmat(zvf.data, size=(n, n))
-                    ZHF = _makeconvmat(zhf.data, size=(n, n))
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
-                    )
-
-                elif component == 'R':
-                    rvf = st_gf.select(station=station, channel='RVF')[0]
-                    rhf = st_gf.select(station=station, channel='RHF')[0]
-
-                    RVF = _makeconvmat(rvf.data, size=(n, n))
-                    RHF = _makeconvmat(rhf.data, size=(n, n))
-
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
-                    )
-
-                elif component == 'T':
-                    thf = st_gf.select(station=station, channel='THF')[0]
-
-                    THF = _makeconvmat(thf.data, size=(n, n))
-
-                    TVF = 0.0 * THF.copy()  # Just zeros for TVF
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [TVF, THF * np.sin(az_radians), -THF * np.cos(az_radians)]
-                    )
-
-                else:
-                    raise ValueError(f'Data not rotated to ZRT for {station}.')
-
-                # Deal with data
-                datline = tr.data
-
-                if i == 0:  # initialize G and d if first station
-                    G = newline.copy()
-                    d = datline.copy()
-                else:  # otherwise build on G and d
-                    G = np.vstack((G, newline.copy()))
-                    d = np.hstack((d, datline.copy()))
-                if weights is not None:
-                    if weight_method == 'Manual':
-                        weight[i] = weights[i]
-                    elif weights == 'prenoise':
-                        weight[i] = 1.0 / np.std(
-                            tr.data[0 : int(noise_window_dur * tr.stats.sampling_rate)]
-                        )
-                    elif weights == 'distance':
-                        weight[i] = tr.stats.distance
-
-                    Wvec[indx : indx + self.data_length] = (
-                        Wvec[indx : indx + self.data_length] * weight[i]
-                    )
-                    indx += self.data_length
-
-            #Need to multiply G by sample interval [s] since convolution is an integral
-
-            self.G = G * 1.0 / self.data_sampling_rate
-
         elif self.method == 'triangle':
-
-            # Set sampling rate
             self.force_sampling_rate = 1.0 / self.triangle_half_width
-
             # Number of samples to shift each triangle by
             fshiftby = int(self.triangle_half_width * self.data_sampling_rate)
             # Number of shifts, corresponds to length of force time function
             Flen = int(np.floor(self.data_length / fshiftby))
-
             # Triangle GFs are multiplied by the triangle half-width so that they
             # reflect the ground motion induced for a triangle with PEAK 1 N instead of
             # AREA of 1 N*s
             for tr in st_gf:
                 tr.data = tr.data * self.triangle_half_width
+        else:
+            raise ValueError(f'Method {self.method} not supported.')
 
-            for i, tr in enumerate(st):
 
-                # Find component and station of Trace
-                component = tr.stats.channel[-1]
-                station = tr.stats.station
+        for i, tr in enumerate(st):
 
-                if component == 'Z':
-                    zvf = st_gf.select(station=station, channel='ZVF')[0]
-                    zhf = st_gf.select(station=station, channel='ZHF')[0]
+            # Find component and station of Trace
+            component = tr.stats.channel[-1]
+            station = tr.stats.station
 
+            if component == 'Z':
+                zvf = st_gf.select(station=station, channel='ZVF')[0]
+                zhf = st_gf.select(station=station, channel='ZHF')[0]
+                if self.method == 'full':
+                    ZVF = _makeconvmat(zvf.data, size=(n, n))
+                    ZHF = _makeconvmat(zhf.data, size=(n, n))
+                else:
                     ZVF = _makeshiftmat(zvf.data, shiftby=fshiftby, size1=(n, Flen))
                     ZHF = _makeshiftmat(zhf.data, shiftby=fshiftby, size1=(n, Flen))
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
-                    )
+                az_radians = np.deg2rad(tr.stats.azimuth)
+                newline = np.hstack(
+                    [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
+                )
 
-                elif component == 'R':
-                    rvf = st_gf.select(station=station, channel='RVF')[0]
-                    rhf = st_gf.select(station=station, channel='RHF')[0]
-
+            elif component == 'R':
+                rvf = st_gf.select(station=station, channel='RVF')[0]
+                rhf = st_gf.select(station=station, channel='RHF')[0]
+                if self.method == 'full':
+                    RVF = _makeconvmat(rvf.data, size=(n, n))
+                    RHF = _makeconvmat(rhf.data, size=(n, n))
+                else:
                     RVF = _makeshiftmat(rvf.data, shiftby=fshiftby, size1=(n, Flen))
                     RHF = _makeshiftmat(rhf.data, shiftby=fshiftby, size1=(n, Flen))
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
-                    )
+                az_radians = np.deg2rad(tr.stats.azimuth)
+                newline = np.hstack(
+                    [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
+                )
 
-                elif component == 'T':
-                    thf = st_gf.select(station=station, channel='THF')[0]
-
-                    THF = _makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
-                    TVF = 0.0 * THF.copy()  # Just zeros for TVF
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [TVF, THF * np.sin(az_radians), -THF * np.cos(az_radians)]
-                    )
-
+            elif component == 'T':
+                thf = st_gf.select(station=station, channel='THF')[0]
+                if self.method == 'full':
+                    THF = _makeconvmat(thf.data, size=(n, n))
                 else:
-                    raise ValueError(f'Data not rotated to ZRT for {station}.')
+                    THF = _makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
+                TVF = 0.0 * THF.copy()  # Just zeros for TVF
+                az_radians = np.deg2rad(tr.stats.azimuth)
+                newline = np.hstack(
+                    [TVF, THF * np.sin(az_radians), -THF * np.cos(az_radians)]
+                )
 
-                # Deal with data
-                datline = tr.data
+            else:
+                raise ValueError(f'Data not rotated to ZRT for {station}.')
 
-                if i == 0:  # initialize G and d if first station
-                    G = newline.copy()
-                    d = datline.copy()
-                else:  # otherwise build on G and d
-                    G = np.vstack((G, newline.copy()))
-                    d = np.hstack((d, datline.copy()))
+            # Deal with data
+            datline = tr.data
 
-                # TODO: Check if this is still working right
-                if weights is not None:
-                    if weight_method == 'Manual':
-                        weight[i] = weights[i]
-                    elif weights == 'prenoise':
-                        weight[i] = 1.0 / np.std(
-                            tr.data[0 : int(noise_window_dur * tr.stats.sampling_rate)]
-                        )
-                    elif weights == 'distance':
-                        weight[i] = tr.stats.distance
+            if i == 0:  # initialize G and d if first station
+                G = newline.copy()
+                d = datline.copy()
+            else:  # otherwise build on G and d
+                G = np.vstack((G, newline.copy()))
+                d = np.hstack((d, datline.copy()))
 
-                    Wvec[indx : indx + self.data_length] = (
-                        Wvec[indx : indx + self.data_length] * weight[i]
+            if weights is not None:
+                if weight_method == 'Manual':
+                    weight[i] = weights[i]
+                elif weights == 'prenoise':
+                    weight[i] = 1.0 / np.std(
+                        tr.data[0 : int(noise_window_dur * tr.stats.sampling_rate)]
                     )
-                    indx += self.data_length
+                elif weights == 'distance':
+                    weight[i] = tr.stats.distance
 
+                Wvec[indx : indx + self.data_length] = (
+                    Wvec[indx : indx + self.data_length] * weight[i]
+                )
+                indx += self.data_length
+        if self.method == 'full':
+            #Need to multiply G by sample interval [s] since convolution is an integral
+            self.G = G * 1.0 / self.data_sampling_rate
+        else:
             # We don't need to scale the triangle method GFs by the sample rate since
             # this method is not a convolution
             self.G = G
-
-        else:
-            raise ValueError(f'Method {self.method} not supported.')
 
         # Normalize Wvec so largest weight is 1.
         self.Wvec = Wvec / np.max(np.abs(Wvec))
@@ -971,7 +905,7 @@ class LSForce:
 
         if self.impose_zero:  # tell model when there should be no forces
             len2 = int(
-                np.floor(((self.zero_time + self.T0) * self.force_sampling_rate))
+                ((self.zero_time + self.T0) * self.force_sampling_rate)
             )
             if self.method == 'triangle':
                 # No taper
@@ -1117,6 +1051,7 @@ class LSForce:
         self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
 
         # compute variance reduction
+        #TODO compute only for where zeroing not applied (use taper)
         self.VR = _varred(self.dtorig, self.dtnew)
         print(f'Variance reduction = {self.VR:f} percent')
         tvec = (
