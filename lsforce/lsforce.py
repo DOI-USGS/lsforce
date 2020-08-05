@@ -76,12 +76,7 @@ class LSForce:
     """
 
     def __init__(
-        self,
-        data,
-        data_sampling_rate,
-        nickname=None,
-        main_folder=None,
-        method='full',
+        self, data, data_sampling_rate, nickname=None, main_folder=None, method='full'
     ):
         r"""Create an LSForce object.
 
@@ -671,7 +666,6 @@ class LSForce:
         else:
             raise ValueError(f'Method {self.method} not supported.')
 
-
         for i, tr in enumerate(st):
 
             # Find component and station of Trace
@@ -746,7 +740,7 @@ class LSForce:
                 )
                 indx += self.data_length
         if self.method == 'full':
-            #Need to multiply G by sample interval [s] since convolution is an integral
+            # Need to multiply G by sample interval [s] since convolution is an integral
             self.G = G * 1.0 / self.data_sampling_rate
         else:
             # We don't need to scale the triangle method GFs by the sample rate since
@@ -845,7 +839,7 @@ class LSForce:
     def _tikinvert(
         self,
         alphaset=None,
-        zero_scaler=2.,
+        zero_scaler=2.0,
         zero_taper_length=20.0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
@@ -866,7 +860,7 @@ class LSForce:
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
         """
-        if zero_scaler < 0. or zero_scaler > 30.:
+        if zero_scaler < 0.0 or zero_scaler > 30.0:
             raise ValueError('zero_scaler cannot be less than 0 or more than 30')
 
         if np.sum(tikhonov_ratios) != 1.0:
@@ -901,12 +895,10 @@ class LSForce:
         else:
             A1 = None
 
-        scaler = Ghatnorm * (zero_scaler/30.)
+        scaler = Ghatnorm * (zero_scaler / 30.0)
 
         if self.impose_zero:  # tell model when there should be no forces
-            len2 = int(
-                ((self.zero_time + self.T0) * self.force_sampling_rate)
-            )
+            len2 = int(((self.zero_time + self.T0) * self.force_sampling_rate))
             if self.method == 'triangle':
                 # No taper
                 vals2 = np.hstack((np.ones(len2), np.zeros(gl - len2)))
@@ -1051,7 +1043,7 @@ class LSForce:
         self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
 
         # compute variance reduction
-        #TODO compute only for where zeroing not applied (use taper)
+        # TODO compute only for where zeroing not applied (use taper)
         self.VR = _varred(self.dtorig, self.dtnew)
         print(f'Variance reduction = {self.VR:f} percent')
         tvec = (
@@ -1755,13 +1747,7 @@ class LSForce:
 
 
 def _find_alpha(
-    Ghat,
-    dhat,
-    I,
-    L1=0,
-    L2=0,
-    tikhonov_ratios=(1.0, 0.0, 0.0),
-    rough=False,
+    Ghat, dhat, I, L1=0, L2=0, tikhonov_ratios=(1.0, 0.0, 0.0), rough=False
 ):
     r"""Finds best regularization (trade-off) parameter alpha.
 
@@ -1835,7 +1821,7 @@ def _find_alpha(
             )
         fit1 = np.array(fit1)
         size1 = np.array(size1)
-    
+
         curves = _curvature(np.log10(fit1), np.log10(size1))
         # Zero out any points where function is concave to avoid picking points from dropoff
         # at end
@@ -1848,7 +1834,7 @@ def _find_alpha(
         loop += 1
         if loop > maxloops:
             break
-        else: # Loop again over smaller range
+        else:  # Loop again over smaller range
             alphas = np.logspace(
                 np.round(np.log10(bestalpha)) - 1, np.round(np.log10(bestalpha)) + 1, 12
             )
@@ -1879,7 +1865,7 @@ def _Lcurve(fit1, size1, alphas, bestalpha=None):
     for i, alpha in enumerate(alphas):
         ax.text(fit1[i], size1[i], f'  {alpha:.1e}', va='center')
     if bestalpha is not None:
-        idx = np.argmin(np.abs(alphas-bestalpha))
+        idx = np.argmin(np.abs(alphas - bestalpha))
         ax.plot(fit1[idx], size1[idx], 'or')
     ax.set_xlabel(r'Residual norm $||{\bfG}{\bfm}-{\bfd}||^2$')
     ax.set_ylabel(r'Solution norm $||{\bfm}||^2$')
