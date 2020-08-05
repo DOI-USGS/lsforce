@@ -175,8 +175,8 @@ class LSData:
                 specifying the desired map region in decimal degrees. If `None`, we
                 automatically pick a region that includes the event and stations
             label_stations (bool): If `True`, label stations with their codes
-            gshhs_scale: (str): Resolution for coastlines; one of 'auto', 'coarse',
-                'low', 'intermediate', 'high', or 'full'
+            gshhs_scale (str): Resolution for coastlines; one of `'auto'`, `'coarse'`,
+                `'low'`, `'intermediate'`, `'high'`, or `'full'`
 
         Returns:
             :class:`~matplotlib.figure.Figure`: Output figure handle
