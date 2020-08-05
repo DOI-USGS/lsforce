@@ -63,8 +63,7 @@ class LSForce:
         Z: [N] Vertical force time series extracted from model (positive up)
         N: [N] North force time series extracted from model (positive north)
         E: [N] East force time series extracted from model (positive east)
-        tvec: [s] Time vector, referenced using `zero_time` (if specified) and corrected
-            for `T0` time shift
+        tvec: [s] Time vector for forces, referenced using `zero_time` (if specified)
         VR: [%] Variance reduction. Rule of thumb: This should be ~50–80%, if ~100%,
             solution is fitting data exactly and results are suspect. If ~5%, model may
             be wrong or something else may be wrong with setup
