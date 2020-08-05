@@ -1058,10 +1058,6 @@ class LSForce:
         # Adjust time vector for zero time, if one was provided
         if self.zero_time is not None:
             tvec -= self.zero_time
-        if self.method == 'triangle':
-            # Shift so that peak of triangle function lines up with time of force
-            # interval
-            tvec += self.triangle_half_width
 
         self.tvec = tvec
         self.dtvec = np.arange(
