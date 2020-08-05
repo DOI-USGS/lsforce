@@ -14,7 +14,6 @@ from matplotlib import lines as mlines
 from matplotlib import pyplot as plt
 from obspy import Stream, Trace, UTCDateTime, read
 from obspy.core import AttribDict
-from obspy.signal.util import next_pow_2
 from scipy.signal.windows import triang
 
 # TODO: This is the "beta" URL!
@@ -69,22 +68,15 @@ class LSForce:
         VR: [%] Variance reduction. Rule of thumb: This should be ~50–80%, if ~100%,
             solution is fitting data exactly and results are suspect. If ~5%, model may
             be wrong or something else may be wrong with setup
-        dtorig: Original data vector (time domain)
-        dtnew: Modeled data vector (Gm-d) (converted to time domain if domain is
-            `'frequency'`)
+        dtorig: Original data vector
+        dtnew: Modeled data vector (Gm-d)
         alpha: Regularization parameter that was used
         alphafit (dict): Dictionary with keys ``'alphas'``, ``'fit'``, and ``'size'``
             specifying regularization parameters tested
     """
 
     def __init__(
-        self,
-        data,
-        data_sampling_rate,
-        domain='time',
-        nickname=None,
-        main_folder=None,
-        method='full',
+        self, data, data_sampling_rate, nickname=None, main_folder=None, method='full'
     ):
         r"""Create an LSForce object.
 
@@ -94,8 +86,6 @@ class LSForce:
             data_sampling_rate (int or float): [Hz] Samples per second to use in
                 inversion. All data will be resampled to this rate, and Green's
                 functions will be created with this rate
-            domain (str): Domain in which to do inversion, one of `'time'` or
-                `'frequency'`
             nickname (str): Nickname for this event, used for convenient naming of files
             main_folder (str): If `None`, will use current folder
             method (str): How to parameterize the force-time function. One of `'full'`
@@ -105,7 +95,6 @@ class LSForce:
         """
 
         self.data = data
-        self.domain = domain
         self.data_sampling_rate = data_sampling_rate
         self.nickname = nickname
         self.gf_computed = False
@@ -120,8 +109,6 @@ class LSForce:
             raise ValueError(f'Method {method} not yet implemented.')
 
         self.method = method
-        if self.method == 'triangle' and self.domain == 'frequency':
-            raise ValueError('The triangle method must be done in the time domain.')
 
     def _get_greens(self):
 
@@ -629,19 +616,7 @@ class LSForce:
             )
 
         self.data_length = st[0].stats.npts
-        if self.domain == 'time':
-            total_data_length = self.data_length * st.count()
-        elif self.domain == 'frequency':
-            # TODO: ADD WAY TO ACCOUNT FOR WHEN GF_LENGTH IS LONGER THAN DATA_LENGTH -
-            #  ACTUALLY SHOULD BE AS LONG AS BOTH ADDED TOGETHER TO AVOID WRAPPING ERROR
-            # Needs to be the length of the two added together because convolution
-            # length M+N-1
-            nfft = next_pow_2(self.data_length)
-            total_data_length = nfft * st.count()
-        else:
-            raise ValueError(
-                'domain not recognized. Must be \'time\' or \'frequency\'.'
-            )
+        total_data_length = self.data_length * st.count()
 
         # Load in GFs
         print('Getting Green\'s functions...')
@@ -675,186 +650,102 @@ class LSForce:
         n = self.data_length
 
         if self.method == 'full':
-
             # Set sampling rate
             self.force_sampling_rate = self.data_sampling_rate
-
-            for i, tr in enumerate(st):
-
-                # Find component and station of Trace
-                component = tr.stats.channel[-1]
-                station = tr.stats.station
-
-                if component == 'Z':
-                    zvf = st_gf.select(station=station, channel='ZVF')[0]
-                    zhf = st_gf.select(station=station, channel='ZHF')[0]
-
-                    if self.domain == 'time':
-                        ZVF = _makeconvmat(zvf.data, size=(n, n))
-                        ZHF = _makeconvmat(zhf.data, size=(n, n))
-                    else:
-                        zvff = np.fft.fft(zvf.data, nfft)
-                        zhff = np.fft.fft(zhf.data, nfft)
-                        ZVF = np.diag(zvff)
-                        ZHF = np.diag(zhff)
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
-                    )
-
-                elif component == 'R':
-                    rvf = st_gf.select(station=station, channel='RVF')[0]
-                    rhf = st_gf.select(station=station, channel='RHF')[0]
-
-                    if self.domain == 'time':
-                        RVF = _makeconvmat(rvf.data, size=(n, n))
-                        RHF = _makeconvmat(rhf.data, size=(n, n))
-                    else:
-                        rvff = np.fft.fft(rvf.data, nfft)
-                        rhff = np.fft.fft(rhf.data, nfft)
-                        RVF = np.diag(rvff)
-                        RHF = np.diag(rhff)
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
-                    )
-
-                elif component == 'T':
-                    thf = st_gf.select(station=station, channel='THF')[0]
-
-                    if self.domain == 'time':
-                        THF = _makeconvmat(thf.data, size=(n, n))
-                    else:
-                        thff = np.fft.fft(thf.data, nfft)
-                        THF = np.diag(thff)
-                    TVF = 0.0 * THF.copy()  # Just zeros for TVF
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [TVF, THF * np.sin(az_radians), -THF * np.cos(az_radians)]
-                    )
-
-                else:
-                    raise ValueError(f'Data not rotated to ZRT for {station}.')
-
-                # Deal with data
-                if self.domain == 'time':
-                    datline = tr.data
-                else:
-                    datline = np.fft.fft(tr.data, nfft)
-
-                if i == 0:  # initialize G and d if first station
-                    G = newline.copy()
-                    d = datline.copy()
-                else:  # otherwise build on G and d
-                    G = np.vstack((G, newline.copy()))
-                    d = np.hstack((d, datline.copy()))
-                if weights is not None:
-                    if weight_method == 'Manual':
-                        weight[i] = weights[i]
-                    elif weights == 'prenoise':
-                        weight[i] = 1.0 / np.std(
-                            tr.data[0 : int(noise_window_dur * tr.stats.sampling_rate)]
-                        )
-                    elif weights == 'distance':
-                        weight[i] = tr.stats.distance
-
-                    Wvec[indx : indx + self.data_length] = (
-                        Wvec[indx : indx + self.data_length] * weight[i]
-                    )
-                    indx += self.data_length
-
-            # Need to multiply G by sample interval [s] since convolution is an integral
-            self.G = G * 1.0 / self.data_sampling_rate
-
         elif self.method == 'triangle':
-
-            # Set sampling rate
             self.force_sampling_rate = 1.0 / self.triangle_half_width
-
             # Number of samples to shift each triangle by
             fshiftby = int(self.triangle_half_width * self.data_sampling_rate)
             # Number of shifts, corresponds to length of force time function
             Flen = int(np.floor(self.data_length / fshiftby))
-
             # Triangle GFs are multiplied by the triangle half-width so that they
             # reflect the ground motion induced for a triangle with PEAK 1 N instead of
             # AREA of 1 N*s
             for tr in st_gf:
                 tr.data = tr.data * self.triangle_half_width
+        else:
+            raise ValueError(f'Method {self.method} not supported.')
 
-            for i, tr in enumerate(st):
+        for i, tr in enumerate(st):
 
-                # Find component and station of Trace
-                component = tr.stats.channel[-1]
-                station = tr.stats.station
+            # Find component and station of Trace
+            component = tr.stats.channel[-1]
+            station = tr.stats.station
 
-                if component == 'Z':
-                    zvf = st_gf.select(station=station, channel='ZVF')[0]
-                    zhf = st_gf.select(station=station, channel='ZHF')[0]
-
+            if component == 'Z':
+                zvf = st_gf.select(station=station, channel='ZVF')[0]
+                zhf = st_gf.select(station=station, channel='ZHF')[0]
+                if self.method == 'full':
+                    ZVF = _makeconvmat(zvf.data, size=(n, n))
+                    ZHF = _makeconvmat(zhf.data, size=(n, n))
+                else:
                     ZVF = _makeshiftmat(zvf.data, shiftby=fshiftby, size1=(n, Flen))
                     ZHF = _makeshiftmat(zhf.data, shiftby=fshiftby, size1=(n, Flen))
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
-                    )
+                az_radians = np.deg2rad(tr.stats.azimuth)
+                newline = np.hstack(
+                    [ZVF, ZHF * np.cos(az_radians), ZHF * np.sin(az_radians)]
+                )
 
-                elif component == 'R':
-                    rvf = st_gf.select(station=station, channel='RVF')[0]
-                    rhf = st_gf.select(station=station, channel='RHF')[0]
-
+            elif component == 'R':
+                rvf = st_gf.select(station=station, channel='RVF')[0]
+                rhf = st_gf.select(station=station, channel='RHF')[0]
+                if self.method == 'full':
+                    RVF = _makeconvmat(rvf.data, size=(n, n))
+                    RHF = _makeconvmat(rhf.data, size=(n, n))
+                else:
                     RVF = _makeshiftmat(rvf.data, shiftby=fshiftby, size1=(n, Flen))
                     RHF = _makeshiftmat(rhf.data, shiftby=fshiftby, size1=(n, Flen))
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
-                    )
+                az_radians = np.deg2rad(tr.stats.azimuth)
+                newline = np.hstack(
+                    [RVF, RHF * np.cos(az_radians), RHF * np.sin(az_radians)]
+                )
 
-                elif component == 'T':
-                    thf = st_gf.select(station=station, channel='THF')[0]
-
-                    THF = _makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
-                    TVF = 0.0 * THF.copy()  # Just zeros for TVF
-                    az_radians = np.deg2rad(tr.stats.azimuth)
-                    newline = np.hstack(
-                        [TVF, THF * np.sin(az_radians), -THF * np.cos(az_radians)]
-                    )
-
+            elif component == 'T':
+                thf = st_gf.select(station=station, channel='THF')[0]
+                if self.method == 'full':
+                    THF = _makeconvmat(thf.data, size=(n, n))
                 else:
-                    raise ValueError(f'Data not rotated to ZRT for {station}.')
+                    THF = _makeshiftmat(thf.data, shiftby=fshiftby, size1=(n, Flen))
+                TVF = 0.0 * THF.copy()  # Just zeros for TVF
+                az_radians = np.deg2rad(tr.stats.azimuth)
+                newline = np.hstack(
+                    [TVF, THF * np.sin(az_radians), -THF * np.cos(az_radians)]
+                )
 
-                # Deal with data
-                datline = tr.data
+            else:
+                raise ValueError(f'Data not rotated to ZRT for {station}.')
 
-                if i == 0:  # initialize G and d if first station
-                    G = newline.copy()
-                    d = datline.copy()
-                else:  # otherwise build on G and d
-                    G = np.vstack((G, newline.copy()))
-                    d = np.hstack((d, datline.copy()))
+            # Deal with data
+            datline = tr.data
 
-                # TODO: Check if this is still working right
-                if weights is not None:
-                    if weight_method == 'Manual':
-                        weight[i] = weights[i]
-                    elif weights == 'prenoise':
-                        weight[i] = 1.0 / np.std(
-                            tr.data[0 : int(noise_window_dur * tr.stats.sampling_rate)]
-                        )
-                    elif weights == 'distance':
-                        weight[i] = tr.stats.distance
+            if i == 0:  # initialize G and d if first station
+                G = newline.copy()
+                d = datline.copy()
+            else:  # otherwise build on G and d
+                G = np.vstack((G, newline.copy()))
+                d = np.hstack((d, datline.copy()))
 
-                    Wvec[indx : indx + self.data_length] = (
-                        Wvec[indx : indx + self.data_length] * weight[i]
+            if weights is not None:
+                if weight_method == 'Manual':
+                    weight[i] = weights[i]
+                elif weights == 'prenoise':
+                    weight[i] = 1.0 / np.std(
+                        tr.data[0 : int(noise_window_dur * tr.stats.sampling_rate)]
                     )
-                    indx += self.data_length
+                elif weights == 'distance':
+                    weight[i] = tr.stats.distance
 
+                Wvec[indx : indx + self.data_length] = (
+                    Wvec[indx : indx + self.data_length] * weight[i]
+                )
+                indx += self.data_length
+        if self.method == 'full':
+            # Need to multiply G by sample interval [s] since convolution is an integral
+            self.G = G * 1.0 / self.data_sampling_rate
+        else:
             # We don't need to scale the triangle method GFs by the sample rate since
             # this method is not a convolution
             self.G = G
-
-        else:
-            raise ValueError(f'Method {self.method} not supported.')
 
         # Normalize Wvec so largest weight is 1.
         self.Wvec = Wvec / np.max(np.abs(Wvec))
@@ -910,13 +801,6 @@ class LSForce:
         if impose_zero and not zero_time:
             raise ValueError('impose_zero set to True but no zero_time provided.')
 
-        # Raise errors for non-implemented frequency domain constraints
-        if self.domain == 'frequency' and (impose_zero or max_duration is not None):
-            raise NotImplementedError(
-                'impose_zero and max_duration are not implemented for the frequency '
-                'domain.'
-            )
-
         # Save input choices
         self.add_to_zero = add_to_zero
         self.zero_time = zero_time
@@ -955,7 +839,7 @@ class LSForce:
     def _tikinvert(
         self,
         alphaset=None,
-        zero_scaler=15.0,
+        zero_scaler=2.0,
         zero_taper_length=20.0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
@@ -964,16 +848,20 @@ class LSForce:
         Args:
             alphaset (int or float): Set regularization parameter. If `None`, will
                 search for best alpha using the L-curve method
-            zero_scaler (int or float): Factor by which to divide Gnorm to get scaling
-                factor used for zero constraint. The lower the number, the stronger the
-                constraint, but the higher the risk of high frequency oscillations due
-                to a sudden release of the constraint
+            zero_scaler (int or float): Relative strength of zero constraint from
+                0 to 10. The lower the number, the weaker
+                the constraint. Values up to 30 are technically allowed but
+                discouraged because high zero_scaler values risk
+                the addition of high frequency oscillations due to the sudden release
+                of the constraint.
             zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
-                Shorter tapers can result in sharp artifacts, so longer is better
+                Tapers that are toos hort can result in sharp spiky artifacts.
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
         """
+        if zero_scaler < 0.0 or zero_scaler > 30.0:
+            raise ValueError('zero_scaler cannot be less than 0 or more than 30')
 
         if np.sum(tikhonov_ratios) != 1.0:
             raise ValueError('Tikhonov ratios must add to 1.')
@@ -1007,11 +895,10 @@ class LSForce:
         else:
             A1 = None
 
-        scaler = Ghatnorm / zero_scaler
+        scaler = Ghatnorm * (zero_scaler / 30.0)
+
         if self.impose_zero:  # tell model when there should be no forces
-            len2 = int(
-                np.floor(((self.zero_time + self.T0) * self.force_sampling_rate))
-            )
+            len2 = int(((self.zero_time + self.T0) * self.force_sampling_rate))
             if self.method == 'triangle':
                 # No taper
                 vals2 = np.hstack((np.ones(len2), np.zeros(gl - len2)))
@@ -1123,7 +1010,7 @@ class LSForce:
 
         if alphaset is None:
             alpha, fit1, size1, alphas = _find_alpha(
-                Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios, invmethod='lsq'
+                Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios
             )
             print(f'best alpha is {alpha:6.1e}')
             self.alpha = alpha
@@ -1142,38 +1029,21 @@ class LSForce:
         )  # Combo of all regularization things (if any are zero they won't matter)
         x = np.squeeze(Ghat.conj().T @ dhat)
 
-        if self.domain == 'frequency':
-            model, residuals, rank, s = sp.linalg.lstsq(A, x)
-            self.model = model.copy()
-            div = int(len(model) / 3)
+        model, residuals, rank, s = sp.linalg.lstsq(A, x)
+        self.model = model.copy()
+        div = int(len(model) / 3)
 
-            # Flip so up is positive
-            self.Z = -np.real(np.fft.ifft(model[0:div]))
-            self.N = np.real(np.fft.ifft(model[div : 2 * div]))
-            self.E = np.real(np.fft.ifft(model[2 * div :]))
+        # Flip so up is positive
+        self.Z = -model[0:div]
+        self.N = model[div : 2 * div]
+        self.E = model[2 * div :]
 
-            # run forward model
-            df_new = self.G @ model.T
-            # convert d and df_new back to time domain
-            dt, dtnew = _back2time(self.d, df_new, self.data.st_proc.count(), dl)
-            self.dtorig = dt
-            self.dtnew = dtnew
-
-        else:  # domain is time
-            model, residuals, rank, s = sp.linalg.lstsq(A, x)
-            self.model = model.copy()
-            div = int(len(model) / 3)
-
-            # Flip so up is positive
-            self.Z = -model[0:div]
-            self.N = model[div : 2 * div]
-            self.E = model[2 * div :]
-
-            dtnew = self.G.dot(model)
-            self.dtnew = np.reshape(dtnew, (self.data.st_proc.count(), dl))
-            self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
+        dtnew = self.G.dot(model)
+        self.dtnew = np.reshape(dtnew, (self.data.st_proc.count(), dl))
+        self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
 
         # compute variance reduction
+        # TODO compute only for where zeroing not applied (use taper)
         self.VR = _varred(self.dtorig, self.dtnew)
         print(f'Variance reduction = {self.VR:f} percent')
         tvec = (
@@ -1247,25 +1117,13 @@ class LSForce:
                 )
                 xj = np.squeeze(Ghat1.conj().T @ dhat1)
 
-                if self.domain == 'frequency':
-                    model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
-                    div = int(len(model) / 3)
-                    Zf = -np.real(np.fft.ifft(model[0:div]))  # Flip so up is positive
-                    Nf = np.real(np.fft.ifft(model[div : 2 * div]))
-                    Ef = np.real(np.fft.ifft(model[2 * div :]))
-                    # run forward model
-                    df_new = Gtemp @ model.T
-                    # convert d and df_new back to time domain
-                    dt, dtnew = _back2time(dtemp, df_new, numkeep, dl)
-
-                else:  # domain is time
-                    model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
-                    div = int(len(model) / 3)
-                    Zf = -model[0:div]  # Flip so up is positive
-                    Nf = model[div : 2 * div]
-                    Ef = model[2 * div :]
-                    dtnew = Gtemp.dot(model)
-                    dt = np.reshape(dtemp, (numkeep, dl))
+                model, residuals, rank, s = sp.linalg.lstsq(Aj, xj)
+                div = int(len(model) / 3)
+                Zf = -model[0:div]  # Flip so up is positive
+                Nf = model[div : 2 * div]
+                Ef = model[2 * div :]
+                dtnew = Gtemp.dot(model)
+                dt = np.reshape(dtemp, (numkeep, dl))
 
                 VR = _varred(dt, dtnew)
                 self.jackknife.Z.all.append(Zf.copy())
@@ -1889,14 +1747,7 @@ class LSForce:
 
 
 def _find_alpha(
-    Ghat,
-    dhat,
-    I,
-    L1=0,
-    L2=0,
-    invmethod='lsq',
-    tikhonov_ratios=(1.0, 0.0, 0.0),
-    rough=False,
+    Ghat, dhat, I, L1=0, L2=0, tikhonov_ratios=(1.0, 0.0, 0.0), rough=False
 ):
     r"""Finds best regularization (trade-off) parameter alpha.
 
@@ -1911,8 +1762,6 @@ def _find_alpha(
             Tikhonov regularization
         L2 (array): Second order roughening matrix. If `0`, will use only 0th-order
             Tikhonov regularization
-        invmethod (str): `'lsq'` — use least squares (regular Tikhonov); `'nnls'` — use
-            non-negative least squares
         tikhonov_ratios (list or tuple): Proportion each regularization method
             contributes to the overall regularization effect, where values correspond to
             [0th order, 1st order, 2nd order]. Must sum to 1
@@ -1949,56 +1798,19 @@ def _find_alpha(
 
     x = np.squeeze(Ghat.conj().T @ dhat)
 
-    # rough first iteration
-    for alpha in alphas:
-        A = Apart + alpha ** 2 * (
-            tikhonov_ratios[0] * I
-            + tikhonov_ratios[1] * L1part
-            + tikhonov_ratios[2] * L2part
-        )  # Combo of all regularization things
-        if invmethod == 'lsq':
-            model, residuals, rank, s = sp.linalg.lstsq(A, x)
-        elif invmethod == 'nnls':
-            model, residuals = sp.optimize.nnls(A, x)
-        else:
-            raise ValueError(f'Inversion method {invmethod} not recognized.')
-        temp1 = Ghat @ model.T - dhat
-        fit1.append(sp.linalg.norm(temp1))
-        size1.append(
-            sp.linalg.norm(tikhonov_ratios[0] * model)
-            + sp.linalg.norm(tikhonov_ratios[1] * np.dot(L1part, model))
-            + sp.linalg.norm(tikhonov_ratios[2] * np.dot(L2part, model))
-        )
-    fit1 = np.array(fit1)
-    size1 = np.array(size1)
-
-    curves = _curvature(np.log10(fit1), np.log10(size1))
-    # Zero out any points where function is concave to avoid picking points from dropoff
-    # at end
-    slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
-    alphas = np.array(alphas)
-    tempcurve = curves.copy()
-    tempcurve[slp2 < 0] = np.max(curves)
-    idx = np.argmin(tempcurve)
-    alpha = alphas[idx]
-
-    if not rough:
-        # Then hone in
-        alphas = np.logspace(
-            np.round(np.log10(alpha)) - 1, np.round(np.log10(alpha)) + 1, 14
-        )
-        fit1 = []
-        size1 = []
-        for newalpha in alphas:
-            A = Apart + newalpha ** 2 * (
+    if rough:
+        maxloops = 1
+    else:
+        maxloops = 2
+    loop = 1
+    while loop <= maxloops:
+        for alpha in alphas:
+            A = Apart + alpha ** 2 * (
                 tikhonov_ratios[0] * I
                 + tikhonov_ratios[1] * L1part
                 + tikhonov_ratios[2] * L2part
             )  # Combo of all regularization things
-            if invmethod == 'lsq':
-                model, residuals, rank, s = sp.linalg.lstsq(A, x)
-            elif invmethod == 'nnls':
-                model, residuals = sp.optimize.nnls(A, x)
+            model, residuals, rank, s = sp.linalg.lstsq(A, x)
 
             temp1 = Ghat @ model.T - dhat
             fit1.append(sp.linalg.norm(temp1))
@@ -2009,19 +1821,27 @@ def _find_alpha(
             )
         fit1 = np.array(fit1)
         size1 = np.array(size1)
+
         curves = _curvature(np.log10(fit1), np.log10(size1))
         # Zero out any points where function is concave to avoid picking points from
-        # dropoff at end
+        # drop-off at end
         slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
         alphas = np.array(alphas)
         tempcurve = curves.copy()
-        tempcurve[slp2 < 0] = np.max(curves)
+        tempcurve[slp2 < 0] = np.inf
         idx = np.argmin(tempcurve)
         bestalpha = alphas[idx]
-    else:
-        bestalpha = alpha
+        loop += 1
+        if loop > maxloops:
+            break
+        else:  # Loop again over smaller range
+            alphas = np.logspace(
+                np.round(np.log10(bestalpha)) - 1, np.round(np.log10(bestalpha)) + 1, 12
+            )
+            fit1 = []
+            size1 = []
 
-    _Lcurve(fit1, size1, alphas)
+    _Lcurve(fit1, size1, alphas, bestalpha=bestalpha)
     if type(bestalpha) == list:
         if len(bestalpha) > 1:
             raise ValueError('Returned more than one alpha value, check codes.')
@@ -2030,19 +1850,23 @@ def _find_alpha(
     return bestalpha, fit1, size1, alphas
 
 
-def _Lcurve(fit1, size1, alphas):
+def _Lcurve(fit1, size1, alphas, bestalpha=None):
     r"""Plot an L-curve.
 
     Args:
         fit1 (1D array): List of residuals
         size1 (1D array): List of model norms
         alphas (1D array): List of alphas tried
+        bestalpha (float): The alpha value chosen
     """
 
     fig, ax = plt.subplots(figsize=(7, 6))
     ax.loglog(fit1, size1, '.', markersize=10, color='black')
     for i, alpha in enumerate(alphas):
         ax.text(fit1[i], size1[i], f'  {alpha:.1e}', va='center')
+    if bestalpha is not None:
+        idx = np.argmin(np.abs(alphas - bestalpha))
+        ax.plot(fit1[idx], size1[idx], 'or')
     ax.set_xlabel(r'Residual norm $||{\bfG}{\bfm}-{\bfd}||^2$')
     ax.set_ylabel(r'Solution norm $||{\bfm}||^2$')
 
@@ -2051,7 +1875,7 @@ def _Lcurve(fit1, size1, alphas):
 
 
 def _varred(dt, dtnew):
-    r"""Compute variance reduction, :math:`\mathrm{VR}`, in the time domain.
+    r"""Compute variance reduction :math:`\mathrm{VR}`.
 
     The formula is
 
@@ -2081,33 +1905,6 @@ def _varred(dt, dtnew):
     VR = (1 - (np.sum(d_dnew2) / np.sum(d2))) * 100
 
     return VR
-
-
-def _back2time(d, df_new, numsta, datlenorig):
-    r"""Convert data back to the time domain and cut off zero padding.
-
-    Args:
-        d (1D array): Original data in frequency domain
-        df_new (1D array): Modeled data in frequency domain
-        numsta (int): Number of data channels, e.g. ``st.count()``
-        datlenorig (int): Length in samples of original data in time domain
-
-    Returns:
-        tuple: Tuple containing:
-
-        - **dt** (1D array) – Original data in time domain
-        - **dtnew** (1D array) – Modeled data in time domain
-    """
-
-    datlength = int(len(d) / numsta)
-    dfrsp = np.reshape(d, (numsta, datlength))
-    dfnrsp = np.reshape(df_new, (numsta, datlength))
-    dt = np.real(np.fft.ifft(dfrsp, axis=1))
-    dt = dt[0:, 0:datlenorig]
-    dtnew = np.real(np.fft.ifft(dfnrsp, axis=1))
-    dtnew = dtnew[0:, 0:datlenorig]
-
-    return dt, dtnew
 
 
 def _makeconvmat(c, size=None):
