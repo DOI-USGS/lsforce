@@ -1042,7 +1042,7 @@ class LSForce:
         self.dtnew = np.reshape(dtnew, (self.data.st_proc.count(), dl))
         self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
 
-        # compute variance reduction
+        # Compute variance reduction
         # TODO compute only for where zeroing not applied (use taper)
         self.VR = _varred(self.dtorig, self.dtnew)
         print(f'Variance reduction = {self.VR:f} percent')
@@ -1054,6 +1054,8 @@ class LSForce:
             )
             - self.T0
         )
+
+        # Adjust time vector for zero time, if one was provided
         if self.zero_time is not None:
             tvec -= self.zero_time
         if self.method == 'triangle':
