@@ -580,7 +580,7 @@ class LSForce:
                     'noise_window_dur must be defined if prenoise weighting is used.'
                 )
 
-        # check if sampling rate specified is compatible with period_range
+        # Check if sampling rate specified is compatible with period_range
         if 2.0 * self.filter['freqmax'] > self.data_sampling_rate:
             raise ValueError(
                 'data_sampling_rate and period_range are not compatible (violates '
@@ -590,7 +590,7 @@ class LSForce:
         # Always work on copy of data
         st = self.data.st_proc.copy()
 
-        # filter data to band specified
+        # Filter data to band specified
         st.filter(
             'bandpass',
             freqmin=self.filter['freqmin'],
@@ -599,10 +599,10 @@ class LSForce:
             zerophase=self.filter['zerophase'],
         )
 
-        # resample st to data_sampling_rate
+        # Resample st to data_sampling_rate
         st.resample(self.data_sampling_rate)
 
-        # make sure st data are all the same length
+        # Make sure st data are all the same length
         lens = [len(trace.data) for trace in st]
         if len(set(lens)) != 1:
             print(
@@ -718,10 +718,10 @@ class LSForce:
             # Deal with data
             datline = tr.data
 
-            if i == 0:  # initialize G and d if first station
+            if i == 0:  # If this is the first station, initialize G and d
                 G = newline.copy()
                 d = datline.copy()
-            else:  # otherwise build on G and d
+            else:  # Otherwise build on G and d
                 G = np.vstack((G, newline.copy()))
                 d = np.hstack((d, datline.copy()))
 
@@ -813,8 +813,8 @@ class LSForce:
         self.N = None
         self.E = None
         self.tvec = None
-        self.VR = None  # variance reduction
-        self.dtorig = None  #
+        self.VR = None
+        self.dtorig = None
         self.dtnew = None
         self.alpha = None
         self.alphafit = {'alphas': None, 'fit': None, 'size': None}
@@ -873,7 +873,7 @@ class LSForce:
             Ghat = self.G
             dhat = self.d
 
-        if self.jackknife is not None:  # save version at this point for use later
+        if self.jackknife is not None:  # Save version at this point for use later
             Ghatori = Ghat.copy()
             dhatori = dhat.copy()
 
@@ -884,7 +884,7 @@ class LSForce:
         dl = self.data_length
         gl = int(n / 3)  # Force vector length
 
-        if self.add_to_zero is True:  # constrain forces to add to zero
+        if self.add_to_zero is True:  # Constrain forces to add to zero
             scaler = Ghatnorm
             first1 = np.hstack((np.ones(gl), np.zeros(2 * gl)))
             second1 = np.hstack((np.zeros(gl), np.ones(gl), np.zeros(gl)))
@@ -897,16 +897,14 @@ class LSForce:
 
         scaler = Ghatnorm * (zero_scaler / 30.0)
 
-        if self.impose_zero:  # tell model when there should be no forces
+        if self.impose_zero:  # Tell model when there should be no forces
             len2 = int(((self.zero_time + self.T0) * self.force_sampling_rate))
             if self.method == 'triangle':
                 # No taper
                 vals2 = np.hstack((np.ones(len2), np.zeros(gl - len2)))
             elif self.method == 'full':
                 # Taper
-                len3 = int(
-                    zero_taper_length * self.force_sampling_rate
-                )  # make it constant
+                len3 = int(zero_taper_length * self.force_sampling_rate)
                 temp = np.hanning(2 * len3)
                 temp = temp[len3:]
                 vals2 = np.hstack((np.ones(len2 - len3), temp))
@@ -941,7 +939,7 @@ class LSForce:
             )
             if self.method == 'triangle':
                 vals3 = np.zeros(gl)
-                vals3[startind:] = 1.0  # no taper
+                vals3[startind:] = 1.0  # No taper
                 for i, val in enumerate(vals3):
                     first1 = np.zeros(3 * gl)
                     second1 = first1.copy()
@@ -1276,10 +1274,8 @@ class LSForce:
                     np.amin([self.Z.min(), self.E.min(), self.N.min()]),
                     np.amax([self.Z.max(), self.E.max(), self.N.max()]),
                 )
-                ylim = (
-                    ylim1[0] + 0.1 * ylim1[0],
-                    ylim1[1] + 0.1 * ylim1[1],
-                )  # add 10% on each side to make it look nicer
+                # Add 10% on each side to make it look nicer
+                ylim = (ylim1[0] + 0.1 * ylim1[0], ylim1[1] + 0.1 * ylim1[1])
         else:
             Zupper = self.jackknife.Z.upper
             Nupper = self.jackknife.N.upper
@@ -1310,10 +1306,8 @@ class LSForce:
                         ]
                     ),
                 )
-                ylim = (
-                    ylim1[0] + 0.1 * ylim1[0],
-                    ylim1[1] + 0.1 * ylim1[1],
-                )  # add 10% on each side to make it look nicer
+                # Add 10% on each side to make it look nicer
+                ylim = (ylim1[0] + 0.1 * ylim1[0], ylim1[1] + 0.1 * ylim1[1])
 
         if jackshowall:
             subplots = True
@@ -1533,10 +1527,8 @@ class LSForce:
                     np.amin([self.Z.min(), self.E.min(), self.N.min()]),
                     np.amax([self.Z.max(), self.E.max(), self.N.max()]),
                 )
-                ylim = (
-                    ylim1[0] + 0.1 * ylim1[0],
-                    ylim1[1] + 0.1 * ylim1[1],
-                )  # add 10% on each side to make it look nicer
+                # Add 10% on each side to make it look nicer
+                ylim = (ylim1[0] + 0.1 * ylim1[0], ylim1[1] + 0.1 * ylim1[1])
         else:
             Zupper = self.jackknife.Z.upper
             Nupper = self.jackknife.N.upper
@@ -1550,10 +1542,8 @@ class LSForce:
                     np.amin([Zlower.min(), Elower.min(), Nlower.min()]),
                     np.amax([Zupper.max(), Eupper.max(), Nupper.max()]),
                 )
-            ylim = (
-                ylim1[0] + 0.1 * ylim1[0],
-                ylim1[1] + 0.1 * ylim1[1],
-            )  # add 10% on each side to make it look nicer
+            # Add 10% on each side to make it look nicer
+            ylim = (ylim1[0] + 0.1 * ylim1[0], ylim1[1] + 0.1 * ylim1[1])
         fig = plt.figure(figsize=(10, 10))
 
         # Plot the inversion result in the first one
@@ -1624,10 +1614,10 @@ class LSForce:
 
         # Plot the horizontal azimuth
         ax2 = fig.add_subplot(413)
-        tempang = (180 / np.pi) * np.arctan2(
-            self.N, self.E
-        ) - 90  # get angle counterclockwise relative to N
-        # any negative values, add 360
+
+        # Get angle counterclockwise relative to N
+        tempang = (180 / np.pi) * np.arctan2(self.N, self.E) - 90
+        # For any negative values, add 360
         for i, temp in enumerate(tempang):
             if temp < 0:
                 tempang[i] = temp + 360
@@ -1640,7 +1630,7 @@ class LSForce:
             for i, temp in enumerate(tempangL):
                 if temp < 0:
                     tempangL[i] = temp + 360
-        # now flip to clockwise to get azimuth
+        # Now flip to clockwise to get azimuth
         Haz = 360 - tempang
         ax2.plot(tvec, Haz)
         ax2.set_ylabel('Azimuth (deg CW from N)')
@@ -1917,7 +1907,7 @@ def _makeconvmat(c, size=None):
         :class:`~numpy.ndarray`: Convolution matrix
     """
 
-    cflip = c[::-1]  # flip order
+    cflip = c[::-1]  # Flip order
     if size is None:
         C = np.zeros((2 * len(c) - 1, 2 * len(c) - 1))
         for i in range(2 * len(c) - 1):
@@ -1929,7 +1919,7 @@ def _makeconvmat(c, size=None):
             p = p[: 2 * len(c) - 1]
             C[i, :] = p.copy()
     else:
-        # make it the right size
+        # Make it the correct size
         C = np.zeros(size)
         for i in range(size[0]):
             if i > len(c) - 1:
@@ -1937,7 +1927,7 @@ def _makeconvmat(c, size=None):
                 p = np.concatenate((zros, cflip, np.zeros(size[1])))
             else:
                 p = np.concatenate(((cflip[-(i + 1) :]), np.zeros(size[1])))
-            p = p[: size[1]]  # cut p to the right size
+            p = p[: size[1]]  # Cut p to the correct size
             C[i, :] = p.copy()
 
     return C
@@ -1988,33 +1978,26 @@ def _curvature(x, y):
         :class:`~numpy.ndarray`: Radius of curvature for each point (ends will be NaN)
     """
 
-    # FOR EACH SET OF THREE POINTS, FIND RADIUS OF CIRCLE THAT FITS THEM - IGNORE ENDS
-    R_2 = np.ones(len(x)) * float(
-        'inf'
-    )  # end numbers should be infinity because is straight line
+    # For each set of three points, find the radius of the circle that fits them (ignore
+    # ends - these should be infinity since it's a straight line that fits them)
+    R_2 = np.ones(len(x)) * float('inf')
     for i in range(1, len(R_2) - 1):
         xsub = x[i - 1 : i + 2]
         ysub = y[i - 1 : i + 2]
-        m1 = -1 / (
-            (ysub[0] - ysub[1]) / (xsub[0] - xsub[1])
-        )  # slope of bisector of first segment
-        m2 = -1 / (
-            (ysub[1] - ysub[2]) / (xsub[1] - xsub[2])
-        )  # slope of bisector of second segment
-        b1 = ((ysub[0] + ysub[1]) / 2) - m1 * (
-            (xsub[0] + xsub[1]) / 2
-        )  # compute b for first bisector
-        b2 = ((ysub[1] + ysub[2]) / 2) - m2 * (
-            (xsub[1] + xsub[2]) / 2
-        )  # compute b for second bisector
+        # Slope of bisector of first segment
+        m1 = -1 / ((ysub[0] - ysub[1]) / (xsub[0] - xsub[1]))
+        # Slope of bisector of second segment
+        m2 = -1 / ((ysub[1] - ysub[2]) / (xsub[1] - xsub[2]))
+        # Compute b for first bisector
+        b1 = ((ysub[0] + ysub[1]) / 2) - m1 * ((xsub[0] + xsub[1]) / 2)
+        # Compute b for second bisector
+        b2 = ((ysub[1] + ysub[2]) / 2) - m2 * ((xsub[1] + xsub[2]) / 2)
 
-        Xc = (b1 - b2) / (m2 - m1)  # find intercept point of bisectors
+        Xc = (b1 - b2) / (m2 - m1)  # Find intercept point of bisectors
         Yc = b2 + m2 * Xc
 
-        R_2[i] = np.sqrt(
-            (xsub[0] - Xc) ** 2 + (ysub[0] - Yc) ** 2
-        )  # get distance from any point to intercept of bisectors to get radius
-
+        # Get distance from any point to intercept of bisectors to get radius
+        R_2[i] = np.sqrt((xsub[0] - Xc) ** 2 + (ysub[0] - Yc) ** 2)
     return R_2
 
 
