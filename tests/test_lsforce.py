@@ -23,7 +23,7 @@ INVERT_KWARGS = dict(
     impose_zero=True,
     add_to_zero=True,
     alphaset=4.8e-17,
-    zero_scaler=15.,
+    zero_scaler=15,
     tikhonov_ratios=[0.4, 0.0, 0.6],
 )
 
