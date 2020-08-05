@@ -854,7 +854,7 @@ class LSForce:
                 the addition of high frequency oscillations due to the sudden release
                 of the constraint.
             zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
-                Tapers that are toos hort can result in sharp spiky artifacts.
+                Tapers that are too short can result in sharp spiky artifacts.
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
@@ -1228,7 +1228,7 @@ class LSForce:
         subplots=False,
         xlim=None,
         ylim=None,
-        sameY=True,
+        same_y=True,
         highf_tr=None,
         hfshift=0.0,
         hfylabel=None,
@@ -1244,7 +1244,7 @@ class LSForce:
                 on one plot
             xlim (list or tuple): x-axis limits
             ylim (list or tuple): y-axis limits
-            sameY (bool): If `True`, use same y-axis limits for all plots
+            same_y (bool): If `True`, use same y-axis limits for all plots
             highf_tr (:class:`~obspy.core.trace.Trace`): Seismic trace with start time
                 identical to start time of the data used in the inversion
             hfshift (int or float): [s] Time shift for seismic trace
@@ -1406,7 +1406,7 @@ class LSForce:
             [axe.set_xlim(xlim) for axe in axes]
             [axe.grid(True) for axe in axes]
 
-            if sameY or ylim is not None:
+            if same_y or ylim is not None:
                 ax1.set_ylim(ylim)
                 ax2.set_ylim(ylim)
                 ax3.set_ylim(ylim)
