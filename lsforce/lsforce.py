@@ -849,12 +849,11 @@ class LSForce:
                 search for best alpha using the L-curve method
             zero_scaler (int or float): Relative strength of zero constraint from
                 0 to 10. The lower the number, the weaker
-                the constraint. Values up to 30 are technically allowed but
-                discouraged because high zero_scaler values risk
-                the addition of high frequency oscillations due to the sudden release
-                of the constraint.
+                the constraint. Values up to 30 are technically allowed but discouraged
+                because high `zero_scaler` values risk the addition of high frequency
+                oscillations due to the sudden release of the constraint
             zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
-                Tapers that are too short can result in sharp spiky artifacts.
+                Tapers that are too short can result in sharp spiky artifacts
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
