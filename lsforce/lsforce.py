@@ -1875,7 +1875,7 @@ def _Lcurve(fit1, size1, alphas, bestalpha=None):
 
 
 def _varred(dt, dtnew):
-    r"""Compute variance reduction, :math:`\mathrm{VR}`, in the time domain.
+    r"""Compute variance reduction :math:`\mathrm{VR}`.
 
     The formula is
 
