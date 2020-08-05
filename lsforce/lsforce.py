@@ -1823,8 +1823,8 @@ def _find_alpha(
         size1 = np.array(size1)
 
         curves = _curvature(np.log10(fit1), np.log10(size1))
-        # Zero out any points where function is concave to avoid picking points from dropoff
-        # at end
+        # Zero out any points where function is concave to avoid picking points from
+        # drop-off at end
         slp2 = np.gradient(np.gradient(np.log10(size1), np.log10(fit1)), np.log10(fit1))
         alphas = np.array(alphas)
         tempcurve = curves.copy()
