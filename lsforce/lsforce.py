@@ -25,7 +25,7 @@ SYNGINE_DT = 0.25
 # [s] Sampling interval for the triangular source time function given to Syngine
 TRIANGLE_STF_DT = 0.5
 
-# A nice constant starttime for Syngine and CPS GFs
+# A nice constant start time for Syngine and CPS GFs
 GF_STARTTIME = UTCDateTime(1900, 1, 1)
 
 # Convert m/s to μm/s
@@ -168,7 +168,7 @@ class LSForce:
             else:
                 stations_to_calculate.append(station)
 
-        # Initalize empty Stream to hold all GFs
+        # Initialize empty Stream to hold all GFs
         st_gf = Stream()
 
         # CPS
@@ -316,7 +316,7 @@ class LSForce:
 
                     st_syn.write(filename, format='PICKLE')
 
-                # Add this station's GF's to overall Stream
+                # Add this station's GFs to overall Stream
                 st_gf += st_syn
 
                 # Print status
@@ -1365,7 +1365,7 @@ class LSForce:
                     (len(highf_tr.data) - 1) * 1 / highf_tr.stats.sampling_rate,
                     num=len(highf_tr.data),
                 )
-                # Temporary fix, adjust for same zerotime
+                # Temporary fix, adjust for same zero time
                 if self.zero_time:
                     tvec2 -= self.zero_time
                 tvec2 -= hfshift
@@ -1380,7 +1380,7 @@ class LSForce:
                     (len(infra_tr.data) - 1) * 1 / infra_tr.stats.sampling_rate,
                     num=len(infra_tr.data),
                 )
-                # Temporary fix, adjust for same zerotime
+                # Temporary fix, adjust for same zero time
                 if self.zero_time:
                     tvec2 -= self.zero_time
                 tvec2 -= infra_shift
