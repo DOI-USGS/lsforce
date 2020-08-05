@@ -537,7 +537,7 @@ class LSForce:
         if (self.syngine_model and self.cps_model) or (
             not self.syngine_model and not self.cps_model
         ):
-            raise ValueError('You must specify ONE of `syngine_model` or `cps_model`!')
+            raise ValueError('You must specify ONE of syngine_model or cps_model!')
 
         # Automatically choose an appropriate T0 and GF duration based on data/method
         if self.method == 'triangle':
