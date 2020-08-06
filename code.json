@@ -3,7 +3,7 @@
     "name": "lsforce",
     "organization": "U.S. Geological Survey",
     "description": "A Python-based seismic force inversion framework for massive landslides",
-    "version": "1.0",
+    "version": "1.0.0",
     "status": "RELEASE_STATUS",
 
     "permissions": {
@@ -18,7 +18,7 @@
 
     "homepageURL": "https://code.usgs.gov/ghsc/lhp/lsforce",
     "downloadURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/archive/master/lsforce-master.zip",
-    "disclaimerURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/master/LICENSE.md",
+    "disclaimerURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/master/DISCLAIMER.md",
     "repositoryURL": "https://code.usgs.gov/ghsc/lhp/lsforce",
     "vcs": "git",
 
@@ -32,9 +32,7 @@
       "single force"
     ],
 
-    "languages": [
-      "Python",
-    ],
+    "languages": "python",
 
     "contact": {
       "name": "Kate Allstadt",
