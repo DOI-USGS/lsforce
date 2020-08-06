@@ -27,10 +27,10 @@ bash install.sh  # Or `bash install.sh 1` if you want developer tools as well
 
 By default, the Green's functions used by the program come from the
 [Synthetics Engine (Syngine)](http://ds.iris.edu/ds/products/syngine/) hosted by
-[IRIS Data Services](http://ds.iris.edu/ds/products/). A fixed set of [1D Earth Models](http://ds.iris.edu/ds/products/syngine/#models)
-are available from Syngine.
+[IRIS Data Services](http://ds.iris.edu/ds/products/). The user can choose from a fixed
+set of [1D Earth Models](http://ds.iris.edu/ds/products/syngine/#models).
 
-If you would like to compute your own Green's functions using a custom model, you can
+Alternatively, if users prefer to compute Green's functions using a custom model, they can
 optionally install
 [Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html) via the
 following:
@@ -48,7 +48,7 @@ following:
       ./Setup OSX40
       ./C
       ```
-   4. Add the executables to your `PATH` by adding the following line to your e.g.
+   4. Add the executables to `PATH` by adding the following line to e.g.
       `~/.bash_profile`:
       ```shell
       export PATH="$PATH:/path/to/PROGRAMS.330/bin"
