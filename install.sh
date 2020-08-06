@@ -92,7 +92,6 @@ DEVELOPER_PACKAGES=(
     'sphinx'
     'sphinx_rtd_theme'
     'sphinxcontrib-apidoc'
-    'sphinx-markdown-tables'
     'spyder'
 )
 
