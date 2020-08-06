@@ -79,7 +79,6 @@ PACKAGE_LIST=(
     'notebook'
     'obspy'
     'pyqt'
-    'scikit-learn'
     'xarray'
 )
 
