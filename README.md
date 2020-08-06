@@ -90,4 +90,4 @@ pytest --capture=no --cov=lsforce tests
 
 Citation
 -------
-Allstadt, K. E. and Toney, L. D., 2020, lsforce v1.0, U.S. Geological Survey Software Release, (https://doi.org/10.5066/P9CR20KW)
+Allstadt, K. E. and Toney, L. D., 2020, lsforce v1.0, U.S. Geological Survey Software Release, https://doi.org/10.5066/P9CR20KW.
