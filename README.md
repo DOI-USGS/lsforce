@@ -2,12 +2,12 @@
 =========
 
 *lsforce* is a Python-based seismic force inversion framework for massive landslides.
-The software can be used to invert long period (tens to hundreds of sec) seismic
+The library can be used to invert long period (tens to hundreds of seconds) seismic
 waveforms to estimate a time series vector of single forces that represents the
-equivalent forcing exerted on the earth by the landslide (see example output below).
+equivalent forces exerted on the Earth by the landslide (see example output figure
+below).
 
 ![Example force-time function output by lsforce](doc/example_force_history.png)
-
 
 | [Main](https://code.usgs.gov/ghsc/lhp/lsforce) | [Develop](https://code.usgs.gov/ghsc/users/ltoney/lsforce) |
 |:----------------------------------------------:|:----------------------------------------------------------:|
@@ -28,13 +28,13 @@ cd lsforce
 bash install.sh  # Or `bash install.sh 1` if you want developer tools as well
 ```
 
-By default, the Green's functions used by the program come from the
+By default, the Green's functions used by *lsforce* come from the
 [Synthetics Engine (Syngine)](http://ds.iris.edu/ds/products/syngine/) hosted by
 [IRIS Data Services](http://ds.iris.edu/ds/products/). The user can choose from a fixed
-set of [1D Earth Models](http://ds.iris.edu/ds/products/syngine/#models).
+set of [1D Earth models](http://ds.iris.edu/ds/products/syngine/#models).
 
-Alternatively, if users prefer to compute Green's functions using a custom model, they can
-optionally install
+Alternatively, if users prefer to compute Green's functions using a custom model, they
+can optionally install
 [Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html) via the
 following:
 
@@ -93,4 +93,6 @@ pytest --capture=no --cov=lsforce tests
 
 Citation
 -------
-Allstadt, K. E. and Toney, L. D., 2020, lsforce v1.0, U.S. Geological Survey Software Release, https://doi.org/10.5066/P9CR20KW.
+
+Allstadt, K. E., & Toney, L. (2020). lsforce (Version 1.0.0) [Source code]. U.S.
+Geological Survey Software Release. https://doi.org/10.5066/P9CR20KW
