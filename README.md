@@ -9,7 +9,7 @@ waveforms to estimate a time series vector of single forces that represents the
 equivalent forces exerted on the Earth by the landslide (see example output figure
 below).
 
-![Example force-time function output by lsforce](doc/example_force_history.png)
+![Example force-time function output by lsforce](example_force_history.png)
 
 Installation
 ------------
