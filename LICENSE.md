@@ -2,9 +2,9 @@ License
 =======
 
 Unless otherwise noted, this project is in the public domain in the United States
-because it contains materials that originally came from the United States Geological
-Survey (USGS), an agency of the United States Department of the Interior. For more
-information, see the official [USGS copyright policy][1].
+because it contains materials that originally came from the U.S. Geological Survey
+(USGS), an agency of the U.S. Department of the Interior. For more information, see the
+official [USGS copyright policy][1].
 
 Additionally, we waive copyright and related rights to this work worldwide through the
 CC0 1.0 Universal Public Domain Dedication.
