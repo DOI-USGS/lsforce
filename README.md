@@ -2,13 +2,17 @@
 =========
 
 *lsforce* is a Python-based seismic force inversion framework for massive landslides.
+The software can be used to invert long period (tens to hundreds of sec) seismic
+waveforms to estimate a time series vector of single forces that represents the
+equivalent forcing exerted on the earth by the landslide (see example output below).
+
+![Example force-time function output by lsforce](doc/example_force_history.png)
+
 
 | [Main](https://code.usgs.gov/ghsc/lhp/lsforce) | [Develop](https://code.usgs.gov/ghsc/users/ltoney/lsforce) |
 |:----------------------------------------------:|:----------------------------------------------------------:|
 | [![Pipeline status (main)](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) | [![Pipeline status (develop)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/pipelines/latest) |
 | [![Coverage report (main)](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs) | [![Coverage report (develop)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/-/jobs) |
-
-🚨 _lsforce_ is currently under rapid development. Use at your own risk! 🚨
 
 Installation
 ------------
@@ -24,7 +28,12 @@ cd lsforce
 bash install.sh  # Or `bash install.sh 1` if you want developer tools as well
 ```
 
-If you would like to compute your own Green's functions using a custom model, you can
+By default, the Green's functions used by the program come from the
+[Synthetics Engine (Syngine)](http://ds.iris.edu/ds/products/syngine/) hosted by
+[IRIS Data Services](http://ds.iris.edu/ds/products/). The user can choose from a fixed
+set of [1D Earth Models](http://ds.iris.edu/ds/products/syngine/#models).
+
+Alternatively, if users prefer to compute Green's functions using a custom model, they can
 optionally install
 [Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html) via the
 following:
@@ -42,7 +51,7 @@ following:
       ./Setup OSX40
       ./C
       ```
-   4. Add the executables to your `PATH` by adding the following line to your e.g.
+   4. Add the executables to `PATH` by adding the following line to e.g.
       `~/.bash_profile`:
       ```shell
       export PATH="$PATH:/path/to/PROGRAMS.330/bin"
@@ -81,3 +90,7 @@ Then:
 conda activate lsforce
 pytest --capture=no --cov=lsforce tests
 ```
+
+Citation
+-------
+Allstadt, K. E. and Toney, L. D., 2020, lsforce v1.0, U.S. Geological Survey Software Release, https://doi.org/10.5066/P9CR20KW.

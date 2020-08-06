@@ -93,6 +93,7 @@ DEVELOPER_PACKAGES=(
     'sphinx_rtd_theme'
     'sphinxcontrib-apidoc'
     'sphinx-markdown-tables'
+    'spyder'
 )
 
 # If user supplied the developer flag, add developer packages to package list
