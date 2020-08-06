@@ -26,7 +26,7 @@ CHANNEL_COLORS = dict(
 
 
 class LSData:
-    r"""Class for force inversion data that is an extension of an obspy Stream.
+    r"""Class for force inversion data that is an extension of an ObsPy Stream.
 
     Attributes:
         st_orig (:class:`~obspy.core.stream.Stream`): Original input Stream `st`.
@@ -44,19 +44,23 @@ class LSData:
         r"""Create an LSData object.
 
         Args:
-            st (:class:`~obspy.core.stream.Stream`):
-                Stream object with ``tr.stats.latitude`` and ``tr.stats.longitude``
-                defined and station response info attached to each trace in the Stream.
-            source_lat (float): Latitude in decimal degrees of centroid of
-                landslide source location
-            source_lon (float): Longitude in decimal degrees of centroid of
-                landslide source location
+            st (:class:`~obspy.core.stream.Stream`): Stream object with
+                ``tr.stats.latitude`` and ``tr.stats.longitude`` defined and station
+                response info attached to each trace in the Stream.
+            source_lat (float): Latitude in decimal degrees of centroid of landslide
+                source location
+            source_lon (float): Longitude in decimal degrees of centroid of landslide
+                source location
             remove_response (bool): Correct for station response to displacement units.
                 Set to `False` to handle response removal manually at an earlier step.
             skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is
-                skipped. This is a necessary flag if the stations do not have metadata
-                on IRIS (e.g., for synthetic cases)
+                skipped. This is a necessary flag if the stations used do not have
+                metadata on IRIS (e.g., for synthetic cases)
         """
+
+        # Type check for source coordinates
+        if type(source_lat) is not float or type(source_lon) is not float:
+            raise TypeError('source_lat and source_lon must be floats.')
 
         # Verify that tr.stats.latitude/longitude are defined
         for tr in st:
@@ -285,14 +289,14 @@ def _rotate_to_rtz(st, skip_zne_rotation):
     r"""Rotate all components of a Stream into radial–transverse–vertical.
 
     This function performs a two-step rotation. First, it rotates all channels into ZNE
-    (Vertical, North, East) using IRIS metadata (even stations that claim to already
-    be in ZNE). Then, it rotates into RTZ (radial, transverse, vertical).
+    (vertical, north, west) using IRIS metadata (even stations that claim to already be
+    in ZNE). Then, it rotates into RTZ (radial, transverse, vertical).
 
     Args:
         st (:class:`~obspy.core.stream.Stream`): Input Stream to be rotated with
             ``stats.back_azimuth`` defined
         skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is skipped.
-            This is a necessary flag if stations used do not have metadata on IRIS
+            This is a necessary flag if the stations used do not have metadata on IRIS
             (e.g., for synthetic cases)
 
     Returns:
