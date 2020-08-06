@@ -4,7 +4,7 @@
 *lsforce* is a Python-based seismic force inversion framework for massive landslides.
 The software can be used to invert long period (tens to hundreds of sec) seismic
 waveforms to estimate a time series vector of single forces that represents the
-equivalent forcing exerted on the earth by the landslide.
+equivalent forcing exerted on the earth by the landslide (see example output below).
 
 ![Example force-time function output by lsforce](doc/example_force_history.png)
 
