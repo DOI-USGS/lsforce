@@ -6,6 +6,9 @@ The software can be used to invert long period (tens to hundreds of sec) seismic
 waveforms to estimate a time series vector of single forces that represents the
 equivalent forcing exerted on the earth by the landslide.
 
+![Example force-time function output by lsforce](https://code.usgs.gov/ghsc/users/kallstadt/lsforce/-/blob/edits/doc/example_force_history.png)
+
+
 | [Main](https://code.usgs.gov/ghsc/lhp/lsforce) | [Develop](https://code.usgs.gov/ghsc/users/ltoney/lsforce) |
 |:----------------------------------------------:|:----------------------------------------------------------:|
 | [![Pipeline status (main)](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) | [![Pipeline status (develop)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/pipelines/latest) |
