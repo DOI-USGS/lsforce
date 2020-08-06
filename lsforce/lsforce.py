@@ -1039,7 +1039,6 @@ class LSForce:
         self.dtorig = np.reshape(self.d, (self.data.st_proc.count(), dl))
 
         # Compute variance reduction
-        # TODO compute only for where zeroing not applied (use taper)
         self.VR = _varred(self.dtorig, self.dtnew)
         print(f'Variance reduction = {self.VR:f} percent')
         tvec = (
@@ -1233,7 +1232,6 @@ class LSForce:
         hfylabel=None,
         infra_tr=None,
         infra_shift=0,
-        tvecshift=0.0,
         jackshowall=False,
     ):
         r"""Plot inversion result.
@@ -1252,8 +1250,6 @@ class LSForce:
             infra_tr (:class:`~obspy.core.trace.Trace`): Infrasound trace with start
                 time identical to start time of the data used in the inversion
             infra_shift (int or float): [s] Time shift for infrasound trace
-            tvecshift (int or float): [s] Shift time vector manually by this many
-                seconds, not usually needed, only for display purposes (REMOVE?)
             jackshowall (bool): If `True` and jackknife was run, will show all
                 individual runs (changes `subplots` to `True`)
 
@@ -1261,7 +1257,7 @@ class LSForce:
             :class:`~matplotlib.figure.Figure`: Output figure handle
         """
 
-        tvec = self.tvec - tvecshift
+        tvec = self.tvec
 
         annot_kwargs = dict(xy=(0.99, 0.25), xycoords='axes fraction', ha='right')
 
@@ -1504,20 +1500,18 @@ class LSForce:
 
         return fig
 
-    def plot_angle_magnitude(self, xlim=None, ylim=None, tvecshift=0.0):
+    def plot_angle_magnitude(self, xlim=None, ylim=None):
         r"""Plot angles and magnitudes of inversion result.
 
         Args:
             xlim (list or tuple): x-axis limits
             ylim (list or tuple): y-axis limits
-            tvecshift (int or float): [s] Shift time vector manually by this many
-                seconds, not usually needed, only for display purposes (REMOVE?)
 
         Returns:
             :class:`~matplotlib.figure.Figure`: Output figure handle
         """
 
-        tvec = self.tvec - tvecshift
+        tvec = self.tvec
 
         if self.jackknife is None:
             if ylim is None:

@@ -26,16 +26,16 @@ CHANNEL_COLORS = dict(
 
 
 class LSData:
-    r"""Class for force inversion data (essentially a souped-up Stream).
+    r"""Class for force inversion data that is an extension of an obspy Stream.
 
     Attributes:
-        st_orig (:class:`~obspy.core.stream.Stream`): Original input Stream `st`
-        st_proc (:class:`~obspy.core.stream.Stream`): Stream rotated into RTZ w.r.t.
-            `source_lat`, `source_lon`
-        source_lat (int or float): Latitude in decimal degrees of centroid of landslide
-            source location
-        source_lon (int or float): Longitude in decimal degrees of centroid of landslide
-            source location
+        st_orig (:class:`~obspy.core.stream.Stream`): Original input Stream `st`.
+        st_proc (:class:`~obspy.core.stream.Stream`): Stream rotated into RTZ (radial,
+            transverse, vertical) relative to `source_lat`, `source_lon`.
+        source_lat (float): Latitude in decimal degrees of centroid of landslide
+            source location.
+        source_lon (float): Longitude in decimal degrees of centroid of landslide
+            source location.
     """
 
     def __init__(
@@ -44,21 +44,21 @@ class LSData:
         r"""Create an LSData object.
 
         Args:
-            st (:class:`~obspy.core.stream.Stream`): Stream object with
-                ``tr.stats.latitude`` and ``tr.stats.longitude`` defined and response
-                attached
-            source_lat (int or float): Latitude in decimal degrees of centroid of
+            st (:class:`~obspy.core.stream.Stream`):
+                Stream object with ``tr.stats.latitude`` and ``tr.stats.longitude``
+                defined and station response info attached to each trace in the Stream.
+            source_lat (float): Latitude in decimal degrees of centroid of
                 landslide source location
-            source_lon (int or float): Longitude in decimal degrees of centroid of
+            source_lon (float): Longitude in decimal degrees of centroid of
                 landslide source location
-            remove_response (bool): Toggle response removal to displacement units. Set
-                to `False` if you want to handle response removal yourself
+            remove_response (bool): Correct for station response to displacement units.
+                Set to `False` to handle response removal manually at an earlier step.
             skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is
-                skipped. This is a necessary flag if your stations do not have metadata
+                skipped. This is a necessary flag if the stations do not have metadata
                 on IRIS (e.g., for synthetic cases)
         """
 
-        # Before we do anything, verify that tr.stats.latitude/longitude are defined
+        # Verify that tr.stats.latitude/longitude are defined
         for tr in st:
             assert hasattr(tr.stats, 'latitude') and hasattr(tr.stats, 'longitude')
 
@@ -285,14 +285,14 @@ def _rotate_to_rtz(st, skip_zne_rotation):
     r"""Rotate all components of a Stream into radial–transverse–vertical.
 
     This function performs a two-step rotation. First, it rotates all channels into ZNE
-    using IRIS metadata (even stations that claim to already be in ZNE!). Then, it
-    rotates into RTZ.
+    (Vertical, North, East) using IRIS metadata (even stations that claim to already
+    be in ZNE). Then, it rotates into RTZ (radial, transverse, vertical).
 
     Args:
         st (:class:`~obspy.core.stream.Stream`): Input Stream to be rotated with
             ``stats.back_azimuth`` defined
         skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is skipped.
-            This is a necessary flag if your stations do not have metadata on IRIS
+            This is a necessary flag if stations used do not have metadata on IRIS
             (e.g., for synthetic cases)
 
     Returns:
