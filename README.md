@@ -92,4 +92,5 @@ Citation
 -------
 
 Allstadt, K. E., & Toney, L. (2020). lsforce (Version 1.0.0) [Source code]. U.S.
-Geological Survey Software Release. https://doi.org/10.5066/P9CR20KW
+Geological Survey Software Release.
+[https://doi.org/10.5066/P9CR20KW](https://doi.org/10.5066/P9CR20KW)
