@@ -1,6 +1,8 @@
 *lsforce*
 =========
 
+[![Pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) [![Coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs)
+
 *lsforce* is a Python-based seismic force inversion framework for massive landslides.
 The library can be used to invert long period (tens to hundreds of seconds) seismic
 waveforms to estimate a time series vector of single forces that represents the
@@ -8,11 +10,6 @@ equivalent forces exerted on the Earth by the landslide (see example output figu
 below).
 
 ![Example force-time function output by lsforce](doc/example_force_history.png)
-
-| [Main](https://code.usgs.gov/ghsc/lhp/lsforce) | [Develop](https://code.usgs.gov/ghsc/users/ltoney/lsforce) |
-|:----------------------------------------------:|:----------------------------------------------------------:|
-| [![Pipeline status (main)](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) | [![Pipeline status (develop)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/pipelines/latest) |
-| [![Coverage report (main)](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs) | [![Coverage report (develop)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/users/ltoney/lsforce/-/jobs) |
 
 Installation
 ------------
