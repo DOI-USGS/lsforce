@@ -72,6 +72,8 @@ class LSForce:
         alpha: Regularization parameter that was used
         alphafit (dict): Dictionary with keys ``'alphas'``, ``'fit'``, and ``'size'``
             specifying regularization parameters tested
+
+    .. automethod:: _tikinvert
     """
 
     def __init__(
@@ -792,8 +794,7 @@ class LSForce:
             num_iter (int): Number of jackknife iterations to perform
             frac_delete (int or float): Fraction (out of 1) of data to discard for each
                 iteration
-            **kwargs: Additional keyword arguments to be passed on to the inversion
-                method
+            **kwargs: Additional keyword arguments to be passed on to :meth:`_tikinvert`
         """
 
         # Check inputs for consistency
