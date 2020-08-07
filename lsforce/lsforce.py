@@ -792,7 +792,8 @@ class LSForce:
             num_iter (int): Number of jackknife iterations to perform
             frac_delete (int or float): Fraction (out of 1) of data to discard for each
                 iteration
-            **kwargs: Additional keyword arguments to be passed on to :meth:`_tikinvert`
+            **kwargs: Additional keyword arguments to be passed on to the inversion
+                method
         """
 
         # Check inputs for consistency
