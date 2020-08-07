@@ -131,7 +131,9 @@ def test_lsforce_gfs():
     print('Grabbing GFs...')
     force.setup(**SETUP_KWARGS)
     st_syn = force.filtered_gf_st
-    st_cps = read(os.path.join(data_dir, 'KALN_filtered.pkl'))  # Since no CPS install
+    st_cps = read(
+        os.path.join(data_dir, 'filtered_gf_stream.pkl')
+    )  # Since no CPS install
     print('Done')
 
     # Clean up temporary dir
