@@ -1,7 +1,7 @@
 import os
 import sys
 
-SHOW_PRIVATE = True  # Set to True to build docs for private functions, methods, etc.
+SHOW_PRIVATE = False  # Set to True to build docs for private functions, methods, etc.
 
 sys.path.insert(0, os.path.abspath('..'))
 
@@ -37,7 +37,7 @@ apidoc_output_dir = 'api'
 apidoc_separate_modules = True
 apidoc_toc_file = False
 
-autoclass_content = 'init'
+autoclass_content = 'both'
 
 autodoc_default_options = {
     'undoc-members': True,
