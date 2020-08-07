@@ -110,6 +110,7 @@ class LSForce:
         self.method = method
 
     def _get_greens(self):
+        r"""Get the Green's function Stream using either Syngine or CPS."""
 
         # Name the directory where GFs will be stored based on method
         if self.cps_model:
@@ -331,6 +332,7 @@ class LSForce:
         return st_gf
 
     def _get_greens_for_station(self, network, station, back_azimuth, distance):
+        r"""Get the Green's functions for a single station (Syngine)."""
 
         # Provide triangle STF params if we're using the triangle method
         if self.method == 'triangle':
@@ -435,6 +437,7 @@ class LSForce:
         stf_spacing=None,
         stf_data=None,
     ):
+        r"""Build a URL to be fed to Syngine."""
 
         parameters = [
             'format=miniseed',
