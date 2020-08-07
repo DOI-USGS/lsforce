@@ -14,7 +14,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(script_dir, 'data')
 
 # Read in saved input ObsPy Stream
-st_in = read(os.path.join(data_dir, 'st_in.pkl'), format='PICKLE')
+st_in = read(os.path.join(data_dir, 'input_stream.pkl'), format='PICKLE')
 
 
 def test_lsdata_st_proc():
@@ -26,7 +26,8 @@ def test_lsdata_st_proc():
 
     # Test processed Stream
     for tr, tr_baseline in zip(
-        data.st_proc, read(os.path.join(data_dir, 'st_proc.pkl'), format='PICKLE')
+        data.st_proc,
+        read(os.path.join(data_dir, 'processed_stream.pkl'), format='PICKLE'),
     ):
         print(f'Testing {tr.id}...')
         np.testing.assert_allclose(
