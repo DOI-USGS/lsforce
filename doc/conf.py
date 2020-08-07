@@ -35,8 +35,9 @@ apidoc_output_dir = 'api'
 apidoc_separate_modules = True
 apidoc_toc_file = False
 
+autoclass_content = 'init'
+
 autodoc_default_options = {
-    'special-members': '__init__',
     'undoc-members': True,
 }
 
