@@ -1918,7 +1918,7 @@ def _makeshiftmat(c, shiftby, size1):
     r"""Build matrix that can be used for shifting of overlapping triangles.
 
     Used for triangle method. Signal goes across rows and each shift is a new column
-    (opposite orientation to :func:`_makeconvmat()`)
+    (opposite orientation to :func:`_makeconvmat`)
 
     Args:
         c: Array of data (usually Green's function)

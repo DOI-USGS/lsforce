@@ -196,8 +196,8 @@ class LSTrajectory:
 
         Either provide a mass or a target horizontal runout length. If a length is
         provided, the code will find the mass that achieves this length. Calls
-        :meth:`~lsforce.lstrajectory.LSTrajectory._trajectory_automass()`. See
-        :meth:`~lsforce.lstrajectory.LSTrajectory.__init__()` for description of
+        :meth:`~lsforce.lstrajectory.LSTrajectory._trajectory_automass`. See
+        :class:`~lsforce.lstrajectory.LSTrajectory` for description of
         arguments.
         """
 
@@ -299,7 +299,7 @@ class LSTrajectory:
         duration=None,
         detrend=None,
     ):
-        r"""Calls :meth:`~lsforce.lstrajectory.LSTrajectory._integrate_acceleration()`.
+        r"""Calls :meth:`~lsforce.lstrajectory.LSTrajectory._integrate_acceleration`.
         """
 
         # Check args
