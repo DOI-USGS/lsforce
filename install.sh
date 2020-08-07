@@ -129,6 +129,13 @@ then
     echo 'Failed to upgrade pip. Trying to continue...'
 fi
 
+# If user supplied the developer flag, install versioneer via pip
+if [ "$1" == 1 ]
+then
+    echo 'Installing versioneer via pip'
+    pip install versioneer
+fi
+
 # Try to install this package
 echo
 echo "Installing $PACKAGE_NAME"
