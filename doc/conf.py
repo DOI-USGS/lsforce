@@ -1,6 +1,8 @@
 import os
 import sys
 
+SHOW_PRIVATE = True  # Set to True to build docs for private functions, methods, etc.
+
 sys.path.insert(0, os.path.abspath('..'))
 
 project = 'lsforce'
@@ -40,6 +42,8 @@ autoclass_content = 'init'
 autodoc_default_options = {
     'undoc-members': True,
 }
+if SHOW_PRIVATE:
+    autodoc_default_options['private-members'] = True
 
 todo_include_todos = True
 
