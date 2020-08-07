@@ -93,6 +93,7 @@ DEVELOPER_PACKAGES=(
     'sphinx_rtd_theme'
     'sphinxcontrib-apidoc'
     'spyder'
+    'versioneer'
 )
 
 # If user supplied the developer flag, add developer packages to package list
@@ -127,13 +128,6 @@ fi
 if ! pip install --upgrade pip
 then
     echo 'Failed to upgrade pip. Trying to continue...'
-fi
-
-# If user supplied the developer flag, install versioneer via pip
-if [ "$1" == 1 ]
-then
-    echo 'Installing versioneer via pip'
-    pip install versioneer
 fi
 
 # Try to install this package
