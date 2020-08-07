@@ -1,5 +1,7 @@
 import os
 import sys
+from lsforce import __version__
+import datetime
 
 SHOW_PRIVATE = False  # Set to True to build docs for private functions, methods, etc.
 
@@ -7,7 +9,12 @@ sys.path.insert(0, os.path.abspath('..'))
 
 project = 'lsforce'
 
-html_show_copyright = False
+author = 'Kate E. Allstadt and Liam Toney'
+
+copyright = f'{datetime.date.today().year}, {author}'
+
+version = __version__
+release = __version__
 
 extensions = [
     'sphinx.ext.autodoc',
@@ -18,7 +25,6 @@ extensions = [
     'sphinxcontrib.apidoc',
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
-    'sphinx_markdown_tables',
 ]
 
 # List of patterns, relative to source directory, that match files and
