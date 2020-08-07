@@ -29,7 +29,7 @@ INVERT_KWARGS = dict(
 
 # Get location of test data
 script_dir = os.path.dirname(os.path.realpath(__file__))
-data_dir = os.path.join(script_dir, 'data', 'test_lsforce')
+data_dir = os.path.join(script_dir, 'data')
 
 # Read in saved LSData object, since we're just testing LSForce here (note that this
 # LSData object has it's "st_orig" attribute removed to save space!)
