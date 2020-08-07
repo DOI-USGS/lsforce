@@ -72,8 +72,6 @@ class LSForce:
         alpha: Regularization parameter that was used
         alphafit (dict): Dictionary with keys ``'alphas'``, ``'fit'``, and ``'size'``
             specifying regularization parameters tested
-
-    .. automethod:: _tikinvert
     """
 
     def __init__(
