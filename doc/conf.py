@@ -1,7 +1,8 @@
+import datetime
 import os
 import sys
+
 from lsforce import __version__
-import datetime
 
 SHOW_PRIVATE = False  # Set to True to build docs for private functions, methods, etc.
 
