@@ -770,7 +770,10 @@ class LSForce:
         jackknife=False,
         num_iter=200,
         frac_delete=0.5,
-        **kwargs,
+        alphaset=None,
+        zero_scaler=2.0,
+        zero_taper_length=20.0,
+        tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
         r"""Performs single-force inversion using Tikhonov regularization.
 
@@ -792,13 +795,27 @@ class LSForce:
             num_iter (int): Number of jackknife iterations to perform
             frac_delete (int or float): Fraction (out of 1) of data to discard for each
                 iteration
-            **kwargs: Additional keyword arguments to be passed on to the inversion
-                method
+            alphaset (int or float): Set regularization parameter. If `None`, will
+                search for best alpha using the L-curve method
+            zero_scaler (int or float): Relative strength of zero constraint from
+                0 to 10. The lower the number, the weaker
+                the constraint. Values up to 30 are technically allowed but discouraged
+                because high `zero_scaler` values risk the addition of high frequency
+                oscillations due to the sudden release of the constraint
+            zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
+                Tapers that are too short can result in sharp spiky artifacts
+            tikhonov_ratios (list or tuple): Proportion each regularization method
+                contributes to the overall regularization effect, where values
+                correspond to [0th order, 1st order, 2nd order]. Must sum to 1
         """
 
-        # Check inputs for consistency
+        # Check inputs
         if impose_zero and not zero_time:
             raise ValueError('impose_zero set to True but no zero_time provided.')
+        if zero_scaler < 0.0 or zero_scaler > 30.0:
+            raise ValueError('zero_scaler cannot be less than 0 or more than 30')
+        if np.sum(tikhonov_ratios) != 1.0:
+            raise ValueError('Tikhonov ratios must add to 1.')
 
         # Save input choices
         self.add_to_zero = add_to_zero
@@ -830,39 +847,6 @@ class LSForce:
             )
         else:
             self.jackknife = None
-
-        self._tikinvert(**kwargs)
-
-        self.inversion_complete = True
-
-    def _tikinvert(
-        self,
-        alphaset=None,
-        zero_scaler=2.0,
-        zero_taper_length=20.0,
-        tikhonov_ratios=(1.0, 0.0, 0.0),
-    ):
-        r"""Performs full-waveform inversion using Tikhonov regularization.
-
-        Args:
-            alphaset (int or float): Set regularization parameter. If `None`, will
-                search for best alpha using the L-curve method
-            zero_scaler (int or float): Relative strength of zero constraint from
-                0 to 10. The lower the number, the weaker
-                the constraint. Values up to 30 are technically allowed but discouraged
-                because high `zero_scaler` values risk the addition of high frequency
-                oscillations due to the sudden release of the constraint
-            zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
-                Tapers that are too short can result in sharp spiky artifacts
-            tikhonov_ratios (list or tuple): Proportion each regularization method
-                contributes to the overall regularization effect, where values
-                correspond to [0th order, 1st order, 2nd order]. Must sum to 1
-        """
-        if zero_scaler < 0.0 or zero_scaler > 30.0:
-            raise ValueError('zero_scaler cannot be less than 0 or more than 30')
-
-        if np.sum(tikhonov_ratios) != 1.0:
-            raise ValueError('Tikhonov ratios must add to 1.')
 
         if self.W is not None:
             Ghat = self.W.dot(self.G)
@@ -1138,6 +1122,8 @@ class LSForce:
                 f'min {self.jackknife.VR_all.min():2.0f}, '
                 f'median {np.median(self.jackknife.VR_all):2.0f}'
             )
+
+        self.inversion_complete = True
 
     def plot_fits(self, equal_scale=True, xlim=None):
         r"""Create a plot showing the model-produced waveform fit to the data.
