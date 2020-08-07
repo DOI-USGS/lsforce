@@ -11,7 +11,7 @@ RTOL = 3e-7
 
 # Get location of test data
 script_dir = os.path.dirname(os.path.realpath(__file__))
-data_dir = os.path.join(script_dir, 'data', 'test_lsdata')
+data_dir = os.path.join(script_dir, 'data')
 
 # Read in saved input ObsPy Stream
 st_in = read(os.path.join(data_dir, 'st_in.pkl'), format='PICKLE')
