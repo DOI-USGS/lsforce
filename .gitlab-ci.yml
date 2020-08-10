@@ -7,7 +7,7 @@ Install and test:
     - source /etc/profile.d/conda.sh
     - conda config --add channels conda-forge
     - conda install --yes cartopy notebook obspy pyqt xarray
-    - conda install --yes black isort pytest-cov
+    - conda install --yes black isort pytest-cov pytest-mpl
     - pip install --editable .
     # Run tests
     - black --skip-string-normalization --check .

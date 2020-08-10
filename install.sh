@@ -88,6 +88,7 @@ DEVELOPER_PACKAGES=(
     'ipython'
     'isort'
     'pytest-cov'
+    'pytest-mpl'
     'recommonmark'
     'sphinx'
     'sphinx_rtd_theme'
