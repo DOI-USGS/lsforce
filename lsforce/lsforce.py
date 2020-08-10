@@ -773,7 +773,7 @@ class LSForce:
         jackknife=False,
         num_iter=200,
         frac_delete=0.5,
-        alphaset=None,
+        alpha=None,
         zero_scaler=2.0,
         zero_taper_length=20.0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
@@ -798,8 +798,8 @@ class LSForce:
             num_iter (int): Number of jackknife iterations to perform
             frac_delete (int or float): Fraction (out of 1) of data to discard for each
                 iteration
-            alphaset (int or float): Set regularization parameter. If `None`, will
-                search for best alpha using the L-curve method
+            alpha (int or float): Set regularization parameter. If `None`, will search
+                for best alpha using the L-curve method
             zero_scaler (int or float): Relative strength of zero constraint from
                 0 to 10. The lower the number, the weaker
                 the constraint. Values up to 30 are technically allowed but discouraged
@@ -966,8 +966,6 @@ class LSForce:
         else:
             A3 = None
 
-        if alphaset is not None:
-            alpha = alphaset
         dhat = dhat.T
 
         # Build roughening matrix
@@ -991,17 +989,15 @@ class LSForce:
             L2 = 0.0
             L2part = 0.0
 
-        if alphaset is None:
+        if not alpha:
             alpha, fit1, size1, alphas = _find_alpha(
                 Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios
             )
             print(f'best alpha is {alpha:6.1e}')
-            self.alpha = alpha
             self.alphafit['alphas'] = alphas
             self.alphafit['fit'] = fit1
             self.alphafit['size'] = size1
-        else:
-            self.alpha = alpha
+        self.alpha = alpha
 
         Apart = Ghat.conj().T @ Ghat
 
