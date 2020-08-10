@@ -12,7 +12,7 @@ Install and test:
     # Run tests
     - black --skip-string-normalization --check .
     - isort --conda-env base --check-only .
-    - pytest --capture=no --cov-report term --cov-report html:cov_html --cov=lsforce tests/
+    - pytest --cov-report html:cov_html tests
   artifacts:
     paths:
       - cov_html
