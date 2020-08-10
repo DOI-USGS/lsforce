@@ -32,7 +32,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(script_dir, 'data')
 
 # Read in saved LSData object, since we're just testing LSForce here (note that this
-# LSData object has it's "st_orig" attribute removed to save space!)
+# LSData object has its "st_orig" attribute removed to save space!)
 with open(os.path.join(data_dir, 'lsdata.pkl'), 'rb') as f:
     data = pickle.load(f)
 
