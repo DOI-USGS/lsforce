@@ -85,7 +85,7 @@ installed the developer tools (`bash install.sh 1`), which are required for test
 Then:
 ```shell
 conda activate lsforce
-pytest tests
+pytest
 ```
 
 Citation

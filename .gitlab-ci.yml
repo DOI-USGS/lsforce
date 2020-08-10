@@ -12,7 +12,7 @@ Install and test:
     # Run tests
     - black --skip-string-normalization --check .
     - isort --conda-env base --check-only .
-    - pytest --cov-report html:cov_html tests
+    - pytest --cov-report html:cov_html
   artifacts:
     paths:
       - cov_html
