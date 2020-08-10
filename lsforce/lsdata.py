@@ -211,7 +211,7 @@ class LSData:
             facecolor=cfeature.COLORS['land'],
             zorder=1,
         )
-        ax.background_patch.set_facecolor(cfeature.COLORS['water'])
+        ax.patch.set_facecolor(cfeature.COLORS['water'])
         ax.add_feature(
             cfeature.LAKES,
             facecolor=cfeature.COLORS['water'],
