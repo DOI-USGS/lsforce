@@ -18,10 +18,10 @@ data_dir = os.path.join(script_dir, 'data')
 # Read in saved input ObsPy Stream
 st_in = read(os.path.join(data_dir, 'input_stream.pkl'), format='PICKLE')
 
-# Read in saved LSData object to test its plotting methods (note that this LSData object
-# has its "st_orig" attribute removed to save space!)
-with open(os.path.join(data_dir, 'lsdata.pkl'), 'rb') as f:
-    lsdata = pickle.load(f)
+# Grab LSForce object from test data dir (really just to grab its "data" attribute,
+# which is an LSData object, to use for LSData plotting tests)
+with open(os.path.join(data_dir, 'lsforce.pkl'), 'rb') as f:
+    lsdata = pickle.load(f).data
 
 
 def test_lsdata_st_proc():
