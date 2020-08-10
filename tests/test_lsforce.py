@@ -4,10 +4,14 @@ import pickle
 import tempfile
 
 import numpy as np
+import pytest
 from obspy import read
 
 from lsforce import LSForce
 from lsforce.lsforce import GF_STARTTIME
+
+# Set kwargs for all pytest-mpl tests
+PYTEST_MPL_KWARGS = dict(style='default', savefig_kwargs=dict(bbox_inches='tight'))
 
 # Toggle creation of test data
 GENERATE_LSFORCE_PICKLE = False
@@ -124,7 +128,7 @@ def test_lsforce_gfs():
     print('Testing Syngine and CPS Green\'s functions...')
 
     # Create a single-station LSData object
-    gf_data = copy.copy(lsforce.data)
+    gf_data = copy.deepcopy(lsforce.data)
     for tr in gf_data.st_proc:
         if tr.stats.station != 'KALN':
             gf_data.st_proc.remove(tr)
@@ -162,3 +166,18 @@ def test_lsforce_gfs():
     for tr_syn, tr_cps in zip(st_syn, st_cps):
         print(f'Testing {tr_syn.id}...')
         np.testing.assert_allclose(tr_syn.data, tr_cps.data, atol=GF_ATOL)
+
+
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
+def test_lsforce_plot_fits():
+    return lsforce.plot_fits(xlim=(-50, 250))
+
+
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
+def test_lsforce_plot_forces():
+    return lsforce.plot_forces(xlim=(-50, 250))
+
+
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
+def test_lsforce_plot_angle_magnitude():
+    return lsforce.plot_angle_magnitude(xlim=(-50, 250))
