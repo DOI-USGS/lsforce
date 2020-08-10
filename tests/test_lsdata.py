@@ -7,6 +7,9 @@ from obspy import read
 
 from lsforce import LSData
 
+# Set kwargs for all pytest-mpl tests
+PYTEST_MPL_KWARGS = dict(style='default', savefig_kwargs=dict(bbox_inches='tight'))
+
 # Relative tolerance for test, see:
 # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html
 RTOL = 3e-7
@@ -42,11 +45,11 @@ def test_lsdata_st_proc():
         )
 
 
-@pytest.mark.mpl_image_compare(savefig_kwargs=dict(bbox_inches='tight'))
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_lsdata_plot_data():
     return lsdata.plot_data(period_range=(15, 80))
 
 
-@pytest.mark.mpl_image_compare(savefig_kwargs=dict(bbox_inches='tight'))
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_lsdata_plot_stations():
     return lsdata.plot_stations(label_stations=True)
