@@ -9,6 +9,9 @@ from obspy import read
 from lsforce import LSForce
 from lsforce.lsforce import GF_STARTTIME
 
+# Toggle creation of test data
+GENERATE_LSFORCE_PICKLE = False
+
 # Relative tolerance for test, see:
 # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html
 RTOL = 1e-6
@@ -31,10 +34,11 @@ INVERT_KWARGS = dict(
 script_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(script_dir, 'data')
 
-# Read in saved LSData object, since we're just testing LSForce here (note that this
-# LSData object has its "st_orig" attribute removed to save space!)
-with open(os.path.join(data_dir, 'lsdata.pkl'), 'rb') as f:
-    data = pickle.load(f)
+# Grab LSForce object from test data dir to use for LSForce plotting tests (and to grab
+# its "data" attribute, which is an LSData object, to use as input for LSForce creation
+# tests
+with open(os.path.join(data_dir, 'lsforce.pkl'), 'rb') as f:
+    lsforce = pickle.load(f)
 
 
 def test_lsforce_full():
@@ -46,7 +50,7 @@ def test_lsforce_full():
 
     # Create LSForce object
     force = LSForce(
-        data=data,
+        data=lsforce.data,
         data_sampling_rate=1,
         nickname='full',
         main_folder=temp_dir.name,
@@ -66,6 +70,12 @@ def test_lsforce_full():
     # Clean up temporary dir
     temp_dir.cleanup()
 
+    # Generate a new LSForce object to use for testing data if requested
+    if GENERATE_LSFORCE_PICKLE:
+        del force.G  # Delete this to save a ton of space
+        with open(os.path.join(data_dir, 'lsforce_NEW.pkl'), 'wb') as f:
+            pickle.dump(force, f)
+
     # Test resulting model
     print('Testing...')
     np.testing.assert_allclose(
@@ -82,7 +92,7 @@ def test_lsforce_triangle():
 
     # Create LSForce object
     force = LSForce(
-        data=data,
+        data=lsforce.data,
         data_sampling_rate=1,
         nickname='triangle',
         main_folder=temp_dir.name,
@@ -114,7 +124,7 @@ def test_lsforce_gfs():
     print('Testing Syngine and CPS Green\'s functions...')
 
     # Create a single-station LSData object
-    gf_data = copy.copy(data)
+    gf_data = copy.copy(lsforce.data)
     for tr in gf_data.st_proc:
         if tr.stats.station != 'KALN':
             gf_data.st_proc.remove(tr)
