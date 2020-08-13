@@ -16,8 +16,8 @@ from obspy import Stream, Trace, UTCDateTime, read
 from obspy.core import AttribDict
 from scipy.signal.windows import triang
 
-# TODO: This is the "beta" URL!
-SYNGINE_BASE_URL = 'http://service.iris.washington.edu/iriswsbeta/syngine/1/query?'
+# Base URL for Syngine queries
+SYNGINE_BASE_URL = 'http://service.iris.edu/irisws/syngine/1/query?'
 
 # [s] Sampling interval for Green's functions downloaded from Syngine
 SYNGINE_DT = 0.25
