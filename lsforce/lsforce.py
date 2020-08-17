@@ -74,9 +74,7 @@ class LSForce:
             specifying regularization parameters tested
     """
 
-    def __init__(
-        self, data, data_sampling_rate, nickname=None, main_folder=None, method='full'
-    ):
+    def __init__(self, data, data_sampling_rate, main_folder=None, method='full'):
         r"""Create an LSForce object.
 
         Args:
@@ -85,7 +83,6 @@ class LSForce:
             data_sampling_rate (int or float): [Hz] Samples per second to use in
                 inversion. All data will be resampled to this rate, and Green's
                 functions will be created with this rate
-            nickname (str): Nickname for this event, used for convenient naming of files
             main_folder (str): If `None`, will use current folder
             method (str): How to parameterize the force-time function. One of `'full'`
                 — full waveform inversion using Tikhonov regularization (L2 norm
@@ -95,7 +92,6 @@ class LSForce:
 
         self.data = data
         self.data_sampling_rate = data_sampling_rate
-        self.nickname = nickname
         self.gf_computed = False
         self.inversion_complete = False
 
@@ -767,32 +763,32 @@ class LSForce:
     def invert(
         self,
         zero_time=None,
-        impose_zero=False,
+        impose_zero_start=False,
         add_to_zero=False,
-        max_duration=None,
+        duration=None,
         jackknife=False,
         num_iter=200,
         frac_delete=0.5,
         alpha=None,
         zero_scaler=2.0,
-        zero_taper_length=20.0,
+        zero_start_taper_length=20.0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
         r"""Performs single-force inversion using Tikhonov regularization.
 
         Args:
             zero_time (int or float): [s] Optional estimated start time of real
-                (avalanche-related) part of signal, in seconds from start time of
+                (landslide-related) part of signal, in seconds from start time of
                 seismic data. Useful for making figures showing selected start time and
-                also for the `impose_zero` option
-            impose_zero (bool): Adds weighting matrix to suggest that forces tend
+                also for the `impose_zero_start` option
+            impose_zero_start (bool): Adds weighting matrix to suggest that forces tend
                 towards zero prior to `zero_time` (`zero_time` must be defined)
             add_to_zero (bool): Adds weighting matrix to suggest that all components of
                 force integrate to zero
-            max_duration (int or float): Maximum duration allowed for the event,
-                starting at `zero_time` if defined, otherwise starting from the
-                beginning of the seismic data. Forces after this will tend towards zero.
-                This helps tamp down artifacts due to edge effects, etc.
+            duration (int or float): Maximum duration allowed for the event, starting at
+                `zero_time` if defined, otherwise starting from the beginning of the
+                seismic data. Forces after this will tend towards zero. This helps tamp
+                down artifacts due to edge effects, etc.
             jackknife (bool): If `True`, perform `num_iter` additional iterations of the
                 model while randomly discarding `frac_delete` of the data
             num_iter (int): Number of jackknife iterations to perform
@@ -800,21 +796,23 @@ class LSForce:
                 iteration
             alpha (int or float): Set regularization parameter. If `None`, will search
                 for best alpha using the L-curve method
-            zero_scaler (int or float): Relative strength of zero constraint from
-                0 to 10. The lower the number, the weaker
-                the constraint. Values up to 30 are technically allowed but discouraged
-                because high `zero_scaler` values risk the addition of high frequency
-                oscillations due to the sudden release of the constraint
-            zero_taper_length (int or float): [s] Length of taper for `zero_scaler`.
-                Tapers that are too short can result in sharp spiky artifacts
+            zero_scaler (int or float): Relative strength of zero constraint for
+                `impose_zero_start` and `duration` options. Ranges from 0 to 10. The
+                lower the number, the weaker the constraint. Values up to 30 are
+                technically allowed but discouraged because high `zero_scaler` values
+                risk the addition of high frequency oscillations due to the sudden
+                release of the constraint
+            zero_start_taper_length (int or float): [s] Length of taper for
+                `impose_zero_start` option. Tapers that are too short can result in
+                sharp spiky artifacts
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
         """
 
         # Check inputs
-        if impose_zero and not zero_time:
-            raise ValueError('impose_zero set to True but no zero_time provided.')
+        if impose_zero_start and not zero_time:
+            raise ValueError('impose_zero_start set to True but no zero_time provided.')
         if zero_scaler < 0.0 or zero_scaler > 30.0:
             raise ValueError('zero_scaler cannot be less than 0 or more than 30')
         if np.sum(tikhonov_ratios) != 1.0:
@@ -823,8 +821,8 @@ class LSForce:
         # Save input choices
         self.add_to_zero = add_to_zero
         self.zero_time = zero_time
-        self.impose_zero = impose_zero
-        self.max_duration = max_duration
+        self.impose_zero_start = impose_zero_start
+        self.duration = duration
 
         # Initialize (also serves to clear any previous results if this is a rerun)
         self.model = None
@@ -882,14 +880,14 @@ class LSForce:
 
         scaler = Ghatnorm * (zero_scaler / 30.0)
 
-        if self.impose_zero:  # Tell model when there should be no forces
+        if self.impose_zero_start:  # Tell model when there should be no forces
             len2 = int(((self.zero_time + self.T0) * self.force_sampling_rate))
             if self.method == 'triangle':
                 # No taper
                 vals2 = np.hstack((np.ones(len2), np.zeros(gl - len2)))
             elif self.method == 'full':
                 # Taper
-                len3 = int(zero_taper_length * self.force_sampling_rate)
+                len3 = int(zero_start_taper_length * self.force_sampling_rate)
                 temp = np.hanning(2 * len3)
                 temp = temp[len3:]
                 vals2 = np.hstack((np.ones(len2 - len3), temp))
@@ -914,13 +912,13 @@ class LSForce:
         else:
             A2 = None
 
-        if self.max_duration is not None:
+        if self.duration is not None:
             if self.zero_time is None:
                 zerotime = 0.0
             else:
                 zerotime = self.zero_time
             startind = int(
-                (zerotime + self.T0 + self.max_duration) * self.force_sampling_rate
+                (zerotime + self.T0 + self.duration) * self.force_sampling_rate
             )
             if self.method == 'triangle':
                 vals3 = np.zeros(gl)
@@ -1391,13 +1389,11 @@ class LSForce:
                 ax2.set_ylim(ylim)
                 ax3.set_ylim(ylim)
 
-            if self.impose_zero:
+            if self.impose_zero_start:
                 [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
-            if self.max_duration is not None:
+            if self.duration is not None:
                 [
-                    axe.axvline(
-                        self.max_duration, color='gray', linestyle='solid', lw=3
-                    )
+                    axe.axvline(self.duration, color='gray', linestyle='solid', lw=3)
                     for axe in axes
                 ]
             if highf_tr is not None:
@@ -1470,10 +1466,10 @@ class LSForce:
             ax.grid(True)
             ax.set_ylabel('Force (N)')
             ax.set_ylim(ylim)
-            if self.impose_zero:
+            if self.impose_zero_start:
                 ax.axvline(0, color='gray', linestyle='solid', lw=3)
-            if self.max_duration is not None:
-                ax.axvline(self.max_duration, color='gray', linestyle='solid', lw=3)
+            if self.duration is not None:
+                ax.axvline(self.duration, color='gray', linestyle='solid', lw=3)
 
         t0 = self.data.st_proc[0].stats.starttime
         if self.zero_time:
@@ -1625,11 +1621,11 @@ class LSForce:
             [axe.set_xlim(xlim) for axe in axes]
             [axe.grid(True) for axe in axes]
 
-        if self.impose_zero:
+        if self.impose_zero_start:
             [axe.axvline(0, color='gray', linestyle='solid', lw=3) for axe in axes]
-        if self.max_duration is not None:
+        if self.duration is not None:
             [
-                axe.axvline(self.max_duration, color='gray', linestyle='solid', lw=3)
+                axe.axvline(self.duration, color='gray', linestyle='solid', lw=3)
                 for axe in axes
             ]
 
@@ -1650,6 +1646,7 @@ class LSForce:
 
     def saverun(
         self,
+        prefix,
         filepath=None,
         timestamp=False,
         figs2save=None,
@@ -1660,6 +1657,7 @@ class LSForce:
         r"""Save a force inversion run for later use.
 
         Args:
+            prefix (str): Run name to prepend to all output files
             filepath (str): Full path to directory where all files should be saved. If
                 `None`, will use `self.main_folder`
             timestamp (bool): Name results with current time to avoid overwriting
@@ -1685,7 +1683,7 @@ class LSForce:
 
         if timestamp:
             filename = '{}_{:1.0f}-{:1.0f}sec_{}{}'.format(
-                self.nickname,
+                prefix,
                 self.filter['periodmin'],
                 self.filter['periodmax'],
                 jk,
@@ -1693,7 +1691,7 @@ class LSForce:
             )
         else:
             filename = '{}_{:1.0f}-{:1.0f}sec_{}'.format(
-                self.nickname, self.filter['periodmin'], self.filter['periodmax'], jk,
+                prefix, self.filter['periodmin'], self.filter['periodmax'], jk
             )
 
         with open(os.path.join(filepath, f'{filename}.pickle'), 'wb') as f:

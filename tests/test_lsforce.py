@@ -27,7 +27,7 @@ GF_ATOL = 1e-18
 SETUP_KWARGS = dict(period_range=(15, 80), zerophase=True, syngine_model='iasp91_2s')
 INVERT_KWARGS = dict(
     zero_time=119,
-    impose_zero=True,
+    impose_zero_start=True,
     add_to_zero=True,
     alpha=4.8e-17,
     zero_scaler=15,
@@ -56,7 +56,6 @@ def test_lsforce_full():
     force = LSForce(
         data=lsforce.data,
         data_sampling_rate=1,
-        nickname='full',
         main_folder=temp_dir.name,
         method='full',
     )
@@ -98,7 +97,6 @@ def test_lsforce_triangle():
     force = LSForce(
         data=lsforce.data,
         data_sampling_rate=1,
-        nickname='triangle',
         main_folder=temp_dir.name,
         method='triangle',
     )
@@ -137,9 +135,7 @@ def test_lsforce_gfs():
     temp_dir = tempfile.TemporaryDirectory()
 
     # Create LSForce object
-    force = LSForce(
-        data=gf_data, data_sampling_rate=1, nickname='gfs', main_folder=temp_dir.name,
-    )
+    force = LSForce(data=gf_data, data_sampling_rate=1, main_folder=temp_dir.name)
 
     # Obtain GFs
     print('Grabbing GFs...')
