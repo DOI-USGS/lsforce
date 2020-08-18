@@ -31,6 +31,14 @@ GF_STARTTIME = UTCDateTime(1900, 1, 1)
 # Convert m/s to μm/s
 UMS_PER_MS = 1e6
 
+# Colors for force components
+Z_COLOR = 'blue'
+N_COLOR = 'red'
+E_COLOR = 'green'
+
+# Alpha level for jackknife lines and patches
+JK_ALPHA = 0.2
+
 
 class LSForce:
     r"""Class for performing force inversions.
@@ -1104,12 +1112,15 @@ class LSForce:
                 self.jackknife.E.all.append(Ef.copy())
                 self.jackknife.VR_all.append(VR.copy())
 
-            self.jackknife.Z.lower = np.percentile(self.jackknife.Z.all, 2.5, axis=0)
-            self.jackknife.Z.upper = np.percentile(self.jackknife.Z.all, 97.5, axis=0)
-            self.jackknife.E.lower = np.percentile(self.jackknife.E.all, 2.5, axis=0)
-            self.jackknife.E.upper = np.percentile(self.jackknife.E.all, 97.5, axis=0)
-            self.jackknife.N.lower = np.percentile(self.jackknife.N.all, 2.5, axis=0)
-            self.jackknife.N.upper = np.percentile(self.jackknife.N.all, 97.5, axis=0)
+            # Calculate bounds of jackknife runs (these bounds do not necessarily
+            # represent a single run and in fact are more likely to be composites of
+            # several runs)
+            self.jackknife.Z.lower = np.min(self.jackknife.Z.all, axis=0)
+            self.jackknife.Z.upper = np.max(self.jackknife.Z.all, axis=0)
+            self.jackknife.E.lower = np.min(self.jackknife.E.all, axis=0)
+            self.jackknife.E.upper = np.max(self.jackknife.E.all, axis=0)
+            self.jackknife.N.lower = np.min(self.jackknife.N.all, axis=0)
+            self.jackknife.N.upper = np.max(self.jackknife.N.all, axis=0)
 
             self.jackknife.VR_all = np.array(self.jackknife.VR_all)
 
@@ -1300,14 +1311,13 @@ class LSForce:
                         nrows=5, figsize=(10, 12)
                     )
 
-            ax1.plot(tvec, self.Z, 'red', linewidth=1)
+            ax1.plot(tvec, self.Z, Z_COLOR, linewidth=1)
             ax1.set_ylabel('Up force (N)')
-            ax2.plot(tvec, self.N, 'green', linewidth=1)
+            ax2.plot(tvec, self.N, N_COLOR, linewidth=1)
             ax2.set_ylabel('North force (N)')
-            ax3.plot(tvec, self.E, 'blue', linewidth=1)
+            ax3.plot(tvec, self.E, E_COLOR, linewidth=1)
             ax3.set_ylabel('East force (N)')
 
-            x = np.concatenate((tvec, tvec[::-1]))
             if self.jackknife is not None:
                 if jackshowall:
                     for Z, N, E in zip(
@@ -1315,26 +1325,19 @@ class LSForce:
                         self.jackknife.N.all,
                         self.jackknife.E.all,
                     ):
-                        ax1.plot(self.tvec, Z, 'red', alpha=0.2, linewidth=1)
-                        ax2.plot(self.tvec, N, 'green', alpha=0.2, linewidth=1)
-                        ax3.plot(self.tvec, E, 'blue', alpha=0.2, linewidth=1)
+                        ax1.plot(self.tvec, Z, Z_COLOR, alpha=JK_ALPHA, linewidth=1)
+                        ax2.plot(self.tvec, N, N_COLOR, alpha=JK_ALPHA, linewidth=1)
+                        ax3.plot(self.tvec, E, E_COLOR, alpha=JK_ALPHA, linewidth=1)
                 else:
-                    y = np.concatenate((Zlower, Zupper[::-1]))
-                    poly = plt.Polygon(
-                        list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
+                    ax1.fill_between(
+                        tvec, Zlower, Zupper, facecolor=Z_COLOR, alpha=JK_ALPHA
                     )
-                    ax1.add_patch(poly)
-                    y = np.concatenate((Nlower, Nupper[::-1]))
-                    poly = plt.Polygon(
-                        list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
+                    ax2.fill_between(
+                        tvec, Nlower, Nupper, facecolor=N_COLOR, alpha=JK_ALPHA
                     )
-                    ax2.add_patch(poly)
-                    y = np.concatenate((Elower, Eupper[::-1]))
-                    poly = plt.Polygon(
-                        list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
+                    ax3.fill_between(
+                        tvec, Elower, Eupper, facecolor=E_COLOR, alpha=JK_ALPHA
                     )
-                    ax3.add_patch(poly)
-
             if highf_tr is not None:
                 if type(highf_tr) != Trace:
                     raise TypeError('highf_tr is not an ObsPy Trace.')
@@ -1430,28 +1433,14 @@ class LSForce:
                 else:
                     ax4.annotate(highf_tr.id, **annot_kwargs)
 
-            ax.plot(tvec, self.Z, 'red', label='Up')
-            ax.plot(tvec, self.N, 'green', label='North')
-            ax.plot(tvec, self.E, 'blue', label='East')
+            ax.plot(tvec, self.Z, Z_COLOR, label='Up')
+            ax.plot(tvec, self.N, N_COLOR, label='North')
+            ax.plot(tvec, self.E, E_COLOR, label='East')
 
             if self.jackknife is not None:
-                x = np.concatenate((tvec, tvec[::-1]))
-
-                y = np.concatenate((Zlower, Zupper[::-1]))
-                poly = plt.Polygon(
-                    list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
-                )
-                ax.add_patch(poly)
-                y = np.concatenate((Nlower, Nupper[::-1]))
-                poly = plt.Polygon(
-                    list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
-                )
-                ax.add_patch(poly)
-                y = np.concatenate((Elower, Eupper[::-1]))
-                poly = plt.Polygon(
-                    list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
-                )
-                ax.add_patch(poly)
+                ax.fill_between(tvec, Zlower, Zupper, facecolor=Z_COLOR, alpha=JK_ALPHA)
+                ax.fill_between(tvec, Nlower, Nupper, facecolor=N_COLOR, alpha=JK_ALPHA)
+                ax.fill_between(tvec, Elower, Eupper, facecolor=E_COLOR, alpha=JK_ALPHA)
             if xlim:
                 ax.set_xlim(xlim)
 
@@ -1520,27 +1509,14 @@ class LSForce:
 
         # Plot the inversion result in the first one
         ax = fig.add_subplot(411)
-        ax.plot(tvec, self.Z, 'red', label='Up')
-        ax.plot(tvec, self.N, 'green', label='North')
-        ax.plot(tvec, self.E, 'blue', label='East')
+        ax.plot(tvec, self.Z, Z_COLOR, label='Up')
+        ax.plot(tvec, self.N, N_COLOR, label='North')
+        ax.plot(tvec, self.E, E_COLOR, label='East')
 
         if self.jackknife is not None:
-            x = np.concatenate((tvec, tvec[::-1]))
-            y = np.concatenate((Zlower, Zupper[::-1]))
-            poly = plt.Polygon(
-                list(zip(x, y)), facecolor='red', edgecolor='none', alpha=0.2
-            )
-            ax.add_patch(poly)
-            y = np.concatenate((Nlower, Nupper[::-1]))
-            poly = plt.Polygon(
-                list(zip(x, y)), facecolor='green', edgecolor='none', alpha=0.2
-            )
-            ax.add_patch(poly)
-            y = np.concatenate((Elower, Eupper[::-1]))
-            poly = plt.Polygon(
-                list(zip(x, y)), facecolor='blue', edgecolor='none', alpha=0.2
-            )
-            ax.add_patch(poly)
+            ax.fill_between(tvec, Zlower, Zupper, facecolor=Z_COLOR, alpha=JK_ALPHA)
+            ax.fill_between(tvec, Nlower, Nupper, facecolor=N_COLOR, alpha=JK_ALPHA)
+            ax.fill_between(tvec, Elower, Eupper, facecolor=E_COLOR, alpha=JK_ALPHA)
 
         if xlim:
             ax.set_xlim(xlim)
@@ -1553,31 +1529,32 @@ class LSForce:
         # Plot the magnitudes in second one
         ax1 = fig.add_subplot(412)
         Mag = np.linalg.norm(list(zip(self.Z, self.E, self.N)), axis=1)
-        ax1.plot(tvec, Mag, 'k', label='best')
+        ax1.plot(tvec, Mag, color='black', label='Best')
 
         if self.jackknife is not None:
-            MagU = np.linalg.norm(
-                list(
-                    zip(
-                        np.maximum(np.abs(Zupper), np.abs(Zlower)),
-                        np.maximum(np.abs(Eupper), np.abs(Elower)),
-                        np.maximum(np.abs(Nupper), np.abs(Nlower)),
-                    )
-                ),
-                axis=1,
-            )
-            MagL = np.linalg.norm(
-                list(
-                    zip(
-                        np.minimum(np.abs(Zupper), np.abs(Zlower)),
-                        np.minimum(np.abs(Eupper), np.abs(Elower)),
-                        np.minimum(np.abs(Nupper), np.abs(Nlower)),
-                    )
-                ),
-                axis=1,
-            )
-            ax1.plot(tvec, MagL, 'red', label='lower')
-            ax1.plot(tvec, MagU, 'red', label='upper')
+
+            # Calculate magnitude of each jackknife run
+            mag_all = [
+                np.linalg.norm(list(zip(z, e, n)), axis=1)
+                for z, e, n in zip(
+                    self.jackknife.Z.all, self.jackknife.E.all, self.jackknife.N.all
+                )
+            ]
+
+            # Plot mean magnitude as dashed line
+            Mag_mean = np.mean(mag_all, axis=0)
+            ax1.plot(tvec, Mag_mean, color='black', linestyle='--', label='Mean')
+
+            # Calculate and plot magnitude bounds as grey patch (these bounds do not
+            # necessarily represent a single run's magnitude and in fact are more likely
+            # to be composites of several runs)
+            MagL = np.min(mag_all, axis=0)
+            MagU = np.max(mag_all, axis=0)
+            ax1.fill_between(tvec, MagU, MagL, facecolor='black', alpha=JK_ALPHA)
+
+            # Add legend
+            ax1.legend()
+
         else:
             MagU = None
             MagL = None
