@@ -771,7 +771,7 @@ class LSForce:
         frac_delete=0.5,
         alpha=None,
         zero_scaler=2.0,
-        zero_start_taper_length=20.0,
+        zero_start_taper_length=0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
     ):
         r"""Performs single-force inversion using Tikhonov regularization.
@@ -803,8 +803,7 @@ class LSForce:
                 risk the addition of high frequency oscillations due to the sudden
                 release of the constraint
             zero_start_taper_length (int or float): [s] Length of taper for
-                `impose_zero_start` option. Tapers that are too short can result in
-                sharp spiky artifacts
+                `impose_zero_start` option
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
