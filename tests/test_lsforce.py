@@ -29,6 +29,7 @@ INVERT_KWARGS = dict(
     zero_time=119,
     impose_zero_start=True,
     add_to_zero=True,
+    zero_start_taper_length=20,
     alpha=4.8e-17,
     zero_scaler=15,
     tikhonov_ratios=[0.4, 0.0, 0.6],
