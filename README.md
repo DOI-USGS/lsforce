@@ -72,9 +72,9 @@ Documentation
 -------------
 
 Usage examples for the two currently-supported parameterization methods are given in the
-two [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb` and
-`example_triangle.ipynb`, which are located in the `notebooks` directory. To open the
-notebooks, run:
+three [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb`,
+`example_triangle.ipynb`, and `example_lamplugh.ipynb`, which are located in the
+`notebooks` directory. To open the notebooks, run:
 ```shell
 conda activate lsforce
 jupyter notebook notebooks
