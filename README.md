@@ -9,6 +9,20 @@ waveforms to estimate a time series vector of single forces that represents the
 equivalent forces exerted on the Earth by the landslide (see example output figure
 below).
 
+<!--
+The force-time function is created from notebooks/example_full.ipynb:
+
+import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 14})
+fig = force.plot_forces(xlim=(-50, 200));
+fig.axes[0].set_ylim(-1.2e10, 1.2e10)
+fig.savefig(
+    '../example_force_history_NEW.png',
+    bbox_inches='tight',
+    transparent=True,
+    dpi=300,
+)
+-->
 ![Example force-time function output by lsforce](example_force_history.png)
 
 Installation
