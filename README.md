@@ -10,12 +10,14 @@ equivalent forces exerted on the Earth by the landslide (see example output figu
 below).
 
 <!--
-The force-time function is created from notebooks/example_lamplugh.ipynb:
+The below example force-time function is created using the following code (run directly
+after the inversion step in notebooks/example_lamplugh.ipynb)
 
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 14})
-fig = force.plot_forces(xlim=(-20, 100));
-fig.axes[0].set_ylim(-2.5e11, 2.5e11)
+fig = force_full.plot_forces(xlim=(-20, 100));
+LIM = 2.3e11
+fig.axes[0].set_ylim(-LIM, LIM)
 fig.savefig(
     '../example_force_history_NEW.png',
     bbox_inches='tight',
