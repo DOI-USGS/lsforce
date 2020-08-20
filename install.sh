@@ -87,6 +87,7 @@ DEVELOPER_PACKAGES=(
     'black'
     'ipython'
     'isort'
+    'nbdime'
     'pytest-cov'
     'pytest-mpl'
     'recommonmark'
@@ -138,4 +139,12 @@ if ! pip install --editable .
 then
     echo 'Failed to pip install this package. Exiting.'
     exit 1
+fi
+
+# Give nbdime setup instructions if this is a developer install, see:
+# https://nbdime.readthedocs.io/en/latest/#git-integration-quickstart
+if [ "$1" == 1 ]
+then
+    echo 'To set up git integration for nbdime, run:'
+    echo 'nbdime config-git --enable --global'
 fi
