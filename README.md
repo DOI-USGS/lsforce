@@ -16,7 +16,7 @@ after the inversion step in notebooks/example_lamplugh.ipynb)
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 14})
 fig = force_full.plot_forces(xlim=(-20, 100));
-LIM = 2.3e11
+LIM = 2e11
 fig.axes[0].set_ylim(-LIM, LIM)
 fig.savefig(
     '../example_force_history_NEW.png',
