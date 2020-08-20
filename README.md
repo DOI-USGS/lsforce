@@ -10,12 +10,14 @@ equivalent forces exerted on the Earth by the landslide (see example output figu
 below).
 
 <!--
-The force-time function is created from notebooks/example_full.ipynb:
+The below example force-time function is created using the following code (run directly
+after the inversion step in notebooks/example_lamplugh.ipynb)
 
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 14})
-fig = force.plot_forces(xlim=(-50, 200));
-fig.axes[0].set_ylim(-1.2e10, 1.2e10)
+fig = force_full.plot_forces(xlim=(-20, 100));
+LIM = 2e11
+fig.axes[0].set_ylim(-LIM, LIM)
 fig.savefig(
     '../example_force_history_NEW.png',
     bbox_inches='tight',
@@ -72,9 +74,9 @@ Documentation
 -------------
 
 Usage examples for the two currently-supported parameterization methods are given in the
-two [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb` and
-`example_triangle.ipynb`, which are located in the `notebooks` directory. To open the
-notebooks, run:
+three [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb`,
+`example_triangle.ipynb`, and `example_lamplugh.ipynb`, which are located in the
+`notebooks` directory. To open the notebooks, run:
 ```shell
 conda activate lsforce
 jupyter notebook notebooks
