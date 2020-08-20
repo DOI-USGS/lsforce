@@ -314,7 +314,7 @@ class LSForce:
                         distance=stats.distance,
                     )
 
-                    # TODO: Understand why we have to invert these!
+                    # TODO: Understand why we have to flip the polarity of these!
                     for channel in 'RHF', 'RVF', 'THF':
                         for tr in st_syn.select(channel=channel):
                             tr.data *= -1
