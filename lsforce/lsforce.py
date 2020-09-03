@@ -781,7 +781,7 @@ class LSForce:
         zero_scaler=2.0,
         zero_start_taper_length=0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
-        jack_refinealpha=False,
+        jk_refine_alpha=False,
     ):
         r"""Performs single-force inversion using Tikhonov regularization.
 
@@ -816,11 +816,11 @@ class LSForce:
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
-            jack_refinealpha (bool): refine the alpha parameter used for each jackknife
+            jk_refine_alpha (bool): Refine the alpha parameter used for each jackknife
                 iteration by searching over order of magnitude around the best alpha
-                for the full solution. If False, each jackknife iteration will use the
+                for the full solution. If `False`, each jackknife iteration will use the
                 same alpha as the main solution (note that this is much faster but can
-                result in some jackkninfe iterations having depressed amplitudes)
+                result in some jackknife iterations having depressed amplitudes)
         """
 
         # Check inputs
@@ -1098,7 +1098,7 @@ class LSForce:
                 dhat1 = dhat1.T
                 Apart = Ghat1.conj().T @ Ghat1
 
-                if jack_refinealpha:
+                if jk_refine_alpha:
                     # Fine tune the alpha
                     rndalph = np.log10(self.alpha)
                     alphaj, _, _, _ = _find_alpha(
