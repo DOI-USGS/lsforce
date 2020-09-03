@@ -1745,7 +1745,7 @@ def _find_alpha(
             parameter. If `True`, time will be saved because it will only do one round
             of searching. If False, a second round will be done that searches over +/-
             one order of magnitude from the best alpha found from the first round
-        rangerough (array): low and upper range to search over in log units, if None, 
+        rangerough (array): low and upper range to search over in log units, if None,
             it will choose a range based on the norm of Ghat
         intrough (float): interval, in log units, to use for rough alpha search
         plotLcurve (bool): show Lcurve plot
