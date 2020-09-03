@@ -83,7 +83,7 @@ def test_lsforce_full():
     # Test resulting model
     print('Testing...')
     np.testing.assert_allclose(
-        force.model, np.load(os.path.join(data_dir, 'model_full.npy')), rtol=RTOL,
+        force.model, np.load(os.path.join(data_dir, 'model_full.npy')), rtol=RTOL
     )
 
 
@@ -118,7 +118,7 @@ def test_lsforce_triangle():
     # Test resulting model
     print('Testing...')
     np.testing.assert_allclose(
-        force.model, np.load(os.path.join(data_dir, 'model_triangle.npy')), rtol=RTOL,
+        force.model, np.load(os.path.join(data_dir, 'model_triangle.npy')), rtol=RTOL
     )
 
 
