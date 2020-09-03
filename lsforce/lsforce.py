@@ -1105,7 +1105,7 @@ class LSForce:
                                                   tikhonov_ratios=tikhonov_ratios,
                                                   rough=True, intrough=0.1,
                                                   rangerough=[rndalph-0.4, rndalph+0.4], 
-                                                  )
+                                                  plotLcurve=False)
                 else:
                     alphaj = self.alpha
                 alphajs.append(alphaj)
