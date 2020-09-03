@@ -40,9 +40,7 @@ def test_lsdata_st_proc():
         read(os.path.join(data_dir, 'processed_stream.pkl'), format='PICKLE'),
     ):
         print(f'Testing {tr.id}...')
-        np.testing.assert_allclose(
-            tr.data, tr_baseline.data, rtol=RTOL,
-        )
+        np.testing.assert_allclose(tr.data, tr_baseline.data, rtol=RTOL)
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
