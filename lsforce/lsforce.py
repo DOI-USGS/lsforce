@@ -781,7 +781,7 @@ class LSForce:
         zero_scaler=2.0,
         zero_start_taper_length=0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
-        jack_refinealpha=False
+        jack_refinealpha=False,
     ):
         r"""Performs single-force inversion using Tikhonov regularization.
 
@@ -1097,15 +1097,22 @@ class LSForce:
 
                 dhat1 = dhat1.T
                 Apart = Ghat1.conj().T @ Ghat1
-                
+
                 if jack_refinealpha:
                     # Fine tune the alpha
                     rndalph = np.log10(self.alpha)
-                    alphaj, _, _, _ = _find_alpha(Ghat1, dhat1, I, L1, L2,
-                                                  tikhonov_ratios=tikhonov_ratios,
-                                                  rough=True, intrough=0.1,
-                                                  rangerough=[rndalph-0.4, rndalph+0.4], 
-                                                  plotLcurve=False)
+                    alphaj, _, _, _ = _find_alpha(
+                        Ghat1,
+                        dhat1,
+                        I,
+                        L1,
+                        L2,
+                        tikhonov_ratios=tikhonov_ratios,
+                        rough=True,
+                        intrough=0.1,
+                        rangerough=[rndalph - 0.4, rndalph + 0.4],
+                        plotLcurve=False,
+                    )
                 else:
                     alphaj = self.alpha
                 alphajs.append(alphaj)
@@ -1131,7 +1138,7 @@ class LSForce:
                 self.jackknife.N.all.append(Nf.copy())
                 self.jackknife.E.all.append(Ef.copy())
                 self.jackknife.VR_all.append(VR.copy())
-            
+
             # Calculate bounds of jackknife runs (these bounds do not necessarily
             # represent a single run and in fact are more likely to be composites of
             # several runs)
@@ -1707,8 +1714,16 @@ class LSForce:
 
 
 def _find_alpha(
-    Ghat, dhat, I, L1=0, L2=0, tikhonov_ratios=(1.0, 0.0, 0.0), rough=False,
-    rangerough=None, intrough=0.75, plotLcurve=True
+    Ghat,
+    dhat,
+    I,
+    L1=0,
+    L2=0,
+    tikhonov_ratios=(1.0, 0.0, 0.0),
+    rough=False,
+    rangerough=None,
+    intrough=0.75,
+    plotLcurve=True,
 ):
     r"""Finds best regularization (trade-off) parameter alpha.
 
@@ -1751,7 +1766,7 @@ def _find_alpha(
         templ2 = np.arange(templ1 - 5, templ1 - 1, intrough)
     else:
         templ2 = np.arange(rangerough[0], rangerough[1], intrough)
-    alphas = 10. ** templ2
+    alphas = 10.0 ** templ2
     fit1 = []
     size1 = []
 
