@@ -190,7 +190,7 @@ class LSTrajectory:
         return fig
 
     def _compute_trajectory(
-        self, mass=None, target_length=None, duration=None, detrend_velocity=None,
+        self, mass=None, target_length=None, duration=None, detrend_velocity=None
     ):
         r"""Integrate force time series to velocity and then to displacement.
 
@@ -299,8 +299,7 @@ class LSTrajectory:
         duration=None,
         detrend=None,
     ):
-        r"""Calls :meth:`~lsforce.lstrajectory.LSTrajectory._integrate_acceleration`.
-        """
+        r"""Calls :meth:`~lsforce.lstrajectory.LSTrajectory._integrate_acceleration`."""
 
         # Check args
         if mass and target_length:
