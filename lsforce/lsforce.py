@@ -36,7 +36,7 @@ Z_COLOR = 'blue'
 N_COLOR = 'red'
 E_COLOR = 'green'
 
-# Alpha level for jackknife lines and patches
+# Transparency level for jackknife lines and patches
 JK_ALPHA = 0.2
 
 
@@ -59,8 +59,8 @@ class LSForce:
         W (2D array): Weight matrix
         Wvec (1D array): Weight vector
         jackknife (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary with
-            keys ``'Z'``, ``'N'``, ``'E'``, ``'VR_all'``, ``'num_iter'``, and
-            ``'frac_delete'`` containing jackknife parameters and results
+            keys ``'Z'``, ``'N'``, ``'E'``, ``'VR_all'``, ``'alphas'``, ``'num_iter'``,
+            and ``'frac_delete'`` containing jackknife parameters and results
         angle_magnitude (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary
             with keys ``'magnitude'``, ``'magnitude_upper'``, ``'magnitude_lower'``,
             ``'vertical_angle'``, and ``'horizontal_angle'`` containing inversion angle
@@ -781,6 +781,7 @@ class LSForce:
         zero_scaler=2.0,
         zero_start_taper_length=0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
+        jk_refine_alpha=False,
     ):
         r"""Performs single-force inversion using Tikhonov regularization.
 
@@ -815,6 +816,11 @@ class LSForce:
             tikhonov_ratios (list or tuple): Proportion each regularization method
                 contributes to the overall regularization effect, where values
                 correspond to [0th order, 1st order, 2nd order]. Must sum to 1
+            jk_refine_alpha (bool): Refine the alpha parameter used for each jackknife
+                iteration by searching over order of magnitude around the best alpha
+                for the full solution. If `False`, each jackknife iteration will use the
+                same alpha as the main solution (note that this is much faster but can
+                result in some jackknife iterations having depressed amplitudes)
         """
 
         # Check inputs
@@ -1051,8 +1057,10 @@ class LSForce:
         # Use constant alpha parameter (found above, if not previously set) for
         # jackknife iterations
         stasets = []
+        alphajs = []
         if self.jackknife is not None:
             # Start jackknife iterations
+            print('Starting jackknife iterations')
             for ii in range(self.jackknife.num_iter):
                 numcut = int(
                     round(self.jackknife.frac_delete * self.data.st_proc.count())
@@ -1090,8 +1098,27 @@ class LSForce:
                 dhat1 = dhat1.T
                 Apart = Ghat1.conj().T @ Ghat1
 
+                if jk_refine_alpha:
+                    # Fine tune the alpha
+                    rndalph = np.log10(self.alpha)
+                    alphaj, *_, = _find_alpha(
+                        Ghat1,
+                        dhat1,
+                        I,
+                        L1,
+                        L2,
+                        tikhonov_ratios=tikhonov_ratios,
+                        rough=True,
+                        int_rough=0.1,
+                        range_rough=(rndalph - 0.4, rndalph + 0.4),
+                        plot_Lcurve=False,
+                    )
+                else:
+                    alphaj = self.alpha
+                alphajs.append(alphaj)
+
                 # Combo of all regularization things (if any are zero they won't matter)
-                Aj = Apart + self.alpha ** 2 * (
+                Aj = Apart + alphaj ** 2 * (
                     tikhonov_ratios[0] * I
                     + tikhonov_ratios[1] * L1part
                     + tikhonov_ratios[2] * L2part
@@ -1121,6 +1148,7 @@ class LSForce:
             self.jackknife.E.upper = np.max(self.jackknife.E.all, axis=0)
             self.jackknife.N.lower = np.min(self.jackknife.N.all, axis=0)
             self.jackknife.N.upper = np.max(self.jackknife.N.all, axis=0)
+            self.jackknife.alphas = alphajs
 
             self.jackknife.VR_all = np.array(self.jackknife.VR_all)
 
@@ -1686,7 +1714,16 @@ class LSForce:
 
 
 def _find_alpha(
-    Ghat, dhat, I, L1=0, L2=0, tikhonov_ratios=(1.0, 0.0, 0.0), rough=False
+    Ghat,
+    dhat,
+    I,
+    L1=0,
+    L2=0,
+    tikhonov_ratios=(1.0, 0.0, 0.0),
+    rough=False,
+    range_rough=None,
+    int_rough=0.75,
+    plot_Lcurve=True,
 ):
     r"""Finds best regularization (trade-off) parameter alpha.
 
@@ -1705,8 +1742,13 @@ def _find_alpha(
             contributes to the overall regularization effect, where values correspond to
             [0th order, 1st order, 2nd order]. Must sum to 1
         rough (bool): If `False`, will do two iterations to fine tune the alpha
-            parameter. If `True`, time will be saved because it will only do one round
-            of searching
+            parameter. The second iteration searches over +/- one order of magnitude
+            from the best alpha found from the first round. If `True`, time will be
+            saved because it will only do one round of searching.
+        range_rough (tuple): Lower and upper bound of range to search over in log units.
+            If `None`, it will choose a range based on the norm of ``Ghat``
+        int_rough (float): Interval, in log units, to use for rough alpha search
+        plot_Lcurve (bool): Toggle showing the L-curve plot
 
     Returns:
         tuple: Tuple containing:
@@ -1720,8 +1762,11 @@ def _find_alpha(
     # Roughly estimate largest singular value (should not use alpha larger than expected
     # largest singular value)
     templ1 = np.ceil(np.log10(np.linalg.norm(Ghat)))
-    templ2 = np.arange(templ1 - 5, templ1 - 1, 0.5)
-    alphas = 10 ** templ2
+    if range_rough is None:
+        templ2 = np.arange(templ1 - 5, templ1 - 1, int_rough)
+    else:
+        templ2 = np.arange(range_rough[0], range_rough[1], int_rough)
+    alphas = 10.0 ** templ2
     fit1 = []
     size1 = []
 
@@ -1780,7 +1825,8 @@ def _find_alpha(
             fit1 = []
             size1 = []
 
-    _Lcurve(fit1, size1, alphas, bestalpha=bestalpha)
+    if plot_Lcurve:
+        _Lcurve(fit1, size1, alphas, bestalpha=bestalpha)
     if type(bestalpha) == list:
         if len(bestalpha) > 1:
             raise ValueError('Returned more than one alpha value, check codes.')
