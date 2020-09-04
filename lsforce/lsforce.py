@@ -59,8 +59,8 @@ class LSForce:
         W (2D array): Weight matrix
         Wvec (1D array): Weight vector
         jackknife (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary with
-            keys ``'Z'``, ``'N'``, ``'E'``, ``'VR_all'``, ``'num_iter'``, and
-            ``'frac_delete'`` containing jackknife parameters and results
+            keys ``'Z'``, ``'N'``, ``'E'``, ``'VR_all'``, ``'alphas'``, ``'num_iter'``,
+            and ``'frac_delete'`` containing jackknife parameters and results
         angle_magnitude (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary
             with keys ``'magnitude'``, ``'magnitude_upper'``, ``'magnitude_lower'``,
             ``'vertical_angle'``, and ``'horizontal_angle'`` containing inversion angle
@@ -1059,8 +1059,8 @@ class LSForce:
         stasets = []
         alphajs = []
         if self.jackknife is not None:
-            print('Starting jackknife iterations')
             # Start jackknife iterations
+            print('Starting jackknife iterations')
             for ii in range(self.jackknife.num_iter):
                 numcut = int(
                     round(self.jackknife.frac_delete * self.data.st_proc.count())
@@ -1101,7 +1101,7 @@ class LSForce:
                 if jk_refine_alpha:
                     # Fine tune the alpha
                     rndalph = np.log10(self.alpha)
-                    alphaj, _, _, _ = _find_alpha(
+                    alphaj, *_, = _find_alpha(
                         Ghat1,
                         dhat1,
                         I,
@@ -1109,9 +1109,9 @@ class LSForce:
                         L2,
                         tikhonov_ratios=tikhonov_ratios,
                         rough=True,
-                        intrough=0.1,
-                        rangerough=[rndalph - 0.4, rndalph + 0.4],
-                        plotLcurve=False,
+                        int_rough=0.1,
+                        range_rough=(rndalph - 0.4, rndalph + 0.4),
+                        plot_Lcurve=False,
                     )
                 else:
                     alphaj = self.alpha
@@ -1721,9 +1721,9 @@ def _find_alpha(
     L2=0,
     tikhonov_ratios=(1.0, 0.0, 0.0),
     rough=False,
-    rangerough=None,
-    intrough=0.75,
-    plotLcurve=True,
+    range_rough=None,
+    int_rough=0.75,
+    plot_Lcurve=True,
 ):
     r"""Finds best regularization (trade-off) parameter alpha.
 
@@ -1742,13 +1742,13 @@ def _find_alpha(
             contributes to the overall regularization effect, where values correspond to
             [0th order, 1st order, 2nd order]. Must sum to 1
         rough (bool): If `False`, will do two iterations to fine tune the alpha
-            parameter. If `True`, time will be saved because it will only do one round
-            of searching. If False, a second round will be done that searches over +/-
-            one order of magnitude from the best alpha found from the first round
-        rangerough (array): low and upper range to search over in log units, if None,
-            it will choose a range based on the norm of Ghat
-        intrough (float): interval, in log units, to use for rough alpha search
-        plotLcurve (bool): show Lcurve plot
+            parameter. The second iteration searches over +/- one order of magnitude
+            from the best alpha found from the first round. If `True`, time will be
+            saved because it will only do one round of searching.
+        range_rough (tuple): Lower and upper bound of range to search over in log units.
+            If `None`, it will choose a range based on the norm of ``Ghat``
+        int_rough (float): Interval, in log units, to use for rough alpha search
+        plot_Lcurve (bool): Toggle showing the L-curve plot
 
     Returns:
         tuple: Tuple containing:
@@ -1762,10 +1762,10 @@ def _find_alpha(
     # Roughly estimate largest singular value (should not use alpha larger than expected
     # largest singular value)
     templ1 = np.ceil(np.log10(np.linalg.norm(Ghat)))
-    if rangerough is None:
-        templ2 = np.arange(templ1 - 5, templ1 - 1, intrough)
+    if range_rough is None:
+        templ2 = np.arange(templ1 - 5, templ1 - 1, int_rough)
     else:
-        templ2 = np.arange(rangerough[0], rangerough[1], intrough)
+        templ2 = np.arange(range_rough[0], range_rough[1], int_rough)
     alphas = 10.0 ** templ2
     fit1 = []
     size1 = []
@@ -1825,7 +1825,7 @@ def _find_alpha(
             fit1 = []
             size1 = []
 
-    if plotLcurve:
+    if plot_Lcurve:
         _Lcurve(fit1, size1, alphas, bestalpha=bestalpha)
     if type(bestalpha) == list:
         if len(bestalpha) > 1:
