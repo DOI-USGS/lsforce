@@ -850,7 +850,7 @@ class LSForce:
         self.alphafit = {'alphas': None, 'fit': None, 'size': None}
 
         if jackknife:
-            if frac_delete == 1.:
+            if frac_delete == 1.0:
                 # If frac_delete is one, do leave one out analysis instead
                 num_iter = self.data.st_proc.count()
             # Initialize
@@ -1062,7 +1062,7 @@ class LSForce:
         stasets = []
         alphajs = []
         if self.jackknife is not None:
-            if self.jackknife.frac_delete == 1.:
+            if self.jackknife.frac_delete == 1.0:
                 print('Starting leave-one-out analysis')
             else:
                 print('Starting jackknife iterations')
