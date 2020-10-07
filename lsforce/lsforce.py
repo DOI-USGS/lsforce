@@ -802,7 +802,7 @@ class LSForce:
                 model while randomly discarding `frac_delete` of the data
             num_iter (int): Number of jackknife iterations to perform
             frac_delete (int or float): Fraction (out of 1) of data to discard for each
-                iteration
+                iteration, if frac_delete=1, will do leave a one out error analysis
             alpha (int or float): Set regularization parameter. If `None`, will search
                 for best alpha using the L-curve method
             zero_scaler (int or float): Relative strength of zero constraint for
@@ -850,6 +850,9 @@ class LSForce:
         self.alphafit = {'alphas': None, 'fit': None, 'size': None}
 
         if jackknife:
+            if frac_delete == 1.:
+                # If frac_delete is one, do leave one out analysis instead
+                num_iter = self.data.st_proc.count()
             # Initialize
             self.jackknife = AttribDict(
                 Z=AttribDict(lower=[], upper=[], all=[]),
@@ -1059,14 +1062,20 @@ class LSForce:
         stasets = []
         alphajs = []
         if self.jackknife is not None:
-            # Start jackknife iterations
-            print('Starting jackknife iterations')
+            if self.jackknife.frac_delete == 1.:
+                print('Starting leave-one-out analysis')
+            else:
+                print('Starting jackknife iterations')
             for ii in range(self.jackknife.num_iter):
-                numcut = int(
-                    round(self.jackknife.frac_delete * self.data.st_proc.count())
-                )
-                numkeep = self.data.st_proc.count() - numcut
-                indxcut = rnd.sample(list(range(self.data.st_proc.count())), numcut)
+                if self.jackknife.frac_delete == 1:
+                    indxcut = [ii]
+                    numkeep = self.jackknife.num_iter - 1
+                else:
+                    numcut = int(
+                        round(self.jackknife.frac_delete * self.data.st_proc.count())
+                    )
+                    numkeep = self.data.st_proc.count() - numcut
+                    indxcut = rnd.sample(list(range(self.data.st_proc.count())), numcut)
                 stasets.append(indxcut)
 
                 obj = [
@@ -2003,3 +2012,19 @@ def _read(url):
     with tempfile.NamedTemporaryFile() as f:
         urlretrieve(url, f.name)
         return read(f.name)
+
+
+def readrun(filename):
+    r"""Read in a saved LSforce object
+
+    Attributes:
+        filename (str): File path to LSforce object saved using
+            LSforce.saverun
+
+    Returns:
+        :class:`~lsforce.LSForce`: Saved LSforce object
+    """
+    with open(filename, 'rb') as f:
+        result = pickle.load(f)
+
+    return result
