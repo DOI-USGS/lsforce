@@ -93,9 +93,9 @@ class LSForce:
                 functions will be created with this rate
             main_folder (str): If `None`, will use current folder
             method (str): How to parameterize the force-time function. One of `'full'`
-                — full waveform inversion using Tikhonov regularization (L2 norm
-                minimization) or `'triangle'` — inversion parameterized using
-                overlapping triangles, variation on method of Ekström & Stark (2013)
+                — full inversion using Tikhonov regularization (L2 norm minimization) or
+                `'triangle'` — inversion parameterized using overlapping triangles,
+                variation on method of Ekström & Stark (2013)
         """
 
         self.data = data
