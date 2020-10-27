@@ -2015,14 +2015,14 @@ def _read(url):
 
 
 def readrun(filename):
-    r"""Read in a saved LSforce object
+    r"""Read in a saved LSForce object.
 
-    Attributes:
-        filename (str): File path to LSforce object saved using
-            LSforce.saverun
+    Args:
+        filename (str): File path to LSForce object saved using
+            :meth:`~lsforce.lsforce.LSForce.saverun`
 
     Returns:
-        :class:`~lsforce.LSForce`: Saved LSforce object
+        :class:`~lsforce.lsforce.LSForce`: Saved LSForce object
     """
     with open(filename, 'rb') as f:
         result = pickle.load(f)
