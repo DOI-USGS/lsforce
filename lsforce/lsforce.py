@@ -782,7 +782,7 @@ class LSForce:
         zero_start_taper_length=0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
         jk_refine_alpha=False,
-        save_matrices=False
+        save_matrices=False,
     ):
         r"""Performs single-force inversion using Tikhonov regularization.
 
@@ -1016,8 +1016,14 @@ class LSForce:
             self.alphafit['fit'] = fit1
             self.alphafit['size'] = size1
             if save_matrices:
-                self.matrices = dict(Ghat=Ghat, dhat=dhat, I=I, L1=L1, L2=L2,
-                                     tikhonov_ratios=tikhonov_ratios)
+                self.matrices = dict(
+                    Ghat=Ghat,
+                    dhat=dhat,
+                    I=I,
+                    L1=L1,
+                    L2=L2,
+                    tikhonov_ratios=tikhonov_ratios,
+                )
             else:
                 self.matrices = None
         self.alpha = alpha
