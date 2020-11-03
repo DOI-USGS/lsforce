@@ -782,6 +782,7 @@ class LSForce:
         zero_start_taper_length=0,
         tikhonov_ratios=(1.0, 0.0, 0.0),
         jk_refine_alpha=False,
+        save_matrices=False,
     ):
         r"""Performs single-force inversion using Tikhonov regularization.
 
@@ -821,6 +822,9 @@ class LSForce:
                 for the full solution. If `False`, each jackknife iteration will use the
                 same alpha as the main solution (note that this is much faster but can
                 result in some jackknife iterations having depressed amplitudes)
+            save_matrices (bool): If True, will save the inverted matrices as
+                part of the object (Ghat, dhat, I, L1, L2) in case user wants
+                to do additional alpha searching
         """
 
         # Check inputs
@@ -1004,13 +1008,24 @@ class LSForce:
             L2part = 0.0
 
         if not alpha:
-            alpha, fit1, size1, alphas = _find_alpha(
+            alpha, fit1, size1, alphas = find_alpha(
                 Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios
             )
             print(f'best alpha is {alpha:6.1e}')
             self.alphafit['alphas'] = alphas
             self.alphafit['fit'] = fit1
             self.alphafit['size'] = size1
+            if save_matrices:
+                self.matrices = dict(
+                    Ghat=Ghat,
+                    dhat=dhat,
+                    I=I,
+                    L1=L1,
+                    L2=L2,
+                    tikhonov_ratios=tikhonov_ratios,
+                )
+            else:
+                self.matrices = None
         self.alpha = alpha
 
         Apart = Ghat.conj().T @ Ghat
@@ -1110,7 +1125,7 @@ class LSForce:
                 if jk_refine_alpha:
                     # Fine tune the alpha
                     rndalph = np.log10(self.alpha)
-                    alphaj, *_, = _find_alpha(
+                    alphaj, *_, = find_alpha(
                         Ghat1,
                         dhat1,
                         I,
@@ -1722,7 +1737,7 @@ class LSForce:
                 )
 
 
-def _find_alpha(
+def find_alpha(
     Ghat,
     dhat,
     I,
@@ -1736,26 +1751,28 @@ def _find_alpha(
 ):
     r"""Finds best regularization (trade-off) parameter alpha.
 
-    Computes model with many values of alpha, plots L-curve, and finds point of steepest
-    curvature where slope is negative.
+    Computes model with many values of alpha, plots L-curve, and finds point
+    of steepest curvature where slope is negative.
 
     Args:
         Ghat (array): (m x n) matrix
         dhat (array): (1 x n) array of weighted data
         I (array): Identity matrix
-        L1 (array): First order roughening matrix. If `0`, will use only 0th-order
-            Tikhonov regularization
-        L2 (array): Second order roughening matrix. If `0`, will use only 0th-order
-            Tikhonov regularization
+        L1 (array): First order roughening matrix. If `0`, will use only
+            0th-order Tikhonov regularization
+        L2 (array): Second order roughening matrix. If `0`, will use only
+            0th-order Tikhonov regularization
         tikhonov_ratios (list or tuple): Proportion each regularization method
-            contributes to the overall regularization effect, where values correspond to
-            [0th order, 1st order, 2nd order]. Must sum to 1
+            contributes to the overall regularization effect, where values
+            correspond to [0th order, 1st order, 2nd order]. Must sum to 1
         rough (bool): If `False`, will do two iterations to fine tune the alpha
-            parameter. The second iteration searches over +/- one order of magnitude
-            from the best alpha found from the first round. If `True`, time will be
-            saved because it will only do one round of searching.
-        range_rough (tuple): Lower and upper bound of range to search over in log units.
-            If `None`, it will choose a range based on the norm of ``Ghat``
+            parameter. The second iteration searches over +/- one order of
+            magnitude from the best alpha found from the first round. If
+            `True`, time will be saved because it will only do one round of
+            searching.
+        range_rough (tuple): Lower and upper bound of range to search over in
+            log units. If `None`, the program will choose a range based on the
+            norm of ``Ghat``
         int_rough (float): Interval, in log units, to use for rough alpha search
         plot_Lcurve (bool): Toggle showing the L-curve plot
 
@@ -1835,7 +1852,7 @@ def _find_alpha(
             size1 = []
 
     if plot_Lcurve:
-        _Lcurve(fit1, size1, alphas, bestalpha=bestalpha)
+        Lcurve(fit1, size1, alphas, bestalpha=bestalpha)
     if type(bestalpha) == list:
         if len(bestalpha) > 1:
             raise ValueError('Returned more than one alpha value, check codes.')
@@ -1844,7 +1861,7 @@ def _find_alpha(
     return bestalpha, fit1, size1, alphas
 
 
-def _Lcurve(fit1, size1, alphas, bestalpha=None):
+def Lcurve(fit1, size1, alphas, bestalpha=None):
     r"""Plot an L-curve.
 
     Args:
@@ -1852,6 +1869,9 @@ def _Lcurve(fit1, size1, alphas, bestalpha=None):
         size1 (1D array): List of model norms
         alphas (1D array): List of alphas tried
         bestalpha (float): The alpha value chosen
+
+    Returns:
+        figure handle
     """
 
     fig, ax = plt.subplots(figsize=(7, 6))
@@ -1866,6 +1886,7 @@ def _Lcurve(fit1, size1, alphas, bestalpha=None):
 
     fig.tight_layout()
     fig.show()
+    return fig
 
 
 def _varred(dt, dtnew):
