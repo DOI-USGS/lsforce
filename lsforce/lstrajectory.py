@@ -67,8 +67,10 @@ class LSTrajectory:
             raise ValueError('Cannot compute trajectory if inversion has not been run!')
 
         if detrend_velocity is None and zeroacc is not None:
-            print('Warning: zeroacc should be used with detrend_velocity to '
-                  'avoid simulating zero friction behavior. Continuing.')
+            print(
+                'Warning: zeroacc should be used with detrend_velocity to '
+                'avoid simulating zero friction behavior. Continuing.'
+            )
 
         self.force = force
         self.mass_requested = mass
@@ -201,8 +203,12 @@ class LSTrajectory:
         return fig
 
     def _compute_trajectory(
-        self, mass=None, target_length=None, duration=None,
-            detrend_velocity=None, zeroacc=None
+        self,
+        mass=None,
+        target_length=None,
+        duration=None,
+        detrend_velocity=None,
+        zeroacc=None,
     ):
         r"""Integrate force time series to velocity and then to displacement.
 
@@ -228,7 +234,7 @@ class LSTrajectory:
             target_length=target_length,
             duration=duration,
             detrend=detrend_velocity,
-            zeroacc=zeroacc
+            zeroacc=zeroacc,
         )
         self.horizontal_distance = _calculate_horizontal_distance(
             self.displacement.E, self.displacement.N
@@ -262,12 +268,19 @@ class LSTrajectory:
                 self.jackknife.horizontal_distance.append(horiz_dist_i)
 
     def _integrate_acceleration(
-        self, z_force, e_force, n_force, mass, startidx, endidx, detrend=None,
-            zeroaccidx=None
+        self,
+        z_force,
+        e_force,
+        n_force,
+        mass,
+        startidx,
+        endidx,
+        detrend=None,
+        zeroaccidx=None,
     ):
         r"""Integrate forces (acceleration) to velocity and displacement."""
 
-        traj_tvec = self.force.tvec[startidx: endidx + 1]
+        traj_tvec = self.force.tvec[startidx : endidx + 1]
 
         dx = 1.0 / self.force.force_sampling_rate
         acceleration = AttribDict(
@@ -279,7 +292,7 @@ class LSTrajectory:
         if zeroaccidx is not None:
             aidx = zeroaccidx - startidx
             for comp in acceleration.values():
-                comp[aidx:] = 0.
+                comp[aidx:] = 0.0
 
         velocity = AttribDict(
             Z=np.cumsum(acceleration.Z) * dx,
@@ -357,7 +370,13 @@ class LSTrajectory:
 
                 # Calculate the runout length [km] based on this mass
                 *_, disp, _ = self._integrate_acceleration(
-                    z_force, e_force, n_force, mass, startidx, endidx, detrend,
+                    z_force,
+                    e_force,
+                    n_force,
+                    mass,
+                    startidx,
+                    endidx,
+                    detrend,
                     zeroaccidx=zeroaccidx,
                 )
                 current_length = (
@@ -373,7 +392,13 @@ class LSTrajectory:
             displacement,
             traj_tvec,
         ) = self._integrate_acceleration(
-            z_force, e_force, n_force, mass, startidx, endidx, detrend,
+            z_force,
+            e_force,
+            n_force,
+            mass,
+            startidx,
+            endidx,
+            detrend,
             zeroaccidx=zeroaccidx,
         )
 
