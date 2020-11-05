@@ -1846,7 +1846,9 @@ def find_alpha(
             break
         else:  # Loop again over smaller range
             alphas = np.logspace(
-                np.round(np.log10(bestalpha)) - 1, np.round(np.log10(bestalpha)) + 0.5, 10
+                np.round(np.log10(bestalpha)) - 1,
+                np.round(np.log10(bestalpha)) + 0.5,
+                10,
             )
             fit1 = []
             size1 = []
