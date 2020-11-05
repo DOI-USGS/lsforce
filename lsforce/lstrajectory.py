@@ -250,6 +250,7 @@ class LSTrajectory:
                     target_length=target_length,
                     duration=duration,
                     detrend=detrend_velocity,
+                    zeroacc=zeroacc,
                 )
 
                 horiz_dist_i = _calculate_horizontal_distance(disp_i.E, disp_i.N)
@@ -266,7 +267,7 @@ class LSTrajectory:
     ):
         r"""Integrate forces (acceleration) to velocity and displacement."""
 
-        traj_tvec = self.force.tvec[startidx : endidx + 1]
+        traj_tvec = self.force.tvec[startidx: endidx + 1]
 
         dx = 1.0 / self.force.force_sampling_rate
         acceleration = AttribDict(
