@@ -42,6 +42,7 @@ class LSTrajectory:
         target_length=None,
         duration=None,
         detrend_velocity=None,
+        zeroacc=None,
     ):
         r"""Create an LSTrajectory object.
 
@@ -55,10 +56,21 @@ class LSTrajectory:
                 from 0–`duration` seconds in the trajectory calculation
             detrend_velocity: [s] If provided, require the velocity to linearly go to
                 zero at this time; if `None`, don't detrend
+            zeroacc: [s] If provided, require the acceleration to be zero after
+                this time, usually when forces are indistinguishable from
+                zero, to reduce noise at end of trajectory. This is best used
+                with the detrend_velocity option to avoid allowing the landslide to
+                slide forever.
         """
 
         if not force.inversion_complete:
             raise ValueError('Cannot compute trajectory if inversion has not been run!')
+
+        if detrend_velocity is None and zeroacc is not None:
+            print(
+                'Warning: zeroacc should be used with detrend_velocity to '
+                'avoid simulating zero friction behavior. Continuing.'
+            )
 
         self.force = force
         self.mass_requested = mass
@@ -70,6 +82,7 @@ class LSTrajectory:
             target_length=self.target_length,
             duration=duration,
             detrend_velocity=detrend_velocity,
+            zeroacc=zeroacc,
         )
 
         self._compute_trajectory(**compute_kwargs)
@@ -190,7 +203,12 @@ class LSTrajectory:
         return fig
 
     def _compute_trajectory(
-        self, mass=None, target_length=None, duration=None, detrend_velocity=None
+        self,
+        mass=None,
+        target_length=None,
+        duration=None,
+        detrend_velocity=None,
+        zeroacc=None,
     ):
         r"""Integrate force time series to velocity and then to displacement.
 
@@ -216,6 +234,7 @@ class LSTrajectory:
             target_length=target_length,
             duration=duration,
             detrend=detrend_velocity,
+            zeroacc=zeroacc,
         )
         self.horizontal_distance = _calculate_horizontal_distance(
             self.displacement.E, self.displacement.N
@@ -237,6 +256,7 @@ class LSTrajectory:
                     target_length=target_length,
                     duration=duration,
                     detrend=detrend_velocity,
+                    zeroacc=zeroacc,
                 )
 
                 horiz_dist_i = _calculate_horizontal_distance(disp_i.E, disp_i.N)
@@ -248,7 +268,15 @@ class LSTrajectory:
                 self.jackknife.horizontal_distance.append(horiz_dist_i)
 
     def _integrate_acceleration(
-        self, z_force, e_force, n_force, mass, startidx, endidx, detrend=None
+        self,
+        z_force,
+        e_force,
+        n_force,
+        mass,
+        startidx,
+        endidx,
+        detrend=None,
+        zeroaccidx=None,
     ):
         r"""Integrate forces (acceleration) to velocity and displacement."""
 
@@ -260,6 +288,12 @@ class LSTrajectory:
             E=-e_force.copy()[startidx : endidx + 1] / mass,
             N=-n_force.copy()[startidx : endidx + 1] / mass,
         )
+
+        if zeroaccidx is not None:
+            aidx = zeroaccidx - startidx
+            for comp in acceleration.values():
+                comp[aidx:] = 0.0
+
         velocity = AttribDict(
             Z=np.cumsum(acceleration.Z) * dx,
             E=np.cumsum(acceleration.E) * dx,
@@ -298,6 +332,7 @@ class LSTrajectory:
         target_length=None,
         duration=None,
         detrend=None,
+        zeroacc=None,
     ):
         r"""Calls :meth:`~lsforce.lstrajectory.LSTrajectory._integrate_acceleration`."""
 
@@ -314,7 +349,13 @@ class LSTrajectory:
         if duration:
             endidx = (np.abs(self.force.tvec - duration)).argmin()
         else:
-            endidx = len(self.force.tvec)
+            endidx = len(self.force.tvec) - 1
+
+        # Figure out the index for the time after which acceleration must be 0.
+        if zeroacc is not None:
+            zeroaccidx = (np.abs(self.force.tvec - zeroacc)).argmin()
+        else:
+            zeroaccidx = None
 
         # Either use the mass that was provided, or calculate one
         if target_length:
@@ -329,7 +370,14 @@ class LSTrajectory:
 
                 # Calculate the runout length [km] based on this mass
                 *_, disp, _ = self._integrate_acceleration(
-                    z_force, e_force, n_force, mass, startidx, endidx, detrend
+                    z_force,
+                    e_force,
+                    n_force,
+                    mass,
+                    startidx,
+                    endidx,
+                    detrend,
+                    zeroaccidx=zeroaccidx,
                 )
                 current_length = (
                     _calculate_horizontal_distance(disp.E, disp.N)[-1] * KM_PER_M
@@ -344,7 +392,14 @@ class LSTrajectory:
             displacement,
             traj_tvec,
         ) = self._integrate_acceleration(
-            z_force, e_force, n_force, mass, startidx, endidx, detrend
+            z_force,
+            e_force,
+            n_force,
+            mass,
+            startidx,
+            endidx,
+            detrend,
+            zeroaccidx=zeroaccidx,
         )
 
         return (
