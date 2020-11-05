@@ -6,4 +6,8 @@
 lsforce.egg-info/
 doc/_build/
 doc/api/
+cov_html/
 .coverage
+notebooks/hunza_attabad/
+notebooks/iliamna_2016_paper/
+notebooks/lamplugh/
