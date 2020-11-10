@@ -3,7 +3,7 @@
 
 [![Pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) [![Coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs)
 
-*lsforce* is a Python-based seismic force inversion framework for massive landslides. The codes can also be applied to other seismic sources well-approximated as a single force (e.g., volcanic eruptions, some glacial events).
+*lsforce* is a Python-based single-force seismic inversion framework for massive landslides. The codes can also be applied to other seismic sources that are well-approximated as a single force (e.g., volcanic eruptions, some glacial events).
 The library can be used to invert long period (tens to hundreds of seconds) seismic
 waveforms to estimate a time series vector of single forces that represents the
 equivalent forces exerted on the Earth by the landslide (see example output figure
@@ -72,6 +72,16 @@ following:
 
 Documentation
 -------------
+A [static pdf](https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/master/lsforce.pdf) of the documentation is available in the repository.
+
+To build the interactive documentation, first ensure that you installed the developer tools (`bash
+install.sh 1`), which are required for documentation building. Then:
+```shell
+conda activate lsforce
+cd doc
+make html
+open _build/html/index.html  # macOS command to open file in browser
+```
 
 Usage examples for the two currently-supported parameterization methods are given in the
 three [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb`,
@@ -83,15 +93,6 @@ jupyter notebook notebooks
 ```
 This will start a Jupyter Notebook server and open a new window or tab in your browser
 with the interactive notebooks displayed.
-
-To build the documentation, first ensure that you installed the developer tools (`bash
-install.sh 1`), which are required for documentation building. Then:
-```shell
-conda activate lsforce
-cd doc
-make html
-open _build/html/index.html  # macOS command to open file in browser
-```
 
 Testing
 -------
@@ -110,5 +111,5 @@ Citation
 <p style="text-indent:-36px; padding-left:36px;">
 Allstadt, K. E., & Toney, L. (2020). lsforce (Version 1.0.0) [Source code]. U.S.
 Geological Survey Software Release.
-<a href="https://doi.org/10.5066/P9CR20KW">https://doi.org/10.5066/P9CR20KW</a>
+<a href="https://doi.org/10.5066/P9CR20KW">https://doi.org/10.5066/P9CR20KW.</a>
 </p>
