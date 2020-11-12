@@ -11,15 +11,15 @@
       "licenses": [
         {
           "name": "Public Domain, CC0-1.0",
-          "URL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/raw/master/LICENSE.md"
+          "URL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/raw/v1.0.0/LICENSE.md"
         }
       ]
     },
 
-    "homepageURL": "https://code.usgs.gov/ghsc/lhp/lsforce",
-    "downloadURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/archive/master/lsforce-master.zip",
-    "disclaimerURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/raw/master/DISCLAIMER.md",
-    "repositoryURL": "https://code.usgs.gov/ghsc/lhp/lsforce",
+    "homepageURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/tree/v1.0.0",
+    "downloadURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/archive/v1.0.0/lsforce-v1.0.0.zip",
+    "disclaimerURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/raw/v1.0.0/DISCLAIMER.md",
+    "repositoryURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/tree/v1.0.0",
     "vcs": "git",
 
     "laborHours": 0,
@@ -40,7 +40,7 @@
     },
 
     "date": {
-      "metadataLastUpdated": "2020-08-18"
+      "metadataLastUpdated": "2020-11-12"
     }
   }
 ]
