@@ -32,7 +32,9 @@
       "single force"
     ],
 
-    "languages": "python",
+    "languages": [
+      "python"
+      ],
 
     "contact": {
       "name": "Kate Allstadt",
