@@ -80,6 +80,7 @@ PACKAGE_LIST=(
     'obspy'
     'pyqt'
     'xarray'
+    'rasterio'
 )
 
 # Additional developer packages:
