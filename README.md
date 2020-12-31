@@ -1,10 +1,12 @@
 *lsforce*
 =========
 
-[![Pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) [![Coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs)
+[![Pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) [![Coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs) [![Documentation status](https://readthedocs.org/projects/lsforce/badge/?version=latest)](https://lsforce.readthedocs.io/en/latest/?badge=latest)
 
-*lsforce* is a Python-based single-force seismic inversion framework for massive landslides. The codes can also be applied to other seismic sources that are well-approximated as a single force (e.g., volcanic eruptions, some glacial events).
-The library can be used to invert long period (tens to hundreds of seconds) seismic
+*lsforce* is a Python-based single-force seismic inversion framework for massive
+landslides. The codes can also be applied to other seismic sources that are
+well-approximated as a single force (e.g., volcanic eruptions, some glacial events). The
+library can be used to invert long period (tens to hundreds of seconds) seismic
 waveforms to estimate a time series vector of single forces that represents the
 equivalent forces exerted on the Earth by the landslide (see example output figure
 below).
@@ -72,10 +74,13 @@ following:
 
 Documentation
 -------------
-A [static pdf](https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/master/lsforce.pdf) of the documentation is available in the repository.
 
-To build the interactive documentation, first ensure that you installed the developer tools (`bash
-install.sh 1`), which are required for documentation building. Then:
+The latest interactive documentation is visible online
+[here](https://lsforce.readthedocs.io/en/latest/api/lsforce.html).
+
+To instead build the interactive documentation yourself, first ensure that you installed
+the developer tools (`bash install.sh 1`), which are required for documentation
+building. Then:
 ```shell
 conda activate lsforce
 cd doc

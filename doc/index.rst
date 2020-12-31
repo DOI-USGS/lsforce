@@ -1,7 +1,7 @@
 lsforce
 =======
 
-A Python-based seismic force inversion framework for massive landslides
+A Python-based single-force seismic inversion framework for massive landslides.
 
 .. toctree::
    :caption: README
