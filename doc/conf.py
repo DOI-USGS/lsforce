@@ -1,12 +1,19 @@
 import datetime
-import os
 import sys
+from os import chdir, getcwd, pardir, path
 
-from lsforce import __version__
+root = path.abspath(path.join(path.dirname(path.abspath(__file__)), pardir))
+sys.path.insert(0, root)
+from versioneer import get_version
+
+# Get version (this method avoids importing the package, see GitHub comment link below)
+# https://github.com/python-versioneer/python-versioneer/issues/185#issue-343550345
+owd = getcwd()
+chdir(root)
+__version__ = get_version()
+chdir(owd)
 
 SHOW_PRIVATE = False  # Set to True to build docs for private functions, methods, etc.
-
-sys.path.insert(0, os.path.abspath('..'))
 
 project = 'lsforce'
 
@@ -39,7 +46,9 @@ napoleon_numpy_docstring = False
 
 master_doc = 'index'
 
-apidoc_module_dir = os.path.join('..', 'lsforce')
+autodoc_mock_imports = ['cartopy', 'matplotlib', 'numpy', 'obspy', 'scipy', 'xarray']
+
+apidoc_module_dir = path.join(root, 'lsforce')
 apidoc_output_dir = 'api'
 apidoc_separate_modules = True
 apidoc_toc_file = False
