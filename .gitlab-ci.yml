@@ -6,7 +6,7 @@ Install and test:
     # Install the lsforce package, its dependencies, and testing packages
     - source /etc/profile.d/conda.sh
     - conda config --add channels conda-forge
-    - conda install --yes cartopy notebook obspy pyqt xarray
+    - conda install --yes cartopy notebook obspy pyqt xarray rasterio
     - conda install --yes black isort pytest-cov pytest-mpl
     - pip install --editable .
     # Run tests
