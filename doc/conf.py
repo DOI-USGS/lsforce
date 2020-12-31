@@ -42,6 +42,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'sphinx_rtd_theme'
 
+html_title = f'{project} documentation'
+
 napoleon_numpy_docstring = False
 
 master_doc = 'index'
