@@ -5,6 +5,3 @@ python:
       - requirements: doc/requirements.txt
       - method: setuptools
         path: .
-
-formats:
-  - pdf
