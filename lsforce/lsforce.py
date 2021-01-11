@@ -523,8 +523,8 @@ class LSForce:
             raise ValueError('triangle method is specified but no half-width given!')
         self.triangle_half_width = triangle_half_width
 
-        # If user wants CPS to be run, make sure that 1) they have it installed and 2)
-        # they have provided a valid filepath
+        # If user wants CPS to be run, make sure that 1) they have it installed; 2) it
+        # runs; and 3) they have provided a valid filepath
         if cps_model:
             # 1) Is CPS installed?
             if not which('hprep96'):
@@ -532,7 +532,10 @@ class LSForce:
                     'CPS Green\'s function calculation requested, but CPS not found on '
                     'system. Install CPS and try again.'
                 )
-            # 2) Is `cps_model` a file?
+            # 2) Does CPS run?
+            if subprocess.call('hprep96') != 0:
+                raise OSError('Issue with CPS. Check install and try again.')
+            # 3) Is `cps_model` a file?
             if not os.path.exists(cps_model):
                 raise OSError(f'Could not find CPS model file "{cps_model}"')
             else:
