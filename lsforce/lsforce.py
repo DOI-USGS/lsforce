@@ -533,7 +533,7 @@ class LSForce:
                     'system. Install CPS and try again.'
                 )
             # 2) Does CPS run?
-            if subprocess.call('hprep96') != 0:
+            if subprocess.call('hprep96', stderr=subprocess.DEVNULL) != 0:
                 raise OSError('Issue with CPS. Check install and try again.')
             # 3) Is `cps_model` a file?
             if not os.path.exists(cps_model):
