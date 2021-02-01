@@ -11,7 +11,6 @@ Install and test:
     - conda install --yes cartopy notebook obspy pyqt xarray rasterio
     - conda install --yes black isort pytest-cov pytest-mpl
     - pip install --editable .
-
     # Run tests
     - black --skip-string-normalization --check .
     - isort --conda-env lsforce --check-only .
