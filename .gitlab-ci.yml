@@ -7,7 +7,7 @@ Install and test:
     - source /etc/profile.d/conda.sh
     - conda config --add channels conda-forge
     - conda create --name lsforce
-    - conda activate lsforce
+    - source activate lsforce
     - conda install --yes cartopy notebook obspy pyqt xarray rasterio
     - conda install --yes black isort pytest-cov pytest-mpl
     - pip install --editable .
