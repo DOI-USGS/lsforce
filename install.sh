@@ -4,6 +4,9 @@
 #   bash install.sh    # Standard (user) install
 #   bash install.sh 1  # Developer install
 
+cat /etc/redhat-release
+cat /etc/os-release
+
 platform=$(uname)
 if [ "$platform" == 'Linux' ]
 then
@@ -20,6 +23,7 @@ fi
 
 # Name of package
 PACKAGE_NAME=lsforce
+
 # Name of new conda environment
 ENV_NAME=$PACKAGE_NAME
 
@@ -50,12 +54,15 @@ then
 
     # Don't automatically activate the environment
     conda config --set auto_activate_base false
-
 else
-    echo "conda detected, installing the $ENV_NAME environment..."
-fi
+    echo "conda detected, updating..."
 
-conda update -n base -c defaults conda
+    # Try to update conda to avoid invalid argument errors later on
+    if ! conda update --name base --channel defaults conda
+    then
+        echo 'Failed to update conda. Trying to continue...'
+    fi
+fi
 
 # This is needed to ensure that environment activation works
 source $profile
@@ -129,10 +136,8 @@ then
     fi
 fi
 
-which -a python
-which -a python3.8
+python --version
 python3.8 --version
-/conda/envs/lsforce/bin/python3.8 --version
 
 # Try to upgrade pip, mostly so pip doesn't complain about not being new...
 if ! pip install --upgrade pip
