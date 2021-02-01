@@ -4,6 +4,8 @@
 #   bash install.sh    # Standard (user) install
 #   bash install.sh 1  # Developer install
 
+uname -r
+
 platform=$(uname)
 if [ "$platform" == 'Linux' ]
 then
