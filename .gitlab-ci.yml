@@ -6,12 +6,14 @@ Install and test:
     # Install the lsforce package, its dependencies, and testing packages
     - source /etc/profile.d/conda.sh
     - conda config --add channels conda-forge
+    - conda create --name lsforce
+    - conda activate lsforce
     - conda install --yes cartopy notebook obspy pyqt xarray rasterio
     - conda install --yes black isort pytest-cov pytest-mpl
     - pip install --editable .
     # Run tests
     - black --skip-string-normalization --check .
-    - isort --conda-env base --check-only .
+    - isort --conda-env lsforce --check-only .
     - pytest --cov-report html:cov_html
   artifacts:
     paths:
