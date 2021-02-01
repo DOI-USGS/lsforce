@@ -3,10 +3,15 @@ stages:
 
 Install and test:
   script:
-    # Install via the install.sh script
+    # Install the lsforce package, its dependencies, and testing packages
     - source /etc/profile.d/conda.sh
-    - bash install.sh 1
+    - conda config --add channels conda-forge
+    - conda create --name lsforce
     - source activate lsforce
+    - conda install --yes cartopy notebook obspy pyqt xarray rasterio
+    - conda install --yes black isort pytest-cov pytest-mpl
+    - pip install --editable .
+
     # Run tests
     - black --skip-string-normalization --check .
     - isort --conda-env lsforce --check-only .
