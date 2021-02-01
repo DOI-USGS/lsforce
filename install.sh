@@ -6,6 +6,7 @@
 
 cat /etc/redhat-release
 cat /etc/os-release
+uname -snr
 
 platform=$(uname)
 if [ "$platform" == 'Linux' ]
