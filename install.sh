@@ -123,7 +123,7 @@ then
 fi
 
 head /conda/envs/lsforce/bin/pip
-head /conda/envs/lsforce/bin/python3.8
+head /conda/envs/lsforce/bin/python3.7
 
 # Try to upgrade pip, mostly so pip doesn't complain about not being new...
 if ! pip install --upgrade pip
