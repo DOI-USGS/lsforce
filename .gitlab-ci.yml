@@ -6,7 +6,7 @@ Install and test:
     # Install via the install.sh script
     - source /etc/profile.d/conda.sh
     - bash install.sh
-    - conda activate lsforce
+    - source activate lsforce
     # Run tests
     - black --skip-string-normalization --check .
     - isort --conda-env lsforce --check-only .
