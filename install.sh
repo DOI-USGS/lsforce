@@ -4,8 +4,6 @@
 #   bash install.sh    # Standard (user) install
 #   bash install.sh 1  # Developer install
 
-uname -r
-
 platform=$(uname)
 if [ "$platform" == 'Linux' ]
 then
@@ -57,10 +55,9 @@ else
     echo "conda detected, updating..."
 
     # Try to update conda to avoid invalid argument errors later on
-    if ! conda install --name base conda==4.7
+    if ! conda install --name base --channel defaults conda
     then
         echo 'Failed to update conda. Trying to continue...'
-        exit 1
     fi
 fi
 
@@ -135,9 +132,6 @@ then
         exit 1
     fi
 fi
-
-python --version
-python3.8 --version
 
 # Try to upgrade pip, mostly so pip doesn't complain about not being new...
 if ! pip install --upgrade pip
