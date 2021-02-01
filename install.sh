@@ -55,7 +55,7 @@ else
     echo "conda detected, updating..."
 
     # Try to update conda to avoid invalid argument errors later on
-    if ! conda install --name base --channel defaults conda==4.7
+    if ! conda install --name base conda==4.7
     then
         echo 'Failed to update conda. Trying to continue...'
         exit 1
