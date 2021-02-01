@@ -131,6 +131,10 @@ head -1 /conda/envs/lsforce/bin/pip | od -c
 which -a pip
 which -a python
 which -a python3.8
+pip --version
+/conda/envs/lsforce/bin/pip --version
+python3.8 --version
+/conda/envs/lsforce/bin/python3.8 --version
 
 # Try to upgrade pip, mostly so pip doesn't complain about not being new...
 if ! pip install --upgrade pip
