@@ -112,7 +112,7 @@ fi
 
 # Try to activate the new conda environment
 echo "Activating the $ENV_NAME environment"
-if ! source activate $ENV_NAME
+if ! conda activate $ENV_NAME
 then
     echo '"conda activate" failed, trying "source activate" instead...'
     if ! source activate $ENV_NAME
