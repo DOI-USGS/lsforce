@@ -55,6 +55,8 @@ else
     echo "conda detected, installing the $ENV_NAME environment..."
 fi
 
+conda update -n base -c defaults conda
+
 # This is needed to ensure that environment activation works
 source $profile
 
@@ -127,12 +129,8 @@ then
     fi
 fi
 
-head -1 /conda/envs/lsforce/bin/pip | od -c
-which -a pip
 which -a python
 which -a python3.8
-pip --version
-/conda/envs/lsforce/bin/pip --version
 python3.8 --version
 /conda/envs/lsforce/bin/python3.8 --version
 
