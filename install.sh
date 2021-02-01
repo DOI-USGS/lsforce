@@ -4,10 +4,6 @@
 #   bash install.sh    # Standard (user) install
 #   bash install.sh 1  # Developer install
 
-cat /etc/redhat-release
-cat /etc/os-release
-uname -snr
-
 platform=$(uname)
 if [ "$platform" == 'Linux' ]
 then
@@ -59,9 +55,10 @@ else
     echo "conda detected, updating..."
 
     # Try to update conda to avoid invalid argument errors later on
-    if ! conda update --name base --channel defaults conda
+    if ! conda install --name base --channel defaults conda==4.4.11
     then
         echo 'Failed to update conda. Trying to continue...'
+        exit 1
     fi
 fi
 
