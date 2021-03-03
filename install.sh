@@ -55,7 +55,7 @@ else
     echo "conda detected, updating..."
 
     # Try to update conda
-    if ! conda update --name base --channel defaults conda
+    if ! conda update --yes --name base --channel defaults conda
     then
         echo 'Failed to update conda. Trying to continue...'
     fi
