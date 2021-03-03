@@ -52,13 +52,7 @@ then
     # Don't automatically activate the environment
     conda config --set auto_activate_base false
 else
-    echo "conda detected, updating..."
-
-    # Try to update conda
-    if ! conda update --yes --name base --channel defaults conda
-    then
-        echo 'Failed to update conda. Trying to continue...'
-    fi
+    echo "conda detected"
 fi
 
 # This is needed to ensure that environment activation works
