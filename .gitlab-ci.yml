@@ -8,7 +8,7 @@ Install and test:
     - conda config --add channels conda-forge
     - conda create --name lsforce
     - source activate lsforce
-    - conda install --yes "cartopy>0.18" notebook obspy pyqt xarray rasterio
+    - conda install --yes cartopy notebook obspy pyqt xarray rasterio
     - conda install --yes black isort pytest-cov pytest-mpl
     - pip install --editable .
     # Run tests
