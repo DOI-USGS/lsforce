@@ -48,8 +48,8 @@ By default, the Green's functions used by *lsforce* come from the
 [IRIS Data Services](http://ds.iris.edu/ds/products/). The user can choose from a fixed
 set of [1D Earth models](http://ds.iris.edu/ds/products/syngine/#models).
 
-Alternatively, if users prefer to compute Green's functions using a custom model, they
-can optionally install
+Alternatively, if users prefer to compute Green's functions using a custom model (see
+[Documentation](#documentation)), they can optionally install
 [Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html) via the
 following:
 
@@ -87,6 +87,14 @@ cd doc
 make html
 open _build/html/index.html  # macOS command to open file in browser
 ```
+
+The *lsforce* package includes a script,
+[`axisem2cps`](https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/master/bin/axisem2cps),
+which can convert 1D Earth models from Syngine into CPS model files. These models can
+then be further modified for specific use cases. In addition, completely custom CPS
+model files can be provided; for more information on CPS model files, see Chapter 8 of the
+[CPS documentation](http://www.eas.slu.edu/eqc/eqc_cps/CPS/CPS330/cps330o.pdf). The
+`lsforce` conda environment must be active for the script to be available.
 
 Usage examples for the two currently-supported parameterization methods are given in the
 three [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb`,
