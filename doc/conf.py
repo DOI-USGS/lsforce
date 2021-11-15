@@ -54,6 +54,7 @@ apidoc_module_dir = path.join(root, 'lsforce')
 apidoc_output_dir = 'api'
 apidoc_separate_modules = True
 apidoc_toc_file = False
+apidoc_module_first = True
 
 autoclass_content = 'both'
 
