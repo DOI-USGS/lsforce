@@ -1,17 +1,18 @@
-import datetime
+import os
 import sys
-from os import chdir, getcwd, pardir, path
+from datetime import datetime
+from pathlib import Path
 
-root = path.abspath(path.join(path.dirname(path.abspath(__file__)), pardir))
-sys.path.insert(0, root)
+root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(root))
 from versioneer import get_version
 
 # Get version (this method avoids importing the package, see GitHub comment link below)
 # https://github.com/python-versioneer/python-versioneer/issues/185#issue-343550345
-owd = getcwd()
-chdir(root)
+owd = Path.cwd()
+os.chdir(root)
 __version__ = get_version()
-chdir(owd)
+os.chdir(owd)
 
 SHOW_PRIVATE = False  # Set to True to build docs for private functions, methods, etc.
 
@@ -19,7 +20,7 @@ project = 'lsforce'
 
 author = 'Kate E. Allstadt and Liam Toney'
 
-copyright = f'{datetime.date.today().year}, {author}'
+copyright = f'{datetime.now().year}, {author}'
 
 version = __version__
 release = __version__
@@ -31,7 +32,6 @@ extensions = [
     'recommonmark',
     'sphinx.ext.viewcode',
     'sphinxcontrib.apidoc',
-    'sphinx.ext.mathjax',
     'sphinx.ext.todo',
 ]
 
@@ -50,7 +50,7 @@ master_doc = 'index'
 
 autodoc_mock_imports = ['cartopy', 'matplotlib', 'numpy', 'obspy', 'scipy', 'xarray']
 
-apidoc_module_dir = path.join(root, 'lsforce')
+apidoc_module_dir = str(root / 'lsforce')
 apidoc_output_dir = 'api'
 apidoc_separate_modules = True
 apidoc_toc_file = False
