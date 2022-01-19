@@ -77,6 +77,7 @@ conda remove --yes --name $ENV_NAME --all
 PACKAGE_LIST=(
     'cartopy=0.20'
     'notebook'
+    'numpy!=1.22'
     'obspy'
     'pyqt'
     'xarray'
