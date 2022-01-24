@@ -46,7 +46,7 @@ html_title = f'{project} documentation'
 
 napoleon_numpy_docstring = False
 
-master_doc = 'index'
+root_doc = 'index'
 
 autodoc_mock_imports = ['cartopy', 'matplotlib', 'numpy', 'obspy', 'scipy', 'xarray']
 
