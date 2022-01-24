@@ -1,7 +1,7 @@
 *lsforce*
 =========
 
-[![Pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) [![Coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/master/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs) [![Documentation status](https://readthedocs.org/projects/lsforce/badge/?version=latest)](https://lsforce.readthedocs.io/en/latest/?badge=latest)
+[![Pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/main/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) [![Coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/main/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs) [![Documentation status](https://readthedocs.org/projects/lsforce/badge/?version=latest)](https://lsforce.readthedocs.io/en/latest/?badge=latest)
 
 *lsforce* is a Python-based single-force seismic inversion framework for massive
 landslides. The codes can also be applied to other seismic sources that are
@@ -89,7 +89,7 @@ open _build/html/index.html  # macOS command to open file in browser
 ```
 
 The *lsforce* package includes a script,
-[`axisem2cps`](https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/master/bin/axisem2cps),
+[`axisem2cps`](https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/main/bin/axisem2cps),
 which can convert 1D Earth models from Syngine into CPS model files. These models can
 then be further modified for specific use cases. In addition, completely custom CPS
 model files can be provided; for more information on CPS model files, see Chapter 8 of the

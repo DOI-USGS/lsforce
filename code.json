@@ -11,14 +11,14 @@
       "licenses": [
         {
           "name": "Public Domain, CC0-1.0",
-          "URL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/raw/master/LICENSE.md"
+          "URL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/raw/main/LICENSE.md"
         }
       ]
     },
 
     "homepageURL": "https://lsforce.rtfd.io/",
-    "downloadURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/archive/master/lsforce-master.zip",
-    "disclaimerURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/raw/master/DISCLAIMER.md",
+    "downloadURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/archive/main/lsforce-main.zip",
+    "disclaimerURL": "https://code.usgs.gov/ghsc/lhp/lsforce/-/raw/main/DISCLAIMER.md",
     "repositoryURL": "https://code.usgs.gov/ghsc/lhp/lsforce.git",
     "vcs": "git",
 
