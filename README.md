@@ -32,7 +32,7 @@ fig.savefig(
 Installation
 ------------
 
-The following has only been tested on macOS Mojave.
+The following has only been tested on macOS.
 
 Clone this repo and run the installation script, which creates a
 [conda](https://docs.conda.io/en/latest/) environment named `lsforce` and installs
