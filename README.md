@@ -122,13 +122,14 @@ Citations
 ---------
 
 <p style="text-indent:-36px; padding-left:36px;">
-Allstadt, K. E., & Toney, L. (2020). lsforce (Version 1.0.1) [Source code]. U.S.
-Geological Survey Software Release. doi:
-<a href="https://doi.org/10.5066/P9CR20KW">10.5066/P9CR20KW</a>.
+Allstadt, K. E., & Toney, L. (2020). <i>lsforce</i> (Version 1.0.1) [Source code]. U.S.
+Geological Survey Software Release.
+<a href="https://doi.org/10.5066/P9CR20KW">https://doi.org/10.5066/P9CR20KW</a>
 </p>
 
 <p style="text-indent:-36px; padding-left:36px;">
 Toney, L., & Allstadt, K. E. (2021). lsforce: A Python-based single-force seismic
-inversion framework for massive landslides. <i>Seismological Research Letters</i>. doi:
-<a href="https://doi.org/10.1785/0220210004">10.1785/0220210004</a>.
+inversion framework for massive landslides. <i>Seismological Research Letters,
+92</i>(4), 2610–2626.
+<a href="https://doi.org/10.1785/0220210004">https://doi.org/10.1785/0220210004</a>
 </p>
