@@ -9,7 +9,7 @@ Install and test:
     - conda create --name lsforce
     - source activate lsforce
     - conda install --yes cartopy=0.20 notebook 'numpy<1.22' obspy pyqt xarray rasterio
-    - conda install --yes black isort pytest-cov pytest-mpl
+    - conda install --yes 'black<22' isort pytest-cov pytest-mpl
     - pip install --editable .
     # Run tests
     - black --skip-string-normalization --check .
