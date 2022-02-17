@@ -1739,6 +1739,64 @@ class LSForce:
                     bbox_inches='tight',
                 )
 
+    def write_forces(
+        self, prefix, filepath=None, timestamp=False,
+    ):
+        r"""Save E, N, Z forces to a text file for non-*lsforce* users.
+
+        File can be read in using, e.g., NumPy as follows:
+
+        .. code-block:: python
+
+            import numpy as np
+            e, n, z = np.loadtxt('/path/to/file.txt', unpack=True)
+
+        Args:
+            prefix (str): Run name to prepend to file
+            filepath (str): Full path to directory where file should be saved.
+                If `None`, will use `self.main_folder`
+            timestamp (bool): Name file with current time to avoid overwriting
+                previous results
+        """
+
+        if filepath is None:
+            filepath = self.main_folder
+
+        # Format filename
+        current_time = UTCDateTime.now()
+        filename = '{}_{:1.0f}-{:1.0f}sec{}{}.txt'.format(
+            prefix,
+            self.filter['periodmin'],
+            self.filter['periodmax'],
+            '' if self.jackknife is None else '_JK',
+            '_' + current_time.strftime('%Y-%m-%dT%H%M') if timestamp else '',
+        )
+
+        t0 = self.data.st_proc[0].stats.starttime
+        if self.zero_time:
+            t0 += self.zero_time
+
+        # Form informative header
+        header = (
+            'lsforce (https://code.usgs.gov/ghsc/lhp/lsforce) output forces\n'
+            '--------------------------------------------------------------\n'
+            f'FORCE SAMPLING RATE: {self.force_sampling_rate} Hz\n'
+            f'FORCE START TIME: {t0.strftime("%Y-%m-%d %H:%M:%S")} UTC\n'
+            'FORCE UNITS: newtons\n'
+            '--------------------------------------------------------------\n'
+            f'FILE CREATED: {current_time.strftime("%Y-%m-%d %H:%M")} UTC\n'
+            'FILE COLUMNS: east north up\n'
+            '--------------------------------------------------------------'
+        )
+
+        # Save
+        np.savetxt(
+            os.path.join(filepath, filename),
+            np.vstack([self.E, self.N, self.Z]).T,
+            header=header,
+        )
+        print(f'{filename} saved to {os.path.abspath(filepath)}')
+
 
 def find_alpha(
     Ghat,
