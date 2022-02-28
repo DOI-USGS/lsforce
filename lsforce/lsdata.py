@@ -66,6 +66,23 @@ class LSData:
         for tr in st:
             assert hasattr(tr.stats, 'latitude') and hasattr(tr.stats, 'longitude')
 
+        # Ensure that if any horizontal is present, *both* are present
+        for station in np.unique([tr.stats.station for tr in st]):
+            st_sta = st.select(station=station)
+            id_string = '\n'.join(['\t' + tr.id for tr in st_sta])
+            id_msg = f'Traces involved:\n{id_string}'
+            components = np.unique([tr.stats.component for tr in st_sta])
+            if components.size == 1:
+                msg = 'If a station has only one component, that component must be vertical!'
+                assert (
+                    components[0] == 'Z'
+                ), f'{msg}\nComponents found: {components}\n{id_msg}'
+            elif components.size == 2:
+                msg = 'If a station has two components, they must both be horizontal!'
+                assert (
+                    'Z' not in components
+                ), f'{msg}\nComponents found: {components}\n{id_msg}'
+
         self.st_orig = st.copy()  # Save a copy of the original input Stream
         self.st_proc = st.copy()  # Work on a copy of the input Stream
 
