@@ -1,11 +1,10 @@
 import os
-import pickle
 
 import numpy as np
 import pytest
 from obspy import read
 
-from lsforce import LSData
+from lsforce import LSData, readrun
 
 # Set kwargs for all pytest-mpl tests
 PYTEST_MPL_KWARGS = dict(style='default', savefig_kwargs=dict(bbox_inches='tight'))
@@ -23,8 +22,7 @@ st_in = read(os.path.join(data_dir, 'input_stream.pkl'), format='PICKLE')
 
 # Grab LSForce object from test data dir (really just to grab its "data" attribute,
 # which is an LSData object, to use for LSData plotting tests)
-with open(os.path.join(data_dir, 'lsforce.pkl'), 'rb') as f:
-    lsdata = pickle.load(f).data
+lsdata = readrun(os.path.join(data_dir, 'lsforce.pkl')).data
 
 
 def test_lsdata_st_proc():
