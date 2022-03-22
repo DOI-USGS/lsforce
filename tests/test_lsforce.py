@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from obspy import read
 
-from lsforce import LSForce
+from lsforce import LSForce, readrun
 from lsforce.lsforce import GF_STARTTIME
 
 # Set kwargs for all pytest-mpl tests
@@ -39,11 +39,10 @@ INVERT_KWARGS = dict(
 script_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(script_dir, 'data')
 
-# Grab LSForce object from test data dir to use for LSForce plotting tests (and to grab
-# its "data" attribute, which is an LSData object, to use as input for LSForce creation
-# tests
-with open(os.path.join(data_dir, 'lsforce.pkl'), 'rb') as f:
-    lsforce = pickle.load(f)
+# Grab LSForce object from test data dir to use for LSForce plotting and forward model
+# tests (and to grab its "data" attribute, which is an LSData object, to use as input
+# for LSForce creation tests
+lsforce = readrun(os.path.join(data_dir, 'lsforce.pkl'))
 
 
 def test_lsforce_full():
@@ -76,7 +75,6 @@ def test_lsforce_full():
 
     # Generate a new LSForce object to use for testing data if requested
     if GENERATE_LSFORCE_PICKLE:
-        del force.G  # Delete this to save a ton of space
         with open(os.path.join(data_dir, 'lsforce_NEW.pkl'), 'wb') as f:
             pickle.dump(force, f)
 
@@ -163,6 +161,19 @@ def test_lsforce_gfs():
     for tr_syn, tr_cps in zip(st_syn, st_cps):
         print(f'Testing {tr_syn.id}...')
         np.testing.assert_allclose(tr_syn.data, tr_cps.data, atol=GF_ATOL)
+
+
+def test_forward():
+
+    print('Testing forward problem...')
+
+    st_syn = lsforce.forward(lsforce.Z, lsforce.N, lsforce.E)
+
+    # Test that st_syn data are IDENTICAL to dtnew
+    np.testing.assert_allclose(
+        np.array([tr.data for tr in st_syn]),
+        lsforce.dtnew,
+    )
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)

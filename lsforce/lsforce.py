@@ -1187,6 +1187,56 @@ class LSForce:
 
         self.inversion_complete = True
 
+    def forward(self, Z, N, E):
+        r"""Execute the forward problem :math:`\mathbf{d} = \mathbf{G}\mathbf{m}`
+        using a user-supplied force time series :math:`\mathbf{m}` composed of
+        components `Z`, `N`, and `E`.
+
+        Args:
+            Z: [N] Vertical force time series (positive up)
+            N: [N] North force time series (positive north)
+            E: [N] East force time series (positive east)
+
+        Returns:
+            :class:`~obspy.core.stream.Stream`: [m] Stream containing synthetic
+            data, :math:`\mathbf{d}`
+        """
+
+        # Check if G is defined
+        if not self.gf_computed:
+            raise RuntimeError('G is not defined. Did you run LSForce.setup()?')
+
+        # Convert and check sizes
+        Z = np.array(Z).squeeze()
+        N = np.array(N).squeeze()
+        E = np.array(E).squeeze()
+        for vec in Z, N, E:
+            assert (
+                vec.size == self.data_length
+            ), f'Each force component must have length {self.data_length}!'
+
+        # Form model vector
+        model = np.hstack([-Z, N, E])
+
+        # KEY: Forward problem
+        d = np.reshape(self.G.dot(model), (-1, self.data_length))
+
+        # Form Stream
+        st_syn = self.data.st_proc.copy()  # Quick way to pre-populate metadata
+        for data, tr in zip(d, st_syn):
+            tr.stats.sampling_rate = self.data_sampling_rate
+            tr.data = data
+            for key in (
+                '_fdsnws_dataselect_url',
+                '_format',
+                'mseed',
+                'processing',
+                'response',
+            ):
+                del tr.stats[key]  # Remove N/A metadata
+
+        return st_syn
+
     def plot_fits(self, equal_scale=True, xlim=None):
         r"""Create a plot showing the model-produced waveform fit to the data.
 
@@ -1740,7 +1790,10 @@ class LSForce:
                 )
 
     def write_forces(
-        self, prefix, filepath=None, timestamp=False,
+        self,
+        prefix,
+        filepath=None,
+        timestamp=False,
     ):
         r"""Save E, N, Z forces to a text file for non-*lsforce* users.
 
