@@ -855,6 +855,7 @@ class LSForce:
         self.dtnew = None
         self.alpha = None
         self.alphafit = {'alphas': None, 'fit': None, 'size': None}
+        self.angle_magnitude = None
 
         if jackknife:
             if frac_delete == 1.0:
@@ -1184,6 +1185,54 @@ class LSForce:
                 f'min {self.jackknife.VR_all.min():2.0f}, '
                 f'median {np.median(self.jackknife.VR_all):2.0f}'
             )
+
+        # Calculate angles and magnitudes
+        Mag = np.linalg.norm(list(zip(self.Z, self.E, self.N)), axis=1)
+        if self.jackknife is not None:
+            # Calculate magnitude of each jackknife run
+            mag_all = [
+                np.linalg.norm(list(zip(z, e, n)), axis=1)
+                for z, e, n in zip(
+                    self.jackknife.Z.all, self.jackknife.E.all, self.jackknife.N.all
+                )
+            ]
+            # Calculate magnitude bounds
+            MagL = np.min(mag_all, axis=0)
+            MagU = np.max(mag_all, axis=0)
+        else:
+            MagU = None
+            MagL = None
+        Vang = (180 / np.pi) * np.arctan(self.Z / np.sqrt(self.N ** 2 + self.E ** 2))
+        # Get angle counterclockwise relative to N
+        tempang = (180 / np.pi) * np.arctan2(self.N, self.E) - 90
+        # For any negative values, add 360
+        for i, temp in enumerate(tempang):
+            if temp < 0:
+                tempang[i] = temp + 360
+        if self.jackknife is not None:
+            tempangU = (180 / np.pi) * np.arctan2(
+                self.jackknife.N.upper, self.jackknife.E.upper
+            ) - 90
+            for i, temp in enumerate(tempangU):
+                if temp < 0:
+                    tempangU[i] = temp + 360
+            tempangL = (180 / np.pi) * np.arctan2(
+                self.jackknife.N.lower, self.jackknife.E.lower
+            ) - 90
+            for i, temp in enumerate(tempangL):
+                if temp < 0:
+                    tempangL[i] = temp + 360
+        # Now flip to clockwise to get azimuth
+        Haz = 360 - tempang
+
+        # Store angles and magnitudes
+        self.angle_magnitude = AttribDict(
+            magnitude=Mag,
+            magnitude_upper=MagU,
+            magnitude_lower=MagL,
+            vertical_angle=Vang,
+            horizontal_angle=Haz,
+        )
 
         self.inversion_complete = True
 
@@ -1633,8 +1682,7 @@ class LSForce:
 
         # Plot the magnitudes in second one
         ax1 = fig.add_subplot(412)
-        Mag = np.linalg.norm(list(zip(self.Z, self.E, self.N)), axis=1)
-        ax1.plot(tvec, Mag, color='black', label='Best')
+        ax1.plot(tvec, self.angle_magnitude.magnitude, color='black', label='Best')
 
         if self.jackknife is not None:
 
@@ -1650,50 +1698,32 @@ class LSForce:
             Mag_mean = np.mean(mag_all, axis=0)
             ax1.plot(tvec, Mag_mean, color='black', linestyle='--', label='Mean')
 
-            # Calculate and plot magnitude bounds as grey patch (these bounds do not
+            # Plot magnitude bounds as grey patch (these bounds do not
             # necessarily represent a single run's magnitude and in fact are more likely
             # to be composites of several runs)
-            MagL = np.min(mag_all, axis=0)
-            MagU = np.max(mag_all, axis=0)
-            ax1.fill_between(tvec, MagU, MagL, facecolor='black', alpha=JK_ALPHA)
+            ax1.fill_between(
+                tvec,
+                self.angle_magnitude.magnitude_upper,
+                self.angle_magnitude.magnitude_lower,
+                facecolor='black',
+                alpha=JK_ALPHA,
+            )
 
             # Add legend
             ax1.legend()
 
-        else:
-            MagU = None
-            MagL = None
         ax1.set_ylabel('Force (N)')
         ax1.set_ylim(bottom=0)
 
         # Plot the horizontal azimuth
         ax2 = fig.add_subplot(413)
-
-        # Get angle counterclockwise relative to N
-        tempang = (180 / np.pi) * np.arctan2(self.N, self.E) - 90
-        # For any negative values, add 360
-        for i, temp in enumerate(tempang):
-            if temp < 0:
-                tempang[i] = temp + 360
-        if self.jackknife is not None:
-            tempangU = (180 / np.pi) * np.arctan2(Nupper, Eupper) - 90
-            for i, temp in enumerate(tempangU):
-                if temp < 0:
-                    tempangU[i] = temp + 360
-            tempangL = (180 / np.pi) * np.arctan2(Nlower, Elower) - 90
-            for i, temp in enumerate(tempangL):
-                if temp < 0:
-                    tempangL[i] = temp + 360
-        # Now flip to clockwise to get azimuth
-        Haz = 360 - tempang
-        ax2.plot(tvec, Haz)
+        ax2.plot(tvec, self.angle_magnitude.horizontal_angle)
         ax2.set_ylabel('Azimuth (deg CW from N)')
         ax2.set_ylim(0, 360)
 
         # Plot the vertical angle
         ax3 = fig.add_subplot(414)
-        Vang = (180 / np.pi) * np.arctan(self.Z / np.sqrt(self.N ** 2 + self.E ** 2))
-        ax3.plot(tvec, Vang)
+        ax3.plot(tvec, self.angle_magnitude.vertical_angle)
         ax3.set_ylabel('Vertical angle (deg)')
 
         axes = fig.get_axes()
@@ -1711,14 +1741,6 @@ class LSForce:
             ]
 
         plt.xlabel('Time (s)')
-
-        self.angle_magnitude = AttribDict(
-            magnitude=Mag,
-            magnitude_upper=MagU,
-            magnitude_lower=MagL,
-            vertical_angle=Vang,
-            horizontal_angle=Haz,
-        )
 
         fig.tight_layout()
         fig.show()
