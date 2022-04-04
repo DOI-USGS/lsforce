@@ -77,7 +77,6 @@ conda remove --yes --name $ENV_NAME --all
 PACKAGE_LIST=(
     'cartopy=0.20'
     'notebook'
-    'numpy<1.22'
     'obspy'
     'pyqt'
     'xarray'
@@ -86,7 +85,7 @@ PACKAGE_LIST=(
 
 # Additional developer packages:
 DEVELOPER_PACKAGES=(
-    'black<22'
+    'black'
     'ipython'
     'isort'
     'nbdime'

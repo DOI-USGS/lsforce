@@ -1034,7 +1034,7 @@ class LSForce:
 
         Apart = Ghat.conj().T @ Ghat
 
-        A = Apart + alpha ** 2 * (
+        A = Apart + alpha**2 * (
             tikhonov_ratios[0] * I
             + tikhonov_ratios[1] * L1part
             + tikhonov_ratios[2] * L2part
@@ -1146,7 +1146,7 @@ class LSForce:
                 alphajs.append(alphaj)
 
                 # Combo of all regularization things (if any are zero they won't matter)
-                Aj = Apart + alphaj ** 2 * (
+                Aj = Apart + alphaj**2 * (
                     tikhonov_ratios[0] * I
                     + tikhonov_ratios[1] * L1part
                     + tikhonov_ratios[2] * L2part
@@ -1202,7 +1202,7 @@ class LSForce:
         else:
             MagU = None
             MagL = None
-        Vang = (180 / np.pi) * np.arctan(self.Z / np.sqrt(self.N ** 2 + self.E ** 2))
+        Vang = (180 / np.pi) * np.arctan(self.Z / np.sqrt(self.N**2 + self.E**2))
         # Get angle counterclockwise relative to N
         tempang = (180 / np.pi) * np.arctan2(self.N, self.E) - 90
         # For any negative values, add 360
@@ -1934,7 +1934,7 @@ def find_alpha(
         templ2 = np.arange(templ1 - 5, templ1 - 1, int_rough)
     else:
         templ2 = np.arange(range_rough[0], range_rough[1], int_rough)
-    alphas = 10.0 ** templ2
+    alphas = 10.0**templ2
     fit1 = []
     size1 = []
 
@@ -1957,7 +1957,7 @@ def find_alpha(
     loop = 1
     while loop <= maxloops:
         for alpha in alphas:
-            A = Apart + alpha ** 2 * (
+            A = Apart + alpha**2 * (
                 tikhonov_ratios[0] * I
                 + tikhonov_ratios[1] * L1part
                 + tikhonov_ratios[2] * L2part
@@ -2060,7 +2060,7 @@ def _varred(dt, dtnew):
     dt_temp = np.reshape(dt, shp)
     dtnew_temp = np.reshape(dtnew, shp)
     d_dnew2 = (dt_temp - dtnew_temp) ** 2
-    d2 = dt_temp ** 2
+    d2 = dt_temp**2
     VR = (1 - (np.sum(d_dnew2) / np.sum(d2))) * 100
 
     return VR
