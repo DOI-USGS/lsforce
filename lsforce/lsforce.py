@@ -1759,6 +1759,10 @@ class LSForce:
     ):
         r"""Save a force inversion run for later use.
 
+        Warning:
+            Do not expect this to work if you have the ``autoreload``
+            `IPython extension`_ enabled!
+
         Args:
             prefix (str): Run name to prepend to all output files
             filepath (str): Full path to directory where all files should be saved. If
@@ -1769,6 +1773,8 @@ class LSForce:
             figs2save_names (list or tuple): Names of figures (appends to end)
             light (bool): If `True`, does not save seismic data with object to save size
             filetype (str): Filetype given as extension, e.g. `'png'`
+
+        .. _IPython extension: https://ipython.readthedocs.io/en/stable/config/extensions/autoreload.html
         """
 
         if filepath is None:
@@ -2176,12 +2182,18 @@ def _read(url):
 def readrun(filename):
     r"""Read in a saved LSForce object.
 
+    Warning:
+        Do not expect this to work if you have the ``autoreload``
+        `IPython extension`_ enabled!
+
     Args:
         filename (str): File path to LSForce object saved using
             :meth:`~lsforce.lsforce.LSForce.saverun`
 
     Returns:
         :class:`~lsforce.lsforce.LSForce`: Saved LSForce object
+
+    .. _IPython extension: https://ipython.readthedocs.io/en/stable/config/extensions/autoreload.html
     """
     with open(filename, 'rb') as f:
         result = pickle.load(f)
