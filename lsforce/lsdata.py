@@ -4,7 +4,7 @@ from cartopy import feature as cfeature
 from matplotlib import dates as mdates
 from matplotlib import patheffects as path_effects
 from matplotlib import pyplot as plt
-from obspy.clients.fdsn import Client
+from obspy.clients.fdsn import RoutingClient
 from obspy.geodetics import gps2dist_azimuth
 
 DETREND_POLY_ORDER = 2
@@ -55,7 +55,7 @@ class LSData:
                 Set to `False` to handle response removal manually at an earlier step.
             skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is
                 skipped. This is a necessary flag if the stations used do not have
-                metadata on IRIS (e.g., for synthetic cases)
+                metadata in the irisws-fedcatalog (e.g., for synthetic cases)
         """
 
         # Type check for source coordinates
@@ -307,15 +307,15 @@ def _rotate_to_rtz(st, skip_zne_rotation):
     r"""Rotate all components of a Stream into radial–transverse–vertical.
 
     This function performs a two-step rotation. First, it rotates all channels into ZNE
-    (vertical, north, west) using IRIS metadata (even stations that claim to already be
-    in ZNE). Then, it rotates into RTZ (radial, transverse, vertical).
+    (vertical, north, west) using irisws-fedcatalog metadata (even stations that claim
+    to already be in ZNE). Then, it rotates into RTZ (radial, transverse, vertical).
 
     Args:
         st (:class:`~obspy.core.stream.Stream`): Input Stream to be rotated with
             ``stats.back_azimuth`` defined
         skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is skipped.
-            This is a necessary flag if the stations used do not have metadata on IRIS
-            (e.g., for synthetic cases)
+            This is a necessary flag if the stations used do not have metadata in the
+            irisws-fedcatalog (e.g., for synthetic cases)
 
     Returns:
         :class:`~obspy.core.stream.Stream`: Rotated Stream
@@ -331,8 +331,8 @@ def _rotate_to_rtz(st, skip_zne_rotation):
     # If we're doing the full ->ZNE rotation step prior to NE->RT
     if not skip_zne_rotation:
 
-        # Grab inventory for orientation info (relying only on IRIS FDSN here!)
-        client = Client('IRIS')
+        # Grab inventory for orientation info
+        client = RoutingClient('iris-federator')
         inv = client.get_stations(
             network=','.join(networks),
             station=','.join(stations),
