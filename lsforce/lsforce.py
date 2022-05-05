@@ -308,11 +308,16 @@ class LSForce:
 
                     # Get GFs for this station
                     st_syn = self._get_greens_for_station(
-                        network=stats.network,
-                        station=station,
+                        receiverlatitude=stats.latitude,
+                        receiverlongitude=stats.longitude,
                         back_azimuth=stats.back_azimuth,
                         distance=stats.distance,
                     )
+
+                    # Add metadata, as Syngine uses 'XX' and 'SYN' by default
+                    for tr in st_syn:
+                        tr.stats.network = stats.network
+                        tr.stats.station = stats.station
 
                     # TODO: Understand why we have to flip the polarity of these!
                     for channel in 'RHF', 'RVF', 'THF':
@@ -335,7 +340,9 @@ class LSForce:
 
         return st_gf
 
-    def _get_greens_for_station(self, network, station, back_azimuth, distance):
+    def _get_greens_for_station(
+        self, receiverlatitude, receiverlongitude, back_azimuth, distance
+    ):
         r"""Get the Green's functions for a single station (Syngine)."""
 
         # Provide triangle STF params if we're using the triangle method
@@ -364,8 +371,8 @@ class LSForce:
         # Vertical force (downward)
         st_vf = read_func(
             self._build_syngine_url(
-                network=network,
-                station=station,
+                receiverlatitude=receiverlatitude,
+                receiverlongitude=receiverlongitude,
                 components='ZR',
                 forces=(-1, 0, 0),
                 stf_offset=stf_offset,
@@ -381,8 +388,8 @@ class LSForce:
         # Horizontal force (radial)
         st_hf_r = read_func(
             self._build_syngine_url(
-                network=network,
-                station=station,
+                receiverlatitude=receiverlatitude,
+                receiverlongitude=receiverlongitude,
                 components='ZR',
                 forces=(0, np.cos(back_azimuth_radians), -np.sin(back_azimuth_radians)),
                 stf_offset=stf_offset,
@@ -398,8 +405,8 @@ class LSForce:
         # Horizontal force (transverse)
         st_hf_t = read_func(
             self._build_syngine_url(
-                network=network,
-                station=station,
+                receiverlatitude=receiverlatitude,
+                receiverlongitude=receiverlongitude,
                 components='T',
                 forces=(
                     0,
@@ -433,8 +440,8 @@ class LSForce:
 
     def _build_syngine_url(
         self,
-        network,
-        station,
+        receiverlatitude,
+        receiverlongitude,
         components,
         forces,
         stf_offset=None,
@@ -451,8 +458,8 @@ class LSForce:
             'dt=' + str(SYNGINE_DT),
             'starttime=' + str(self.T0),
             'endtime=' + str(self.gf_duration - self.T0),
-            'network=' + network,
-            'station=' + station,
+            'receiverlatitude=' + str(receiverlatitude),
+            'receiverlongitude=' + str(receiverlongitude),
             'sourcelatitude=' + str(self.data.source_lat),
             'sourcelongitude=' + str(self.data.source_lon),
             'sourcedepthinmeters=' + str(self.source_depth),
