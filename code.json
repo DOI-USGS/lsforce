@@ -3,7 +3,7 @@
     "name": "lsforce",
     "organization": "U.S. Geological Survey",
     "description": "A Python-based seismic force inversion framework for massive landslides",
-    "version": "1.0.0",
+    "version": "v1.0.0",
     "status": "Release Candidate",
 
     "permissions": {
