@@ -1,5 +1,5 @@
 from ._version import get_versions
-from .lsdata import LSData
+from .lsdata import LSData, make_lsdata_syn
 from .lsforce import LSForce, readrun
 from .lstrajectory import LSTrajectory
 

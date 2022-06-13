@@ -4,6 +4,7 @@ from cartopy import feature as cfeature
 from matplotlib import dates as mdates
 from matplotlib import patheffects as path_effects
 from matplotlib import pyplot as plt
+from obspy import Stream, Trace
 from obspy.clients.fdsn import RoutingClient
 from obspy.geodetics import gps2dist_azimuth
 
@@ -255,8 +256,10 @@ class LSData:
             station_labels = []
             for station in np.unique([tr.stats.station for tr in self.st_proc]):
                 station_st = self.st_proc.select(station=station)
-                # If this station's set of channels match the channel set we're on
-                station_channel_set = [tr.stats.channel[-1] for tr in station_st]
+                # If this station's set of unique channels match the channel set we're on
+                station_channel_set = np.unique(
+                    [tr.stats.channel[-1] for tr in station_st]
+                )
                 if sorted(station_channel_set) == sorted(current_channel_set):
                     station_lons.append(station_st[0].stats.longitude)
                     station_lats.append(station_st[0].stats.latitude)
@@ -301,6 +304,87 @@ class LSData:
         fig.show()
 
         return fig
+
+
+def make_lsdata_syn(
+    inv, fake_station_dict, source_lat, source_lon, data_length_seconds
+):
+    r"""Wrapper which creates an :class:`~lsforce.lsdata.LSData` object for
+    forward modeling applications.
+
+    Args:
+        inv (:class:`~obspy.core.inventory.inventory.Inventory`): ObsPy Inventory
+            object containing the **real** stations for which synthetics should be
+            computed
+        fake_station_dict (dict): Dictionary with keys specifying station names, and
+            values as two-element lists [latitude, longitude], of **fake** stations
+            for which synthetics should be computed
+        source_lat (float): Latitude in decimal degrees of centroid of landslide
+            source location
+        source_lon (float): Longitude in decimal degrees of centroid of landslide
+            source location
+        data_length_seconds (int or float): [s] Length of synthetic data
+    """
+
+    # Set artificially high, this determines the SEED band code of "H"
+    dummy_sampling_rate = 100
+
+    # Ensure there's something to use
+    if inv is None and fake_station_dict is None:
+        raise ValueError('No station information provided!')
+
+    # Create dummy Stream object
+    st = Stream()
+
+    # Add Traces from inv, if it's provided
+    if inv is not None:
+        for network in inv:
+            for station in network:
+                for channel in station:
+                    stats = dict(
+                        network=network.code,
+                        station=station.code,
+                        location=channel.location_code,
+                        channel=channel.code,
+                        sampling_rate=dummy_sampling_rate,
+                    )
+                    st += Trace(
+                        data=np.zeros(data_length_seconds * stats['sampling_rate']),
+                        header=stats,
+                    )
+        for tr in st:
+            coords = inv.get_coordinates(tr.id)
+            tr.stats.longitude = coords['longitude']
+            tr.stats.latitude = coords['latitude']
+
+    # Add Traces from fake_station_dict, if it's provided
+    if fake_station_dict is not None:
+        for station, coords in fake_station_dict.items():
+            for channel in 'HXZ', 'HXN', 'HXE':
+                stats = dict(
+                    network='XX',
+                    station=station,
+                    channel=channel,
+                    location='SE',  # Synthetics Engine
+                    sampling_rate=dummy_sampling_rate,
+                    longitude=coords[1],
+                    latitude=coords[0],
+                )
+                st += Trace(
+                    data=np.zeros(data_length_seconds * stats['sampling_rate']),
+                    header=stats,
+                )
+
+    # Create LSData instance
+    instance = LSData(
+        st,
+        source_lat=source_lat,
+        source_lon=source_lon,
+        remove_response=False,
+        skip_zne_rotation=True,
+    )
+
+    return instance
 
 
 def _rotate_to_rtz(st, skip_zne_rotation):

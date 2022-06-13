@@ -1282,6 +1282,8 @@ class LSForce:
         for data, tr in zip(d, st_syn):
             tr.stats.sampling_rate = self.data_sampling_rate
             tr.data = data
+            tr.stats.location = 'SE'  # Synthetics Engine
+            tr.stats.channel = _get_band_code(tr.stats.delta) + 'X' + tr.stats.component
             for key in (
                 '_fdsnws_dataselect_url',
                 '_format',
@@ -1289,7 +1291,10 @@ class LSForce:
                 'processing',
                 'response',
             ):
-                del tr.stats[key]  # Remove N/A metadata
+                try:
+                    del tr.stats[key]  # Remove N/A metadata
+                except KeyError:
+                    pass  # If the key doesn't exist, just proceed silently
 
         return st_syn
 
@@ -2184,6 +2189,30 @@ def _read(url):
     with tempfile.NamedTemporaryFile() as f:
         urlretrieve(url, f.name)
         return read(f.name)
+
+
+def _get_band_code(dt):
+    r"""Determine SEED band code for a given sampling interval.
+
+    SEED band code reference:
+    http://www.fdsn.org/pdf/SEEDManual_V2.4_Appendix-A.pdf (see page 2)
+
+    Code copied from Instaseis:
+    https://github.com/krischer/instaseis/blob/dc9d4f16e55837236712e3dde2fbe10902393940/instaseis/helpers.py#L45-L61
+    """
+    if dt <= 0.001:
+        band_code = 'F'
+    elif dt <= 0.004:
+        band_code = 'C'
+    elif dt <= 0.0125:
+        band_code = 'H'
+    elif dt <= 0.1:
+        band_code = 'B'
+    elif dt < 1:
+        band_code = 'M'
+    else:
+        band_code = 'L'
+    return band_code
 
 
 def readrun(filename):
