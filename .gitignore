@@ -8,3 +8,7 @@
 /doc/api/
 /cov_html/
 /.coverage
+/notebooks/forward/
+/notebooks/iliamna_2016_paper/
+/notebooks/lamplugh/
+/notebooks/hunza_attabad/
