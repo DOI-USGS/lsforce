@@ -1,10 +1,10 @@
 *.pyc
 .DS_Store
-.idea/
+/.idea/
 .ipynb_checkpoints/
 .spyproject
-lsforce.egg-info/
-doc/_build/
-doc/api/
-cov_html/
-.coverage
+/lsforce.egg-info/
+/doc/_build/
+/doc/api/
+/cov_html/
+/.coverage
