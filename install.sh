@@ -142,10 +142,18 @@ then
     exit 1
 fi
 
-# Give nbdime setup instructions if this is a developer install, see:
-# https://nbdime.readthedocs.io/en/latest/#git-integration-quickstart
+# Do additional things if this is a developer install
 if [ "$1" == 1 ]
 then
+    # Give nbdime setup instructions, see:
+    # https://nbdime.readthedocs.io/en/latest/#git-integration-quickstart
     echo 'To set up git integration for nbdime, run:'
     echo 'nbdime config-git --enable --global'
+
+    # Install packages only available via pip
+    if ! pip install sphinx-markdown-builder
+    then
+      echo 'Failed to install development pip packages. Exiting.'
+      exit 1
+    fi
 fi

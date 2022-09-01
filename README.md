@@ -1,7 +1,7 @@
 *lsforce*
 =========
 
-[![Pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/main/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) [![Coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/main/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs) [![Documentation status](https://readthedocs.org/projects/lsforce/badge/?version=latest)](https://lsforce.readthedocs.io/en/latest/?badge=latest)
+[![Pipeline status](https://code.usgs.gov/ghsc/lhp/lsforce/badges/main/pipeline.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/pipelines/latest) [![Coverage report](https://code.usgs.gov/ghsc/lhp/lsforce/badges/main/coverage.svg)](https://code.usgs.gov/ghsc/lhp/lsforce/-/jobs)
 
 *lsforce* is a Python-based single-force seismic inversion framework for massive
 landslides. The codes can also be applied to other seismic sources that are
@@ -75,10 +75,12 @@ following:
 Documentation
 -------------
 
-The latest interactive documentation is visible online
-[here](https://lsforce.readthedocs.io/en/latest/api/lsforce.html).
+Documentation for *lsforce* is visible on the repository webpage as a collection
+of Markdown files [here](doc/_build/markdown). Alternatively, once you have cloned the
+repository, you can open [`doc/_build/html/index.html`](doc/_build/html/index.html)
+in your web browser to view interactive HTML documentation.
 
-To instead build the interactive documentation yourself, first ensure that you installed
+To build the interactive HTML documentation yourself, first ensure that you installed
 the developer tools (`bash install.sh 1`), which are required for documentation
 building. Then:
 ```shell

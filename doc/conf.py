@@ -33,6 +33,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinxcontrib.apidoc',
     'sphinx.ext.todo',
+    'sphinx_markdown_builder',
 ]
 
 # List of patterns, relative to source directory, that match files and
