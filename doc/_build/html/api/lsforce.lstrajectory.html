@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lsforce.lstrajectory module &mdash; lsforce documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="lsforce.lsforce module" href="lsforce.lsforce.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> lsforce
+          </a>
+              <div class="version">
+                v1.0.1+128.g37ab79a.dirty
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="lsforce.html">lsforce package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="lsforce.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="lsforce.lsdata.html">lsforce.lsdata module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="lsforce.lsforce.html">lsforce.lsforce module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">lsforce.lstrajectory module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">lsforce</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="lsforce.html">lsforce package</a> &raquo;</li>
+      <li>lsforce.lstrajectory module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/lsforce.lstrajectory.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-lsforce.lstrajectory">
+<span id="lsforce-lstrajectory-module"></span><h1>lsforce.lstrajectory module<a class="headerlink" href="#module-lsforce.lstrajectory" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">lsforce.lstrajectory.</span></span><span class="sig-name descname"><span class="pre">LSTrajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">force</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detrend_velocity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zeroacc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lsforce/lstrajectory.html#LSTrajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Class for force inversion derived trajectories.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.force">
+<span class="sig-name descname"><span class="pre">force</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.force" title="Permalink to this definition"></a></dt>
+<dd><p>Inversion results used to compute
+this trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="lsforce.lsforce.html#lsforce.lsforce.LSForce" title="lsforce.lsforce.LSForce"><code class="xref py py-class docutils literal notranslate"><span class="pre">LSForce</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.mass_requested">
+<span class="sig-name descname"><span class="pre">mass_requested</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.mass_requested" title="Permalink to this definition"></a></dt>
+<dd><p>[kg] Mass specified</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)">int</a> or <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.mass_actual">
+<span class="sig-name descname"><span class="pre">mass_actual</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.mass_actual" title="Permalink to this definition"></a></dt>
+<dd><p>[kg] Mass used (same as <cite>mass_requested</cite> if <cite>target_length</cite>
+is not specified)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.target_length">
+<span class="sig-name descname"><span class="pre">target_length</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.target_length" title="Permalink to this definition"></a></dt>
+<dd><p>[km] Center-of-mass runout length of event, <cite>None</cite>
+if not specified</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)">int</a> or <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.jackknife">
+<span class="sig-name descname"><span class="pre">jackknife</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.jackknife" title="Permalink to this definition"></a></dt>
+<dd><p>Jackknifed
+trajectory results</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.obspy.org/packages/autogen/obspy.core.util.attribdict.AttribDict.html#obspy.core.util.attribdict.AttribDict" title="(in ObsPy v1.3.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttribDict</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.acceleration">
+<span class="sig-name descname"><span class="pre">acceleration</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.acceleration" title="Permalink to this definition"></a></dt>
+<dd><p>[m^2/s] Computed
+acceleration with Z, E, N components as attributes</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.obspy.org/packages/autogen/obspy.core.util.attribdict.AttribDict.html#obspy.core.util.attribdict.AttribDict" title="(in ObsPy v1.3.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttribDict</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.velocity">
+<span class="sig-name descname"><span class="pre">velocity</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.velocity" title="Permalink to this definition"></a></dt>
+<dd><p>[m/s] Computed
+velocity with Z, E, N components as attributes</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.obspy.org/packages/autogen/obspy.core.util.attribdict.AttribDict.html#obspy.core.util.attribdict.AttribDict" title="(in ObsPy v1.3.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttribDict</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.displacement">
+<span class="sig-name descname"><span class="pre">displacement</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.displacement" title="Permalink to this definition"></a></dt>
+<dd><p>[m] Computed
+displacement with Z, E, N components as attributes</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.obspy.org/packages/autogen/obspy.core.util.attribdict.AttribDict.html#obspy.core.util.attribdict.AttribDict" title="(in ObsPy v1.3.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttribDict</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.horizontal_distance">
+<span class="sig-name descname"><span class="pre">horizontal_distance</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.horizontal_distance" title="Permalink to this definition"></a></dt>
+<dd><p>[m] Computed horizontal distance</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.23)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.traj_tvec">
+<span class="sig-name descname"><span class="pre">traj_tvec</span></span><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.traj_tvec" title="Permalink to this definition"></a></dt>
+<dd><p>[s] Time array for all trajectory arrays</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.23)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Create an LSTrajectory object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>force</strong> (<a class="reference internal" href="lsforce.lsforce.html#lsforce.lsforce.LSForce" title="lsforce.lsforce.LSForce"><code class="xref py py-class docutils literal notranslate"><span class="pre">LSForce</span></code></a>) – Completed force inversion</p></li>
+<li><p><strong>mass</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – [kg] Mass of event. If <cite>None</cite>, the mass is computed
+using <cite>target_length</cite>, which must be specified</p></li>
+<li><p><strong>target_length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – [km] Center-of-mass runout length of event. If
+<cite>None</cite>, <cite>mass</cite> must be specified</p></li>
+<li><p><strong>duration</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – [s] If not <cite>None</cite>, only use the force time series
+from 0–<cite>duration</cite> seconds in the trajectory calculation</p></li>
+<li><p><strong>detrend_velocity</strong> – [s] If provided, require the velocity to linearly go to
+zero at this time; if <cite>None</cite>, don’t detrend</p></li>
+<li><p><strong>zeroacc</strong> – [s] If provided, require the acceleration to be zero after
+this time, usually when forces are indistinguishable from
+zero, to reduce noise at end of trajectory. This is best used
+with the detrend_velocity option to avoid allowing the landslide to
+slide forever.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="lsforce.lstrajectory.LSTrajectory.plot_trajectory">
+<span class="sig-name descname"><span class="pre">plot_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elevation_profile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_jackknife</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dem</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_point</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lsforce/lstrajectory.html#LSTrajectory.plot_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lsforce.lstrajectory.LSTrajectory.plot_trajectory" title="Permalink to this definition"></a></dt>
+<dd><p>Plot trajectory results with context.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>elevation_profile</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – If <cite>True</cite>, plot vertical displacement versus
+horizontal runout distance (<span class="math notranslate nohighlight">\(H\)</span> vs. <span class="math notranslate nohighlight">\(L\)</span>) instead of a map
+view</p></li>
+<li><p><strong>plot_jackknife</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Toggle plotting jackknifed displacements as well (if
+available)</p></li>
+<li><p><strong>image</strong> (<a class="reference external" href="https://docs.xarray.dev/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v2022.6.1.dev0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataArray</span></code></a>) – An image with coordinates defined in km
+with the origin (0, 0) being the start location of the trajectory</p></li>
+<li><p><strong>dem</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – A UTM-projected DEM GeoTIFF to slice thru for elevation profile
+plot</p></li>
+<li><p><strong>reference_point</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a>) – If not <cite>None</cite>, plot a dot on
+trajectory, and line on colorbar, at this specified time(s) for
+reference</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Output figure handle</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://matplotlib.org/stable/api/figure_api.html#matplotlib.figure.Figure" title="(in Matplotlib v3.5.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Figure</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="lsforce.lsforce.html" class="btn btn-neutral float-left" title="lsforce.lsforce module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Kate E. Allstadt and Liam Toney.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
