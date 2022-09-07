@@ -26,9 +26,6 @@
         <div class="wy-side-nav-search" >
             <a href="../../index.html" class="icon icon-home"> lsforce
           </a>
-              <div class="version">
-                v1.0.1+128.g37ab79a.dirty
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -684,7 +681,7 @@
         <span class="p">)</span>
 
         <span class="c1"># Resample st to data_sampling_rate</span>
-        <span class="n">st</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_sampling_rate</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_sampling_rate</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="s1">&#39;hann&#39;</span><span class="p">)</span>
 
         <span class="c1"># Make sure st data are all the same length</span>
         <span class="n">lens</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">trace</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="k">for</span> <span class="n">trace</span> <span class="ow">in</span> <span class="n">st</span><span class="p">]</span>
