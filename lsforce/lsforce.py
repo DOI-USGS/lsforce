@@ -616,7 +616,7 @@ class LSForce:
         )
 
         # Resample st to data_sampling_rate
-        st.resample(self.data_sampling_rate)
+        st.resample(self.data_sampling_rate, window='hann')
 
         # Make sure st data are all the same length
         lens = [len(trace.data) for trace in st]
