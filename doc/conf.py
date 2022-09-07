@@ -45,6 +45,8 @@ html_theme = 'sphinx_rtd_theme'
 
 html_title = f'{project} documentation'
 
+html_theme_options = dict(display_version=False)
+
 napoleon_numpy_docstring = False
 
 root_doc = 'index'
