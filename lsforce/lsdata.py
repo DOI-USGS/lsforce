@@ -111,13 +111,19 @@ class LSData:
                 output='DISP', water_level=WATER_LEVEL, zero_mean=False
             )
 
-    def plot_data(self, equal_scale=True, period_range=None):
+    def plot_data(
+        self, equal_scale=True, period_range=None, filter_order=2, zerophase=True
+    ):
         r"""Create a record section plot of waveforms in `st_proc`.
 
         Args:
             equal_scale (bool): If `True`, all plots will share the same y-axis scale
             period_range (list or tuple): If not `None`, filter the data between
                 `period_range[0]` and `period_range[1]`, given in seconds
+            filter_order (int): Order of filter applied over period_range (no effect
+                if `period_range` is `None`)
+            zerophase (bool): If `True`, zero-phase filtering will be used (no effect
+                if `period_range` is `None`)
 
         Returns:
             :class:`~matplotlib.figure.Figure`: Output figure handle
@@ -132,7 +138,8 @@ class LSData:
                 'bandpass',
                 freqmin=1 / period_range[1],
                 freqmax=1 / period_range[0],
-                zerophase=True,
+                corners=filter_order,
+                zerophase=zerophase,
             )
             filter_string = '{}–{} s bandpass'.format(*period_range)
         else:
