@@ -24,7 +24,7 @@ RTOL = 1e-6
 GF_ATOL = 1e-18
 
 # Shared parameters for both inversion methods
-SETUP_KWARGS = dict(period_range=(15, 80), zerophase=True, syngine_model='iasp91_2s')
+SETUP_KWARGS = dict(period_range=(15, 80), syngine_model='iasp91_2s')
 INVERT_KWARGS = dict(
     zero_time=119,
     impose_zero_start=True,
