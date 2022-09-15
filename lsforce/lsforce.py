@@ -490,7 +490,7 @@ class LSForce:
         weights=None,
         noise_window_dur=None,
         filter_order=2,
-        zerophase=False,
+        zerophase=True,
     ):
         r"""Downloads/computes Green's functions (GFs) and creates all matrices.
 
