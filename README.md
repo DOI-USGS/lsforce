@@ -89,6 +89,7 @@ cd doc
 make html
 open _build/html/index.html  # macOS command to open file in browser
 ```
+(To build the Markdown documentation, use `make markdown`.)
 
 The *lsforce* package includes a script,
 [`axisem2cps`](https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/main/bin/axisem2cps),
