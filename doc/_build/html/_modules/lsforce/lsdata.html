@@ -176,13 +176,19 @@
                 <span class="n">output</span><span class="o">=</span><span class="s1">&#39;DISP&#39;</span><span class="p">,</span> <span class="n">water_level</span><span class="o">=</span><span class="n">WATER_LEVEL</span><span class="p">,</span> <span class="n">zero_mean</span><span class="o">=</span><span class="kc">False</span>
             <span class="p">)</span>
 
-<div class="viewcode-block" id="LSData.plot_data"><a class="viewcode-back" href="../../api/lsforce.lsdata.html#lsforce.lsdata.LSData.plot_data">[docs]</a>    <span class="k">def</span> <span class="nf">plot_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">equal_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">period_range</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="LSData.plot_data"><a class="viewcode-back" href="../../api/lsforce.lsdata.html#lsforce.lsdata.LSData.plot_data">[docs]</a>    <span class="k">def</span> <span class="nf">plot_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">equal_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">period_range</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filter_order</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">zerophase</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create a record section plot of waveforms in `st_proc`.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            equal_scale (bool): If `True`, all plots will share the same y-axis scale</span>
 <span class="sd">            period_range (list or tuple): If not `None`, filter the data between</span>
 <span class="sd">                `period_range[0]` and `period_range[1]`, given in seconds</span>
+<span class="sd">            filter_order (int): Order of filter applied over period_range (no effect</span>
+<span class="sd">                if `period_range` is `None`)</span>
+<span class="sd">            zerophase (bool): If `True`, zero-phase filtering will be used (no effect</span>
+<span class="sd">                if `period_range` is `None`)</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            :class:`~matplotlib.figure.Figure`: Output figure handle</span>
@@ -197,7 +203,8 @@
                 <span class="s1">&#39;bandpass&#39;</span><span class="p">,</span>
                 <span class="n">freqmin</span><span class="o">=</span><span class="mi">1</span> <span class="o">/</span> <span class="n">period_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
                 <span class="n">freqmax</span><span class="o">=</span><span class="mi">1</span> <span class="o">/</span> <span class="n">period_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                <span class="n">zerophase</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">corners</span><span class="o">=</span><span class="n">filter_order</span><span class="p">,</span>
+                <span class="n">zerophase</span><span class="o">=</span><span class="n">zerophase</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">filter_string</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">–</span><span class="si">{}</span><span class="s1"> s bandpass&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">period_range</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>

@@ -78,7 +78,7 @@ Create an LSData object.
 
 
 
-#### plot_data(equal_scale=True, period_range=None)
+#### plot_data(equal_scale=True, period_range=None, filter_order=2, zerophase=True)
 Create a record section plot of waveforms in st_proc.
 
 
@@ -90,6 +90,14 @@ Create a record section plot of waveforms in st_proc.
 
     * **period_range** ([*list*](https://docs.python.org/3/library/stdtypes.html#list)* or *[*tuple*](https://docs.python.org/3/library/stdtypes.html#tuple)) – If not None, filter the data between
     period_range[0] and period_range[1], given in seconds
+
+
+    * **filter_order** ([*int*](https://docs.python.org/3/library/functions.html#int)) – Order of filter applied over period_range (no effect
+    if period_range is None)
+
+
+    * **zerophase** ([*bool*](https://docs.python.org/3/library/functions.html#bool)) – If True, zero-phase filtering will be used (no effect
+    if period_range is None)
 
 
 
