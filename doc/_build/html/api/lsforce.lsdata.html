@@ -149,7 +149,7 @@ metadata in the irisws-fedcatalog (e.g., for synthetic cases)</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="lsforce.lsdata.LSData.plot_data">
-<span class="sig-name descname"><span class="pre">plot_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">equal_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lsforce/lsdata.html#LSData.plot_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lsforce.lsdata.LSData.plot_data" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">plot_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">equal_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zerophase</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lsforce/lsdata.html#LSData.plot_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lsforce.lsdata.LSData.plot_data" title="Permalink to this definition"></a></dt>
 <dd><p>Create a record section plot of waveforms in <cite>st_proc</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -157,6 +157,10 @@ metadata in the irisws-fedcatalog (e.g., for synthetic cases)</p></li>
 <li><p><strong>equal_scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – If <cite>True</cite>, all plots will share the same y-axis scale</p></li>
 <li><p><strong>period_range</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.10)"><em>tuple</em></a>) – If not <cite>None</cite>, filter the data between
 <cite>period_range[0]</cite> and <cite>period_range[1]</cite>, given in seconds</p></li>
+<li><p><strong>filter_order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Order of filter applied over period_range (no effect
+if <cite>period_range</cite> is <cite>None</cite>)</p></li>
+<li><p><strong>zerophase</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – If <cite>True</cite>, zero-phase filtering will be used (no effect
+if <cite>period_range</cite> is <cite>None</cite>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>

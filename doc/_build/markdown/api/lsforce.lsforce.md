@@ -466,7 +466,7 @@ Save a force inversion run for later use.
 
 
 
-#### setup(period_range, syngine_model=None, cps_model=None, triangle_half_width=None, source_depth=0, weights=None, noise_window_dur=None, filter_order=2, zerophase=False)
+#### setup(period_range, syngine_model=None, cps_model=None, triangle_half_width=None, source_depth=0, weights=None, noise_window_dur=None, filter_order=2, zerophase=True)
 Downloads/computes Green’s functions (GFs) and creates all matrices.
 
 
