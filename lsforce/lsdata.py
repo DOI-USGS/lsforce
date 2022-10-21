@@ -10,8 +10,6 @@ from obspy.geodetics import gps2dist_azimuth
 
 DETREND_POLY_ORDER = 2
 
-WATER_LEVEL = 60  # [dB]
-
 KM_PER_M = 1 / 1000  # [km/m]
 
 # Map channel sets to colors for station map
@@ -40,7 +38,13 @@ class LSData:
     """
 
     def __init__(
-        self, st, source_lat, source_lon, remove_response=True, skip_zne_rotation=False
+        self,
+        st,
+        source_lat,
+        source_lon,
+        remove_response=True,
+        remove_response_kwargs=None,
+        skip_zne_rotation=False,
     ):
         r"""Create an LSData object.
 
@@ -54,6 +58,14 @@ class LSData:
                 source location
             remove_response (bool): Correct for station response to displacement units.
                 Set to `False` to handle response removal manually at an earlier step.
+            remove_response_kwargs (dict): Dictionary of keyword arguments to pass
+                to :meth:`~obspy.core.trace.Trace.remove_response`. No effect if
+                `remove_response` is `False`. Note that ObsPy's default value for the
+                `water_level` kwarg is 60 dB, but this may inadvertently remove some
+                long period energy that the user wants to keep, so set this parameter
+                carefully. Try a higher number (e.g., 100 dB) to preserve more longer
+                period energy. Setting to `None` is recommended if pre-filtering is
+                applied or if fine control on the frequency limits is desired
             skip_zne_rotation (bool): If `True`, then the ->ZNE rotation step is
                 skipped. This is a necessary flag if the stations used do not have
                 metadata in the irisws-fedcatalog (e.g., for synthetic cases)
@@ -84,6 +96,10 @@ class LSData:
                     'Z' not in components
                 ), f'{msg}\nComponents found: {components}\n{id_msg}'
 
+        if remove_response_kwargs is None:
+            remove_response_kwargs = dict()
+        remove_response_kwargs.pop('output', None)  # Remove "output" kwarg, if provided
+
         self.st_orig = st.copy()  # Save a copy of the original input Stream
         self.st_proc = st.copy()  # Work on a copy of the input Stream
 
@@ -107,9 +123,13 @@ class LSData:
 
         if remove_response:
             self.st_proc.detrend('polynomial', order=DETREND_POLY_ORDER)
-            self.st_proc.remove_response(
-                output='DISP', water_level=WATER_LEVEL, zero_mean=False
-            )
+            self.st_proc.remove_response(output='DISP', **remove_response_kwargs)
+
+        # Set the private _is_pre_filt attribute, which is used in lsforce.py
+        if remove_response and remove_response_kwargs.get('pre_filt') is not None:
+            self._is_pre_filt = True
+        else:
+            self._is_pre_filt = False
 
     def plot_data(
         self, equal_scale=True, period_range=None, filter_order=2, zerophase=True
