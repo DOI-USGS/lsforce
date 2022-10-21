@@ -1,7 +1,7 @@
 # lsforce.lsdata module
 
 
-### _class_ lsforce.lsdata.LSData(st, source_lat, source_lon, remove_response=True, skip_zne_rotation=False)
+### _class_ lsforce.lsdata.LSData(st, source_lat, source_lon, remove_response=True, remove_response_kwargs=None, skip_zne_rotation=False)
 Bases: [`object`](https://docs.python.org/3/library/functions.html#object)
 
 Class for force inversion data that is an extension of an ObsPy Stream.
@@ -70,6 +70,16 @@ Create an LSData object.
 
     * **remove_response** ([*bool*](https://docs.python.org/3/library/functions.html#bool)) – Correct for station response to displacement units.
     Set to False to handle response removal manually at an earlier step.
+
+
+    * **remove_response_kwargs** ([*dict*](https://docs.python.org/3/library/stdtypes.html#dict)) – Dictionary of keyword arguments to pass
+    to [`remove_response()`](https://docs.obspy.org/packages/autogen/obspy.core.trace.Trace.remove_response.html#obspy.core.trace.Trace.remove_response). No effect if
+    remove_response is False. Note that ObsPy’s default value for the
+    water_level kwarg is 60 dB, but this may inadvertently remove some
+    long period energy that the user wants to keep, so set this parameter
+    carefully. Try a higher number (e.g., 100 dB) to preserve more longer
+    period energy. Setting to None is recommended if pre-filtering is
+    applied or if fine control on the frequency limits is desired
 
 
     * **skip_zne_rotation** ([*bool*](https://docs.python.org/3/library/functions.html#bool)) – If True, then the ->ZNE rotation step is

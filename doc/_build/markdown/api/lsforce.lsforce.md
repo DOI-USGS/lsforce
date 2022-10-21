@@ -466,7 +466,7 @@ Save a force inversion run for later use.
 
 
 
-#### setup(period_range, syngine_model=None, cps_model=None, triangle_half_width=None, source_depth=0, weights=None, noise_window_dur=None, filter_order=2, zerophase=True)
+#### setup(period_range, syngine_model=None, cps_model=None, triangle_half_width=None, source_depth=0, weights=None, noise_window_dur=None, filter_order=2, zerophase=True, skip_datafilter=False)
 Downloads/computes Green’s functions (GFs) and creates all matrices.
 
 
@@ -492,10 +492,11 @@ Downloads/computes Green’s functions (GFs) and creates all matrices.
 
 
     * **weights** ([*list*](https://docs.python.org/3/library/stdtypes.html#list)* or *[*tuple*](https://docs.python.org/3/library/stdtypes.html#tuple)* or *[*str*](https://docs.python.org/3/library/stdtypes.html#str)) – If None, no weighting is applied. An array
-    of floats with length `st.count()` and in the order of the st
-    applies manual weighting. If ‘prenoise’, uses standard deviation of
-    a noise window defined by noise_window_dur to weight. If ‘distance’,
-    weights by 1/distance
+    of floats with length `st_proc.count()` (and in the order of the `st_proc`
+    attribute of the [`LSData`](lsforce.lsdata.md#lsforce.lsdata.LSData) object) applies manual
+    weighting. If ‘prenoise’, uses standard deviation of a noise window
+    defined by noise_window_dur to weight. If ‘distance’, weights by 1 /
+    distance
 
 
     * **noise_window_dur** ([*int*](https://docs.python.org/3/library/functions.html#int)* or *[*float*](https://docs.python.org/3/library/functions.html#float)) – [s] Length of noise window for ‘prenoise’
@@ -506,6 +507,13 @@ Downloads/computes Green’s functions (GFs) and creates all matrices.
 
 
     * **zerophase** ([*bool*](https://docs.python.org/3/library/functions.html#bool)) – If True, zero-phase filtering will be used
+
+
+    * **skip_datafilter** ([*bool*](https://docs.python.org/3/library/functions.html#bool)) – If True, filtering will not be applied to
+    the input data and will only be applied to the Green’s functions.
+    This should be chosen only if the data were pre-filtered
+    manually already with the same band as period_range so the
+    user doesn’t want to filter them again
 
 
 
