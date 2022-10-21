@@ -5,6 +5,7 @@ import pickle
 import random as rnd
 import subprocess
 import tempfile
+import warnings
 from shutil import which
 from urllib.request import urlretrieve
 
@@ -491,6 +492,7 @@ class LSForce:
         noise_window_dur=None,
         filter_order=2,
         zerophase=True,
+        skip_datafilter=False,
     ):
         r"""Downloads/computes Green's functions (GFs) and creates all matrices.
 
@@ -504,18 +506,32 @@ class LSForce:
                 if the triangle method is being used
             source_depth (int or float): [m] Source depth in meters
             weights (list or tuple or str): If `None`, no weighting is applied. An array
-                of floats with length ``st.count()`` and in the order of the `st`
-                applies manual weighting. If `'prenoise'`, uses standard deviation of
-                a noise window defined by `noise_window_dur` to weight. If `'distance'`,
-                weights by 1/distance
+                of floats with length ``st_proc.count()`` (and in the order of the ``st_proc``
+                attribute of the :class:`~lsforce.lsdata.LSData` object) applies manual
+                weighting. If `'prenoise'`, uses standard deviation of a noise window
+                defined by `noise_window_dur` to weight. If `'distance'`, weights by 1 /
+                distance
             noise_window_dur (int or float): [s] Length of noise window for `'prenoise'`
                 weighting scheme (if not `None`, `weights` is set to `'prenoise'`)
             filter_order (int): Order of filter applied over period_range
             zerophase (bool): If `True`, zero-phase filtering will be used
+            skip_datafilter (bool): If `True`, filtering will not be applied to
+                the input data and will only be applied to the Green's functions.
+                This should be chosen only if the data were pre-filtered
+                manually already with the same band as `period_range` so the
+                user doesn't want to filter them again
         """
 
         self.syngine_model = syngine_model
         self.source_depth = source_depth
+
+        # Check if input data were pre-filtered and suggest skip_datafilter if not set to True
+        if self.data._is_pre_filt and not skip_datafilter:
+            warnings.warn(
+                'Caution: pre-filtering appears to have been applied'
+                ' to input data. Setting `skip_datafilter=True` is'
+                ' recommended if you want to avoid double filtering'
+            )
 
         # Explicitly ignore the triangle half-width parameter if it's not relevant
         if self.method != 'triangle' and triangle_half_width is not None:
@@ -607,13 +623,14 @@ class LSForce:
         st = self.data.st_proc.copy()
 
         # Filter data to band specified
-        st.filter(
-            'bandpass',
-            freqmin=self.filter['freqmin'],
-            freqmax=self.filter['freqmax'],
-            corners=self.filter['order'],
-            zerophase=self.filter['zerophase'],
-        )
+        if not skip_datafilter:
+            st.filter(
+                'bandpass',
+                freqmin=self.filter['freqmin'],
+                freqmax=self.filter['freqmax'],
+                corners=self.filter['order'],
+                zerophase=self.filter['zerophase'],
+            )
 
         # Resample st to data_sampling_rate
         st.resample(self.data_sampling_rate, window='hann')

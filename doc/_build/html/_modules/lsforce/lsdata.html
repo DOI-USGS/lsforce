@@ -75,8 +75,6 @@
 
 <span class="n">DETREND_POLY_ORDER</span> <span class="o">=</span> <span class="mi">2</span>
 
-<span class="n">WATER_LEVEL</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># [dB]</span>
-
 <span class="n">KM_PER_M</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">1000</span>  <span class="c1"># [km/m]</span>
 
 <span class="c1"># Map channel sets to colors for station map</span>
@@ -105,7 +103,13 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="n">source_lat</span><span class="p">,</span> <span class="n">source_lon</span><span class="p">,</span> <span class="n">remove_response</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_zne_rotation</span><span class="o">=</span><span class="kc">False</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">st</span><span class="p">,</span>
+        <span class="n">source_lat</span><span class="p">,</span>
+        <span class="n">source_lon</span><span class="p">,</span>
+        <span class="n">remove_response</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">remove_response_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">skip_zne_rotation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create an LSData object.</span>
 
@@ -119,6 +123,14 @@
 <span class="sd">                source location</span>
 <span class="sd">            remove_response (bool): Correct for station response to displacement units.</span>
 <span class="sd">                Set to `False` to handle response removal manually at an earlier step.</span>
+<span class="sd">            remove_response_kwargs (dict): Dictionary of keyword arguments to pass</span>
+<span class="sd">                to :meth:`~obspy.core.trace.Trace.remove_response`. No effect if</span>
+<span class="sd">                `remove_response` is `False`. Note that ObsPy&#39;s default value for the</span>
+<span class="sd">                `water_level` kwarg is 60 dB, but this may inadvertently remove some</span>
+<span class="sd">                long period energy that the user wants to keep, so set this parameter</span>
+<span class="sd">                carefully. Try a higher number (e.g., 100 dB) to preserve more longer</span>
+<span class="sd">                period energy. Setting to `None` is recommended if pre-filtering is</span>
+<span class="sd">                applied or if fine control on the frequency limits is desired</span>
 <span class="sd">            skip_zne_rotation (bool): If `True`, then the -&gt;ZNE rotation step is</span>
 <span class="sd">                skipped. This is a necessary flag if the stations used do not have</span>
 <span class="sd">                metadata in the irisws-fedcatalog (e.g., for synthetic cases)</span>
@@ -149,6 +161,10 @@
                     <span class="s1">&#39;Z&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">components</span>
                 <span class="p">),</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="se">\n</span><span class="s1">Components found: </span><span class="si">{</span><span class="n">components</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">id_msg</span><span class="si">}</span><span class="s1">&#39;</span>
 
+        <span class="k">if</span> <span class="n">remove_response_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">remove_response_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">remove_response_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;output&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>  <span class="c1"># Remove &quot;output&quot; kwarg, if provided</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">st_orig</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  <span class="c1"># Save a copy of the original input Stream</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">st_proc</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  <span class="c1"># Work on a copy of the input Stream</span>
 
@@ -172,9 +188,13 @@
 
         <span class="k">if</span> <span class="n">remove_response</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">st_proc</span><span class="o">.</span><span class="n">detrend</span><span class="p">(</span><span class="s1">&#39;polynomial&#39;</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">DETREND_POLY_ORDER</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">st_proc</span><span class="o">.</span><span class="n">remove_response</span><span class="p">(</span>
-                <span class="n">output</span><span class="o">=</span><span class="s1">&#39;DISP&#39;</span><span class="p">,</span> <span class="n">water_level</span><span class="o">=</span><span class="n">WATER_LEVEL</span><span class="p">,</span> <span class="n">zero_mean</span><span class="o">=</span><span class="kc">False</span>
-            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">st_proc</span><span class="o">.</span><span class="n">remove_response</span><span class="p">(</span><span class="n">output</span><span class="o">=</span><span class="s1">&#39;DISP&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">remove_response_kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Set the private _is_pre_filt attribute, which is used in lsforce.py</span>
+        <span class="k">if</span> <span class="n">remove_response</span> <span class="ow">and</span> <span class="n">remove_response_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pre_filt&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_is_pre_filt</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_is_pre_filt</span> <span class="o">=</span> <span class="kc">False</span>
 
 <div class="viewcode-block" id="LSData.plot_data"><a class="viewcode-back" href="../../api/lsforce.lsdata.html#lsforce.lsdata.LSData.plot_data">[docs]</a>    <span class="k">def</span> <span class="nf">plot_data</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">equal_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">period_range</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filter_order</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">zerophase</span><span class="o">=</span><span class="kc">True</span>
