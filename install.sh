@@ -85,7 +85,7 @@ PACKAGE_LIST=(
 
 # Additional developer packages:
 DEVELOPER_PACKAGES=(
-    'black'
+    'black=19.10b0'
     'ipython'
     'isort'
     'nbdime'
