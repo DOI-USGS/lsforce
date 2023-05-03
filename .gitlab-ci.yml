@@ -5,11 +5,17 @@ Install and test:
   script:
     # Install the lsforce package, its dependencies, and testing packages
     - source /etc/profile.d/conda.sh
-    - conda config --add channels conda-forge
+    - conda install conda=22.9.0
     - conda create --name lsforce
     - source activate lsforce
-    - conda install --yes cartopy=0.21 notebook obspy pyqt xarray rasterio matplotlib
-    - conda install --yes black=19.10b0 isort pytest-cov pytest-mpl
+    # install developer tools
+    - |
+      conda install -y -c conda-forge --strict-channel-priority \
+        black isort pytest-cov pytest-mpl jupyter
+    # install package dependencies
+    - |
+      conda install --yes -c conda-forge --strict-channel-priority cartopy=0.21 \
+          obspy pyqt xarray rasterio matplotlib 
     - pip install --editable .
     # Run tests
     #- black --skip-string-normalization --check .
