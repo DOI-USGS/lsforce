@@ -2054,8 +2054,8 @@ def Lcurve(fit1, size1, alphas, bestalpha=None):
     if bestalpha is not None:
         idx = np.argmin(np.abs(alphas - bestalpha))
         ax.plot(fit1[idx], size1[idx], 'or')
-    ax.set_xlabel(r'Residual norm $||{\bfG}{\bfm}-{\bfd}||^2$')
-    ax.set_ylabel(r'Solution norm $||{\bfm}||^2$')
+    ax.set_xlabel(r'Residual norm $||{\bf G}{\bf m}-{\bf d}||^2$')
+    ax.set_ylabel(r'Solution norm $||{\bf m}||^2$')
 
     fig.tight_layout()
     fig.show()
