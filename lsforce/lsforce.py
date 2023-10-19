@@ -2058,7 +2058,7 @@ def Lcurve(fit1, size1, alphas, bestalpha=None):
     ax.set_ylabel(r'Solution norm $||{\bf m}||^2$')
 
     fig.tight_layout()
-    fig.show()
+    plt.show()
     return fig
 
 
