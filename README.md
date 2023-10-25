@@ -34,14 +34,20 @@ Installation
 
 The following has only been tested on macOS.
 
-Clone this repo and run the installation script, which creates a
-[conda](https://docs.conda.io/en/latest/) environment named `lsforce` and installs
-the _lsforce_ package into the environment:
+Clone this repo and run the installation script, which creates an environment named
+`lsforce` and installs the _lsforce_ package into the environment:
 ```shell
 git clone https://code.usgs.gov/ghsc/lhp/lsforce.git
 cd lsforce
 bash install.sh  # Or `bash install.sh 1` if you want developer tools as well
 ```
+The install script will check if you have the
+[`conda`](https://docs.conda.io/en/latest/) or
+[`mamba`](https://mamba.readthedocs.io/en/latest/) package managers installed. If you
+have both installed, it will use `mamba`. If you have neither installed, it will install
+`mamba` and then use it. **If you only have `conda` installed, we strongly recommend
+that you install `mamba` before running the install script. `mamba` is much, much faster
+than `conda` when solving the `lsforce` environment.**
 
 By default, the Green's functions used by *lsforce* come from the
 [Synthetics Engine (Syngine)](http://ds.iris.edu/ds/products/syngine/) hosted by

@@ -8,11 +8,11 @@ platform=$(uname)
 if [ "$platform" == 'Linux' ]
 then
     profile=~/.bashrc
-    miniconda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    miniforge_url=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 elif [ "$platform" == 'FreeBSD' ] || [ "$platform" == 'Darwin' ]
 then
     profile=~/.bash_profile
-    miniconda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+    miniforge_url=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh
 else
     echo 'Unsupported platform. Exiting.'
     exit 1
@@ -21,44 +21,56 @@ fi
 # Name of package
 PACKAGE_NAME=lsforce
 
-# Name of new conda environment
+# Name of new environment
 ENV_NAME=$PACKAGE_NAME
 
-# Is conda installed?
-if ! conda --version
+# Is mamba installed?
+if ! mamba --version
 then
-    echo 'No conda detected, installing miniconda...'
-
-    # Try to download shell script using curl
-    if ! curl -L $miniconda_url -o miniconda.sh
+    echo 'No mamba detected'
+    # Is conda installed?
+    if ! conda --version
     then
-        echo 'Failed to create download miniconda installer shell script. Exiting.'
-        exit 1
+        echo 'No conda detected, either — installing miniforge...'
+
+        # Try to download shell script using curl
+        if ! curl -L $miniforge_url -o miniforge.sh
+        then
+            echo 'Failed to download miniforge installer shell script. Exiting.'
+            exit 1
+        fi
+
+        # Try to install miniforge
+        echo 'Install directory: ~/miniforge'
+        if ! bash miniforge.sh -f -b -p ~/miniforge
+        then
+            echo 'Failed to run miniforge installer shell script. Exiting.'
+            exit 1
+        fi
+
+        # Set up "activate" command, see:
+        # https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
+        eval "$(~/miniforge/bin/conda shell.bash hook)"
+        mamba init
+
+        # Don't automatically activate the environment
+        mamba config --set auto_activate_base false
+
+        echo 'mamba installed'
+        CONDA_CMD=mamba
+    else
+        echo 'conda detected'
+        CONDA_CMD=conda
     fi
-
-    # Try to install miniconda
-    echo 'Install directory: ~/miniconda'
-    if ! bash miniconda.sh -f -b -p ~/miniconda
-    then
-        echo 'Failed to run miniconda installer shell script. Exiting.'
-        exit 1
-    fi
-
-    # Set up conda activate command, see:
-    # https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
-    eval "$(~/miniconda/bin/conda shell.bash hook)"
-    conda init
-
-    # Don't automatically activate the environment
-    conda config --set auto_activate_base false
 else
-    echo "conda detected"
+    echo 'mamba detected'
+    CONDA_CMD=mamba
 fi
 
 # This is needed to ensure that environment activation works
 source $profile
 
-# Try to activate the base conda environment
+# Try to activate the base environment
 echo 'Activating the base environment'
 if ! conda activate base
 then
@@ -75,7 +87,7 @@ conda remove --yes --name $ENV_NAME --all
 
 # Standard package list:
 PACKAGE_LIST=(
-    'cartopy=0.21'
+    'cartopy'
     'notebook'
     'obspy'
     'pyqt'
@@ -85,7 +97,7 @@ PACKAGE_LIST=(
 
 # Additional developer packages:
 DEVELOPER_PACKAGES=(
-    'black=19.10b0'
+    'black'
     'ipython'
     'isort'
     'nbdime'
@@ -107,22 +119,22 @@ then
     echo "${DEVELOPER_PACKAGES[@]}"
 fi
 
-# Try to create a conda environment
+# Try to create the environment
 echo "Creating the $ENV_NAME environment"
-if ! conda create --yes --name $ENV_NAME --channel conda-forge "${PACKAGE_LIST[@]}"
+if ! $CONDA_CMD create --yes --name $ENV_NAME --channel conda-forge "${PACKAGE_LIST[@]}"
 then
-    echo 'Failed to create conda environment. Resolve any conflicts, then try again.'
+    echo 'Failed to create environment. Resolve any conflicts, then try again.'
     exit 1
 fi
 
-# Try to activate the new conda environment
+# Try to activate the new environment
 echo "Activating the $ENV_NAME environment"
 if ! conda activate $ENV_NAME
 then
     echo '"conda activate" failed, trying "source activate" instead...'
     if ! source activate $ENV_NAME
     then
-        echo "Failed to activate the $ENV_NAME conda environment. Exiting."
+        echo "Failed to activate the $ENV_NAME environment. Exiting."
         exit 1
     fi
 fi
