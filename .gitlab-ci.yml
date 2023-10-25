@@ -1,30 +1,12 @@
-stages:
-  - test
-
 Install and test:
+  image: ${DEVOPS_REGISTRY}usgs/python:3.9
   script:
-    # Install the lsforce package, its dependencies, and testing packages
-    - source /etc/profile.d/conda.sh
-    - conda install conda=22.9.0
-    - conda create --name lsforce
-    - source activate lsforce
-    # install developer tools
-    - |
-      conda install -y -c conda-forge --strict-channel-priority \
-        black isort pytest-cov pytest-mpl jupyter
-    # install package dependencies
-    - |
-      conda install --yes -c conda-forge --strict-channel-priority cartopy=0.21 \
-          obspy pyqt xarray rasterio matplotlib 
-    - pip install --editable .
-    # Run tests
-    #- black --skip-string-normalization --check .
-    - isort --conda-env lsforce --check-only .
-    - pytest --cov-report html:cov_html
+    - bash install.sh 1  # Install
+    - source ~/miniforge/etc/profile.d/conda.sh
+    - conda activate lsforce
+#    - black --skip-string-normalization --check .  # Black formatting check
+    - isort --conda-env lsforce --check-only .  # isort formatting check
+    - pytest --cov-report html:cov_html  # Run tests
   artifacts:
     paths:
       - cov_html
-  stage: test
-  image: ${DEVOPS_REGISTRY}usgs/conda:latest
-  tags:
-    - development
