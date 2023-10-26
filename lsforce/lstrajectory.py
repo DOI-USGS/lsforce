@@ -359,13 +359,11 @@ class LSTrajectory:
 
         # Either use the mass that was provided, or calculate one
         if target_length:
-
             # Initialize with end-members
             mass = 0  # [kg]
             current_length = np.inf  # [km]
 
             while current_length > target_length:
-
                 mass += MASS_INC  # Increase the mass
 
                 # Calculate the runout length [km] based on this mass

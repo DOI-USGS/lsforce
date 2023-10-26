@@ -4,8 +4,8 @@ Install and test:
     - bash install.sh 1  # Install
     - source ~/miniforge/etc/profile.d/conda.sh
     - conda activate lsforce
-#    - black --skip-string-normalization --check .  # Black formatting check
-    - isort --conda-env lsforce --check-only .  # isort formatting check
+    - black --skip-string-normalization --check .  # Black formatting check
+    - isort --conda-env lsforce --profile black --check-only .  # isort formatting check
     - pytest --cov-report xml:coverage.xml  # Run tests
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
