@@ -17,7 +17,6 @@ lsforce = readrun(os.path.join(data_dir, 'lsforce.pkl'))
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_lstrajectory_calculation_and_plots():
-
     print('Testing LSTrajectory calculation and plots...')
 
     # Create LSTrajectory object (which also calculates trajectory)
