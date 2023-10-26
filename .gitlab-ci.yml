@@ -6,7 +6,10 @@ Install and test:
     - conda activate lsforce
 #    - black --skip-string-normalization --check .  # Black formatting check
     - isort --conda-env lsforce --check-only .  # isort formatting check
-    - pytest --cov-report html:cov_html  # Run tests
+    - pytest --cov-report xml:coverage.xml  # Run tests
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
-    paths:
-      - cov_html
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
