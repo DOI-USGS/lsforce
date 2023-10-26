@@ -46,7 +46,6 @@ lsforce = readrun(os.path.join(data_dir, 'lsforce.pkl'))
 
 
 def test_lsforce_full():
-
     print('Testing full method...')
 
     # A temporary directory to run tests in
@@ -86,7 +85,6 @@ def test_lsforce_full():
 
 
 def test_lsforce_triangle():
-
     print('Testing triangle method...')
 
     # A temporary directory to run tests in
@@ -121,7 +119,6 @@ def test_lsforce_triangle():
 
 
 def test_lsforce_gfs():
-
     print('Testing Syngine and CPS Green\'s functions...')
 
     # Create a single-station LSData object
@@ -164,7 +161,6 @@ def test_lsforce_gfs():
 
 
 def test_forward():
-
     print('Testing forward problem...')
 
     st_syn = lsforce.forward(lsforce.Z, lsforce.N, lsforce.E)
