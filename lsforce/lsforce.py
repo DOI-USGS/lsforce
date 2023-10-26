@@ -145,7 +145,6 @@ class LSForce:
         existing_stations = []
         stations_to_calculate = []
         for station in unique_stations:
-
             distance = self.data.st_proc.select(station=station)[0].stats.distance
             filename = os.path.join(self.gf_dir, f'{station}.pkl')
 
@@ -179,10 +178,8 @@ class LSForce:
 
         # CPS
         if self.cps_model:
-
             # If we have to calculate some stations, go through the process
             if stations_to_calculate:
-
                 # Print status
                 print(
                     f'Calculating Green\'s functions for {len(stations_to_calculate)} '
@@ -240,7 +237,6 @@ class LSForce:
                 # Go through and read in files (same order as dist file)
                 for i, station in enumerate(stations_to_calculate):
                     for file in glob.glob(f'B{i + 1:03d}1???F.sac'):
-
                         # Grab stats of data trace
                         stats = self.data.st_proc.select(station=station)[0].stats
 
@@ -294,10 +290,8 @@ class LSForce:
 
         # Syngine
         else:
-
             # Go station-by-station
             for i, station in enumerate(unique_stations):
-
                 filename = os.path.join(self.gf_dir, f'{station}.pkl')
 
                 # Either load this GF if it already exists, or download it
@@ -700,7 +694,6 @@ class LSForce:
             raise ValueError(f'Method {self.method} not supported.')
 
         for i, tr in enumerate(st):
-
             # Find component and station of Trace
             component = tr.stats.channel[-1]
             station = tr.stats.station
@@ -1153,7 +1146,10 @@ class LSForce:
                 if jk_refine_alpha:
                     # Fine tune the alpha
                     rndalph = np.log10(self.alpha)
-                    alphaj, *_, = find_alpha(
+                    (
+                        alphaj,
+                        *_,
+                    ) = find_alpha(
                         Ghat1,
                         dhat1,
                         I,
@@ -1714,7 +1710,6 @@ class LSForce:
         ax1.plot(tvec, self.angle_magnitude.magnitude, color='black', label='Best')
 
         if self.jackknife is not None:
-
             # Calculate magnitude of each jackknife run
             mag_all = [
                 np.linalg.norm(list(zip(z, e, n)), axis=1)

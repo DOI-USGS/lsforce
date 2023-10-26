@@ -26,7 +26,6 @@ lsdata = readrun(os.path.join(data_dir, 'lsforce.pkl')).data
 
 
 def test_lsdata_st_proc():
-
     print('Testing LSData Stream processing...')
 
     # Create LSData object

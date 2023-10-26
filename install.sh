@@ -97,9 +97,9 @@ PACKAGE_LIST=(
 
 # Additional developer packages:
 DEVELOPER_PACKAGES=(
-    'black'
+    'black=23.10.0'
     'ipython'
-    'isort'
+    'isort=5.12.0'
     'nbdime'
     'pytest-cov'
     'pytest-mpl'
