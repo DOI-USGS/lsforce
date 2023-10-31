@@ -1778,7 +1778,7 @@ class LSForce:
         timestamp=False,
         figs2save=None,
         figs2save_names=None,
-        light=True,
+        save_size='light',
         filetype='png',
     ):
         r"""Save a force inversion run for later use.
@@ -1795,7 +1795,9 @@ class LSForce:
                 previous results
             figs2save (list or tuple): Figure handles to save
             figs2save_names (list or tuple): Names of figures (appends to end)
-            light (bool): If `True`, does not save seismic data with object to save size
+            save_size (str or None): If `light`, does not save seismic data with object to save size.
+                If `ultralight`, does not save seismic data, Green's functions, weight matrices,
+                design matrix, data vector, and model vector. If None, the full object is saved.
             filetype (str): Filetype given as extension, e.g. `'png'`
 
         .. _IPython extension: https://ipython.readthedocs.io/en/stable/config/extensions/autoreload.html
@@ -1805,8 +1807,20 @@ class LSForce:
             filepath = self.main_folder
 
         obj = copy.copy(self)
-        if light:
+        if save_size == 'light':
             obj.st = None
+        elif save_size == 'ultralight':
+            obj.st = None
+            obj.G = None
+            obj.W = None
+            obj.Wvec = None
+            obj.d = None
+            obj.model = None
+            obj.filtered_gf_st = None
+        elif save_size == None:
+            pass
+        else:
+            raise ValueError("save_size must be 'light' or 'ultralight' or None")
 
         # Get file name prefix
         if self.jackknife is None:

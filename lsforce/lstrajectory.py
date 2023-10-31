@@ -40,6 +40,7 @@ class LSTrajectory:
         force,
         mass=None,
         target_length=None,
+        start=None,
         duration=None,
         detrend_velocity=None,
         zeroacc=None,
@@ -52,6 +53,8 @@ class LSTrajectory:
                 using `target_length`, which must be specified
             target_length (int or float): [km] Center-of-mass runout length of event. If
                 `None`, `mass` must be specified
+            start (int or float): [s] If not `None`, only use the force time series
+                from start seconds in the trajectory calculation
             duration (int or float): [s] If not `None`, only use the force time series
                 from 0–`duration` seconds in the trajectory calculation
             detrend_velocity: [s] If provided, require the velocity to linearly go to
@@ -76,10 +79,12 @@ class LSTrajectory:
         self.mass_requested = mass
         self.target_length = target_length
         self.jackknife = None
+        self.start = start
 
         compute_kwargs = dict(
             mass=self.mass_requested,
             target_length=self.target_length,
+            start=start,
             duration=duration,
             detrend_velocity=detrend_velocity,
             zeroacc=zeroacc,
@@ -137,6 +142,8 @@ class LSTrajectory:
             ax.set_ylabel('North distance (km)')
 
         t0 = self.force.data.st_proc[0].stats.starttime
+        if self.start:
+            t0 += self.start
         if self.force.zero_time:
             t0 += self.force.zero_time
         cbar = plt.colorbar(
@@ -206,6 +213,7 @@ class LSTrajectory:
         self,
         mass=None,
         target_length=None,
+        start=None,
         duration=None,
         detrend_velocity=None,
         zeroacc=None,
@@ -232,6 +240,7 @@ class LSTrajectory:
             self.force.N,
             mass=mass,
             target_length=target_length,
+            start=start,
             duration=duration,
             detrend=detrend_velocity,
             zeroacc=zeroacc,
@@ -254,6 +263,7 @@ class LSTrajectory:
                     self.force.jackknife.N.all[i],
                     mass=mass,
                     target_length=target_length,
+                    start=start,
                     duration=duration,
                     detrend=detrend_velocity,
                     zeroacc=zeroacc,
@@ -330,6 +340,7 @@ class LSTrajectory:
         n_force,
         mass=None,
         target_length=None,
+        start=None,
         duration=None,
         detrend=None,
         zeroacc=None,
@@ -342,8 +353,12 @@ class LSTrajectory:
         if not mass and not target_length:
             raise ValueError('You must specify either mass or target length!')
 
-        # Start as close to t = 0 as possible
-        startidx = (np.abs(self.force.tvec - 0)).argmin()
+        # Clip time series as clost to `start` [s] as possible, if desired
+        if start:
+            startidx = (np.abs(self.force.tvec - start)).argmin()
+        else:
+            # Start as close to t = 0 as possible
+            startidx = (np.abs(self.force.tvec - 0)).argmin()
 
         # Clip time series as close to `duration` [s] as possible, if desired
         if duration:
