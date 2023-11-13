@@ -116,6 +116,21 @@ jupyter notebook notebooks
 This will start a Jupyter Notebook server and open a new window or tab in your browser
 with the interactive notebooks displayed.
 
+Mirrors
+-------
+
+The primary host for the development of this software is on **code.usgs.gov** (GitLab) here:
+
+- https://code.usgs.gov/ghsc/lhp/lsforce
+
+One drawback of the USGS GitLab is that it's more cumbersome for external users to create an
+account and post issues than on GitHub. Hence, we've made a mirror of this repository on GitHub
+here:
+
+- https://github.com/DOI-USGS/lsforce
+
+If you have a GitHub account, you can immediately post issues to this mirrored repository.
+
 Testing
 -------
 
