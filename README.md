@@ -98,7 +98,7 @@ open _build/html/index.html  # macOS command to open file in browser
 (To build the Markdown documentation, use `make markdown`.)
 
 The *lsforce* package includes a script,
-[`axisem2cps`](https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/main/bin/axisem2cps),
+[`axisem2cps`](bin/axisem2cps),
 which can convert 1D Earth models from Syngine into CPS model files. These models can
 then be further modified for specific use cases. In addition, completely custom CPS
 model files can be provided; for more information on CPS model files, see Chapter 8 of the
