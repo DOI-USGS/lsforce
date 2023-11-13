@@ -98,7 +98,7 @@ open _build/html/index.html  # macOS command to open file in browser
 (To build the Markdown documentation, use `make markdown`.)
 
 The *lsforce* package includes a script,
-[`axisem2cps`](https://code.usgs.gov/ghsc/lhp/lsforce/-/blob/main/bin/axisem2cps),
+[`axisem2cps`](bin/axisem2cps),
 which can convert 1D Earth models from Syngine into CPS model files. These models can
 then be further modified for specific use cases. In addition, completely custom CPS
 model files can be provided; for more information on CPS model files, see Chapter 8 of the
@@ -115,6 +115,21 @@ jupyter notebook notebooks
 ```
 This will start a Jupyter Notebook server and open a new window or tab in your browser
 with the interactive notebooks displayed.
+
+Mirrors
+-------
+
+The primary host for the development of this software is on **code.usgs.gov** (GitLab) here:
+
+- https://code.usgs.gov/ghsc/lhp/lsforce
+
+One drawback of the USGS GitLab is that it's more cumbersome for external users to create an
+account and post issues than on GitHub. Hence, we've made a mirror of this repository on GitHub
+here:
+
+- https://github.com/DOI-USGS/lsforce
+
+If you have a GitHub account, you can immediately post issues to this mirrored repository.
 
 Testing
 -------
