@@ -144,7 +144,7 @@ Citations
 ---------
 
 <p style="text-indent:-36px; padding-left:36px;">
-Allstadt, K. E., & Toney, L. (2020). <i>lsforce</i> (Version 1.0.1) [Source code]. U.S.
+Allstadt, K. E., Toney, L., & Collins, E. A. (2023). <i>lsforce</i> (Version 1.1) [Source code]. U.S.
 Geological Survey Software Release.
 <a href="https://doi.org/10.5066/P9CR20KW">https://doi.org/10.5066/P9CR20KW</a>
 </p>
