@@ -1,7 +1,0 @@
-lsforce.lstrajectory module
-===========================
-
-.. automodule:: lsforce.lstrajectory
-   :members:
-   :undoc-members:
-   :show-inheritance:
