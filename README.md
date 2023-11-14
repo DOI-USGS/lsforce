@@ -81,10 +81,8 @@ following:
 Documentation
 -------------
 
-Documentation for *lsforce* is visible on the repository webpage as a collection
-of Markdown files [here](doc/_build/markdown). Alternatively, once you have cloned the
-repository, you can open [`doc/_build/html/index.html`](doc/_build/html/index.html)
-in your web browser to view interactive HTML documentation.
+Documentation for *lsforce* is visible online
+[here](https://ghsc.code-pages.usgs.gov/lhp/lsforce).
 
 To build the interactive HTML documentation yourself, first ensure that you installed
 the developer tools (`bash install.sh 1`), which are required for documentation
@@ -95,7 +93,7 @@ cd doc
 make html
 open _build/html/index.html  # macOS command to open file in browser
 ```
-(To build the Markdown documentation, use `make markdown`.)
+(To build Markdown documentation, use `make markdown`.)
 
 The *lsforce* package includes a script,
 [`axisem2cps`](bin/axisem2cps),

@@ -1,7 +1,0 @@
-lsforce.lsdata module
-=====================
-
-.. automodule:: lsforce.lsdata
-   :members:
-   :undoc-members:
-   :show-inheritance:

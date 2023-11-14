@@ -1,7 +1,0 @@
-lsforce.lsforce module
-======================
-
-.. automodule:: lsforce.lsforce
-   :members:
-   :undoc-members:
-   :show-inheritance:

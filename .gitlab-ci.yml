@@ -1,9 +1,12 @@
-Install and test:
+default:
   image: ${DEVOPS_REGISTRY}usgs/python:3.9
-  script:
-    - bash install.sh 1  # Install
+  before_script:
+    - bash install.sh 1
     - source ~/miniforge/etc/profile.d/conda.sh
     - conda activate lsforce
+
+Check formatting and run tests:
+  script:
     - black --skip-string-normalization --check .  # Black formatting check
     - isort --conda-env lsforce --profile black --check-only .  # isort formatting check
     - pytest --cov-report xml:coverage.xml  # Run tests
@@ -13,3 +16,14 @@ Install and test:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+pages:
+  script:
+    - mamba install make
+    - pushd doc/
+    - make html
+    - popd
+    - mv doc/_build/html/ public/
+  artifacts:
+    paths:
+      - public  # The folder that contains the files to be exposed at the Page URL
