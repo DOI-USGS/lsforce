@@ -50,9 +50,9 @@ that you install `mamba` before running the install script. `mamba` is much, muc
 than `conda` when solving the `lsforce` environment.**
 
 By default, the Green's functions used by *lsforce* come from the
-[Synthetics Engine (Syngine)](http://ds.iris.edu/ds/products/syngine/) hosted by
-[IRIS Data Services](http://ds.iris.edu/ds/products/). The user can choose from a fixed
-set of [1D Earth models](http://ds.iris.edu/ds/products/syngine/#models).
+[Synthetics Engine (Syngine)](https://ds.iris.edu/ds/products/syngine/) hosted by
+[IRIS Data Services](https://ds.iris.edu/ds/products/). The user can choose from a fixed
+set of [1D Earth models](https://ds.iris.edu/ds/products/syngine/#earth).
 
 Alternatively, if users prefer to compute Green's functions using a custom model (see
 [Documentation](#documentation)), they can optionally install
