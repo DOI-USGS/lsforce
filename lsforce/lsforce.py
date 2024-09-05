@@ -18,7 +18,7 @@ from obspy.core import AttribDict
 from scipy.signal.windows import triang
 
 # Base URL for Syngine queries
-SYNGINE_BASE_URL = 'http://service.iris.edu/irisws/syngine/1/query?'
+SYNGINE_BASE_URL = 'https://service.iris.edu/irisws/syngine/1/query?'
 
 # [s] Sampling interval for Green's functions downloaded from Syngine
 SYNGINE_DT = 0.25
@@ -2221,7 +2221,7 @@ def _get_band_code(dt):
     r"""Determine SEED band code for a given sampling interval.
 
     SEED band code reference:
-    http://www.fdsn.org/pdf/SEEDManual_V2.4_Appendix-A.pdf (see page 2)
+    https://www.fdsn.org/pdf/SEEDManual_V2.4_Appendix-A.pdf (see page 2)
 
     Code copied from Instaseis:
     https://github.com/krischer/instaseis/blob/dc9d4f16e55837236712e3dde2fbe10902393940/instaseis/helpers.py#L45-L61
