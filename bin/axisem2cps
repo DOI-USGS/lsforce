@@ -20,13 +20,13 @@ MAX_CHARACTERS = 80
 # Four-space tab for help message and output model file
 TAB = '    '
 
-# From http://ds.iris.edu/ds/products/emc-syngine/
+# From https://ds.iris.edu/ds/products/emc-syngine-retired/
 MODELS = dict(
-    ak135f='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_ak135f.txt',
-    iasp91='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_iasp91.txt',
-    prem_crust20_ocean='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREM_ocean.txt',
-    prem_ani='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREMani.txt',
-    prem_iso='http://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREMiso.txt',
+    ak135f='https://ds.iris.edu/media/product/emc-syngine/files/1dmodel_ak135f.txt',
+    iasp91='https://ds.iris.edu/media/product/emc-syngine/files/1dmodel_iasp91.txt',
+    prem_crust20_ocean='https://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREM_ocean.txt',
+    prem_ani='https://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREMani.txt',
+    prem_iso='https://ds.iris.edu/media/product/emc-syngine/files/1dmodel_PREMiso.txt',
 )
 
 help_message = (
