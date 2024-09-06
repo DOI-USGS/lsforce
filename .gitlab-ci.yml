@@ -1,5 +1,5 @@
 default:
-  image: ${DEVOPS_REGISTRY}usgs/python:3.9
+  image: ${CI_REGISTRY}/devops/images/usgs/python:3.9
   before_script:
     - bash install.sh 1
     - source ~/miniforge/etc/profile.d/conda.sh
