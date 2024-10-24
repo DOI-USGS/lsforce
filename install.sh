@@ -105,7 +105,7 @@ DEVELOPER_PACKAGES=(
     'pytest-mpl'
     'recommonmark'
     'sphinx'
-    'sphinx_rtd_theme'
+    'sphinx_rtd_theme<3'
     'sphinxcontrib-apidoc'
     'spyder'
     'versioneer'
