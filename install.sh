@@ -91,8 +91,7 @@ PACKAGE_LIST=(
     'notebook'
     'obspy'
     'pyqt'
-    'xarray'
-    'rasterio'
+    'rioxarray'
 )
 
 # Additional developer packages:

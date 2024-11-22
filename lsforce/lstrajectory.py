@@ -1,11 +1,13 @@
 import warnings
 
 import numpy as np
+import rioxarray
 import xarray as xr
-from cartopy import crs as ccrs
 from matplotlib import cm
 from matplotlib import pyplot as plt
 from obspy.core import AttribDict
+from pyproj import Transformer
+from rasterio.enums import Resampling
 
 KM_PER_M = 1 / 1000  # [km/m]
 
@@ -110,8 +112,7 @@ class LSTrajectory:
                 available)
             image (:class:`~xarray.DataArray`): An image with coordinates defined in km
                 with the origin (0, 0) being the start location of the trajectory
-            dem (str): A UTM-projected DEM GeoTIFF to slice thru for elevation profile
-                plot
+            dem (str): A DEM GeoTIFF to slice thru for elevation profile plot
             reference_point (int or float or list): If not `None`, plot a dot on
                 trajectory, and line on colorbar, at this specified time(s) for
                 reference
@@ -427,7 +428,7 @@ class LSTrajectory:
         r"""Slice through an input DEM along the trajectory path.
 
         Args:
-            dem_file (str): DEM GeoTIFF to slice (must be UTM-projected!)
+            dem_file (str): DEM GeoTIFF to slice
             interp_spacing (int or float): [m] Density of interpolation points
 
         Returns:
@@ -439,16 +440,14 @@ class LSTrajectory:
               `horizontal_distance`
         """
 
-        dem = xr.open_rasterio(dem_file).squeeze()
-        # Set no data values to NaN
-        dem = dem.where(dem != dem.nodatavals)
+        dem = xr.open_dataarray(dem_file).squeeze()
 
         # Define interpolation points in UTM space
-        crs = ccrs.epsg(int(dem.crs.split(':')[-1]))
-        if crs.proj4_params['proj'] != 'utm':
-            raise ValueError('Input DEM must have a UTM projection!')
-        loc_utm = crs.transform_point(
-            self.force.data.source_lon, self.force.data.source_lat, ccrs.Geodetic()
+        utm_crs = dem.rio.estimate_utm_crs()
+        dem = dem.rio.reproject(utm_crs, resampling=Resampling.cubic_spline)
+        transformer = Transformer.from_crs(4326, utm_crs)
+        loc_utm = transformer.transform(
+            self.force.data.source_lat, self.force.data.source_lon
         )
         points = [
             [x + loc_utm[0], y + loc_utm[1]]

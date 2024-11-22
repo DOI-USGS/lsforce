@@ -51,8 +51,6 @@ napoleon_numpy_docstring = False
 
 root_doc = 'index'
 
-autodoc_mock_imports = ['cartopy', 'matplotlib', 'numpy', 'obspy', 'scipy', 'xarray']
-
 apidoc_module_dir = str(root / 'lsforce')
 apidoc_output_dir = 'api'
 apidoc_separate_modules = True
