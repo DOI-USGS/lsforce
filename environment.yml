@@ -1,0 +1,9 @@
+name: lsforce
+channels:
+  - conda-forge
+dependencies:
+  - cartopy
+  - notebook
+  - obspy
+  - pyqt
+  - rioxarray

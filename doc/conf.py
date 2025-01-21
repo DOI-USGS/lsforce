@@ -1,18 +1,5 @@
-import os
-import sys
 from datetime import datetime
-from pathlib import Path
-
-root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(root))
-from versioneer import get_version
-
-# Get version (this method avoids importing the package, see GitHub comment link below)
-# https://github.com/python-versioneer/python-versioneer/issues/185#issue-343550345
-owd = Path.cwd()
-os.chdir(root)
-__version__ = get_version()
-os.chdir(owd)
+from importlib.metadata import version
 
 SHOW_PRIVATE = False  # Set to True to build docs for private functions, methods, etc.
 
@@ -22,6 +9,7 @@ author = 'Kate E. Allstadt and Liam Toney'
 
 copyright = f'{datetime.now().year}, {author}'
 
+__version__ = version('lsforce')
 version = __version__
 release = __version__
 
@@ -51,7 +39,7 @@ napoleon_numpy_docstring = False
 
 root_doc = 'index'
 
-apidoc_module_dir = str(root / 'lsforce')
+apidoc_module_dir = '../lsforce'
 apidoc_output_dir = 'api'
 apidoc_separate_modules = True
 apidoc_toc_file = False

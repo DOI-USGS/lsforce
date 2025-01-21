@@ -1,0 +1,31 @@
+[project]
+name = "lsforce"
+dynamic = ["version"]
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+script-files = ["bin/axisem2cps"]
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools_scm]
+version_scheme = "no-guess-dev"
+
+[tool.coverage.run]
+omit = ["lsforce/__init__.py"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=lsforce --cov-report term --capture=no -p no:cacheprovider --mpl"
+testpaths = "tests"
+filterwarnings = "ignore:Matplotlib is currently using agg:UserWarning"
+
+[tool.black]
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+conda_env = "lsforce"
