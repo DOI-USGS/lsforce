@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # USAGE:
 #   bash install.sh    # Standard (user) install
@@ -7,12 +7,10 @@
 platform=$(uname)
 if [ "$platform" == 'Linux' ]
 then
-    profile=~/.bashrc
-    miniforge_url=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
-elif [ "$platform" == 'FreeBSD' ] || [ "$platform" == 'Darwin' ]
+    miniforge_url="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-$(uname -m).sh"
+elif [ "$platform" == 'Darwin' ]
 then
-    profile=~/.bash_profile
-    miniforge_url=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh
+    miniforge_url="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-$(uname -m).sh"
 else
     echo 'Unsupported platform. Exiting.'
     exit 1
@@ -27,107 +25,67 @@ ENV_NAME=$PACKAGE_NAME
 # Is mamba installed?
 if ! mamba --version
 then
-    echo 'No mamba detected'
+    echo 'No mamba detected.'
     # Is conda installed?
     if ! conda --version
     then
-        echo 'No conda detected, either — installing miniforge...'
+        echo 'No conda detected, either — installing Miniforge...'
 
         # Try to download shell script using curl
-        if ! curl -L $miniforge_url -o miniforge.sh
+        if ! curl -L $miniforge_url -o Miniforge3.sh
         then
-            echo 'Failed to download miniforge installer shell script. Exiting.'
+            echo 'Failed to download Miniforge installer shell script. Exiting.'
             exit 1
         fi
 
-        # Try to install miniforge
-        echo 'Install directory: ~/miniforge'
-        if ! bash miniforge.sh -f -b -p ~/miniforge
+        # Try to install Miniforge
+        echo 'Install directory: ~/miniforge3'
+        if ! bash Miniforge3.sh -f -b -p ~/miniforge3
         then
-            echo 'Failed to run miniforge installer shell script. Exiting.'
+            echo 'Failed to run Miniforge installer shell script. Exiting.'
             exit 1
         fi
 
-        # Set up "activate" command, see:
-        # https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
-        eval "$(~/miniforge/bin/conda shell.bash hook)"
-        mamba init
+        # "create the path to conda" — see:
+        # https://github.com/conda-forge/miniforge/blob/main/README.md#as-part-of-a-ci-pipeline
+        source ~/miniforge3/etc/profile.d/conda.sh
 
-        # Don't automatically activate the environment
-        mamba config --set auto_activate_base false
-
-        echo 'mamba installed'
+        echo 'mamba installed.'
         CONDA_CMD=mamba
     else
-        echo 'conda detected'
+        echo 'conda detected.'
         CONDA_CMD=conda
     fi
 else
-    echo 'mamba detected'
+    echo 'mamba detected.'
     CONDA_CMD=mamba
 fi
 
-# This is needed to ensure that environment activation works
-source $profile
+# "create the path to conda" — see:
+# https://github.com/conda-forge/miniforge/blob/main/README.md#as-part-of-a-ci-pipeline
+source $(conda info --base)/etc/profile.d/conda.sh
 
 # Try to activate the base environment
-echo 'Activating the base environment'
+echo 'Activating the base environment.'
 if ! conda activate base
 then
-    echo '"conda activate" failed, trying "source activate" instead...'
-    if ! source activate base
-    then
-        echo 'Failed to activate the base environment. Exiting.'
-        exit 1
-    fi
+    echo 'Failed to activate the base environment. Exiting.'
+    exit 1
 fi
 
 # Remove existing environment if it exists
 conda remove --yes --name $ENV_NAME --all
 
-# Standard package list:
-PACKAGE_LIST=(
-    'cartopy'
-    'notebook'
-    'obspy'
-    'pyqt'
-    'rioxarray'
-)
-
-# Additional developer packages:
-DEVELOPER_PACKAGES=(
-    'black=23.10.0'
-    'ipython'
-    'isort=5.12.0'
-    'nbdime'
-    'pytest-cov'
-    'pytest-mpl'
-    'recommonmark'
-    'sphinx'
-    'sphinx_rtd_theme<3'
-    'sphinxcontrib-apidoc'
-    'spyder'
-    'versioneer'
-)
-
-# If user supplied the developer flag, add developer packages to package list
-if [ "$1" == 1 ]
-then
-    PACKAGE_LIST=( "${PACKAGE_LIST[@]}" "${DEVELOPER_PACKAGES[@]}" )
-    echo 'Installing developer packages:'
-    echo "${DEVELOPER_PACKAGES[@]}"
-fi
-
 # Try to create the environment
 echo "Creating the $ENV_NAME environment"
-if ! $CONDA_CMD create --yes --name $ENV_NAME --channel conda-forge "${PACKAGE_LIST[@]}"
+if ! $CONDA_CMD env create --yes --name $ENV_NAME --file environment.yml
 then
-    echo 'Failed to create environment. Resolve any conflicts, then try again.'
+    echo 'Failed to create environment. Exiting.'
     exit 1
 fi
 
 # Try to activate the new environment
-echo "Activating the $ENV_NAME environment"
+echo "Activating the $ENV_NAME environment."
 if ! conda activate $ENV_NAME
 then
     echo '"conda activate" failed, trying "source activate" instead...'
@@ -144,27 +102,43 @@ then
     echo 'Failed to upgrade pip. Trying to continue...'
 fi
 
+# If user supplied the developer flag, install developer packages
+if [ "$1" == 1 ]
+then
+    echo 'Installing developer packages...'
+    if ! pip install --requirement requirements.txt
+    then
+        echo 'Failed to install developer packages. Exiting.'
+    fi
+fi
+
+# If we're on the GitLab runner, then we need to install git because it's needed for
+# setuptools_scm to get the version number from the git repository during pip install
+if [ "$GITLAB_CI" == true ]
+then
+    echo 'GitLab CI/CD instance detected, installing git...'
+    if ! $CONDA_CMD install --yes --channel conda-forge git
+    then
+        echo 'Failed to install git. Exiting.'
+        exit 1
+    fi
+fi
+
 # Try to install this package
 echo
-echo "Installing $PACKAGE_NAME"
+echo "Installing $PACKAGE_NAME using pip."
 if ! pip install --editable .
 then
-    echo 'Failed to pip install this package. Exiting.'
+    echo "Failed to pip install $PACKAGE_NAME. Exiting."
     exit 1
 fi
 
-# Do additional things if this is a developer install
+# If this is a developer install, then give nbdime setup instructions, see:
+# https://nbdime.readthedocs.io/en/latest/#git-integration-quickstart
 if [ "$1" == 1 ]
 then
-    # Give nbdime setup instructions, see:
-    # https://nbdime.readthedocs.io/en/latest/#git-integration-quickstart
+    echo '------------------------------------------'
     echo 'To set up git integration for nbdime, run:'
     echo 'nbdime config-git --enable --global'
-
-    # Install packages only available via pip
-    if ! pip install sphinx-markdown-builder
-    then
-      echo 'Failed to install development pip packages. Exiting.'
-      exit 1
-    fi
+    echo '------------------------------------------'
 fi
