@@ -6,8 +6,8 @@ dynamic = ["version"]
 requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-script-files = ["bin/axisem2cps"]
+[project.scripts]
+axisem2cps = "lsforce.axisem2cps:main"
 
 [tool.setuptools.packages]
 find = {}
