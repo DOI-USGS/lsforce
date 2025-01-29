@@ -32,7 +32,7 @@ fig.savefig(
 Installation
 ------------
 
-The following has only been tested on macOS.
+*lsforce* has been tested on macOS and Linux.
 
 Clone this repo and run the installation script, which creates an environment named
 `lsforce` and installs the _lsforce_ package into the environment:
@@ -56,27 +56,28 @@ set of [1D Earth models](https://ds.iris.edu/ds/products/syngine/#earth).
 
 Alternatively, if users prefer to compute Green's functions using a custom model (see
 [Documentation](#documentation)), they can optionally install
-[Computer Programs in Seismology (CPS)](http://www.eas.slu.edu/eqc/eqccps.html) via the
-following:
+[Computer Programs in Seismology (CPS)](https://rbherrmann.github.io/ComputerProgramsSeismology/)
+via the following:
 
-   1. Install [GCC](https://gcc.gnu.org/) with e.g. [Homebrew](https://brew.sh/):
+   1. Run the CPS install script:
       ```shell
-      brew install gcc
+      bash install-cps.sh
       ```
-   2. Complete the
-      [CPS license form](http://www.eas.slu.edu/eqc/eqc_cps/CPS/cpslisc.html), download
-      the resulting archive, and unzip
-   3. Move the directory `PROGRAMS.330` to where you'd like to install, then:
-      ```shell
-      cd PROGRAMS.330
-      ./Setup OSX40
-      ./C
-      ```
-   4. Add the executables to `PATH` by adding the following line to e.g.
+   2. Add the executables to your `PATH` by adding the following line to e.g.
       `~/.bash_profile`:
       ```shell
       export PATH="$PATH:/path/to/PROGRAMS.330/bin"
       ```
+      The CPS install script will print this location before it exits.
+
+If, after running the steps above, you run into *lsforce* errors when attempting to use
+CPS for Green's functions, CPS compilation may have ran into errors. These errors
+prevent certain programs from being compiled, even though the install script proceeds.
+Such errors are **almost always** due to missing compilers. To address this, carefully
+follow the CPS installation guidance for dependency installation for
+[Linux](https://rbherrmann.github.io/ComputerProgramsSeismology/cpslinux.html)
+or
+[macOS](https://rbherrmann.github.io/ComputerProgramsSeismology/cpsmacos.html).
 
 Documentation
 -------------
@@ -100,8 +101,8 @@ The *lsforce* package includes a command,
 which can convert 1D Earth models from Syngine into CPS model files. These models can
 then be further modified for specific use cases. In addition, completely custom CPS
 model files can be provided; for more information on CPS model files, see Chapter 8 of the
-[CPS documentation](http://www.eas.slu.edu/eqc/eqc_cps/CPS/CPS330/cps330o.pdf). The
-`lsforce` conda environment must be active for the command to be available.
+[CPS documentation](https://rbherrmann.github.io/ComputerProgramsSeismology/CPS/CPS330/cps330o.pdf).
+The `lsforce` conda environment must be active for the command to be available.
 
 Usage examples for the two currently-supported parameterization methods are given in the
 three [Jupyter Notebooks](https://jupyter.org/) `example_full.ipynb`,

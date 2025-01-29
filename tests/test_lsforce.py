@@ -127,23 +127,33 @@ def test_lsforce_gfs():
         if tr.stats.station != 'KALN':
             gf_data.st_proc.remove(tr)
 
-    # A temporary directory to run tests in
-    temp_dir = tempfile.TemporaryDirectory()
+    # Temporary directories to run tests in
+    temp_dir_syn = tempfile.TemporaryDirectory()
+    temp_dir_cps = tempfile.TemporaryDirectory()
 
-    # Create LSForce object
-    force = LSForce(data=gf_data, data_sampling_rate=1, main_folder=temp_dir.name)
+    # Create LSForce objects
+    force_syn = LSForce(
+        data=gf_data, data_sampling_rate=1, main_folder=temp_dir_syn.name
+    )
+    force_cps = LSForce(
+        data=gf_data, data_sampling_rate=1, main_folder=temp_dir_cps.name
+    )
+
+    # Different kwargs for CPS GFs
+    setup_kwargs = copy.deepcopy(SETUP_KWARGS)
+    del setup_kwargs['syngine_model']
 
     # Obtain GFs
     print('Grabbing GFs...')
-    force.setup(**SETUP_KWARGS)
-    st_syn = force.filtered_gf_st
-    st_cps = read(
-        os.path.join(data_dir, 'filtered_gf_stream.pkl')
-    )  # Since no CPS install
+    force_syn.setup(**SETUP_KWARGS)
+    st_syn = force_syn.filtered_gf_st
+    force_cps.setup(cps_model=os.path.join(data_dir, 'iasp91.mod'), **setup_kwargs)
+    st_cps = force_cps.filtered_gf_st
     print('Done')
 
-    # Clean up temporary dir
-    temp_dir.cleanup()
+    # Clean up temporary dirs
+    temp_dir_syn.cleanup()
+    temp_dir_cps.cleanup()
 
     # Make sure they have equal number of samples, no padding here since that will throw
     # off the test

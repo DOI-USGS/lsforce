@@ -232,7 +232,7 @@ class LSForce:
                     subprocess.call(args, stdout=f)
 
                 # Convert to SAC files
-                subprocess.call(['f96tosac', 'Green'])
+                subprocess.call(['f96tosac', '-B', 'Green'])
 
                 # Go through and read in files (same order as dist file)
                 for i, station in enumerate(stations_to_calculate):
