@@ -4,6 +4,9 @@ default:
     - bash install.sh 1
     - source ~/miniforge3/etc/profile.d/conda.sh
     - conda activate lsforce
+    - mamba install --channel conda-forge --yes gcc gfortran make binutils  # TODO: CI-specific, or?
+    - bash install-cps.sh
+    - export PATH=~/PROGRAMS.330/bin/:$PATH  # Add CPS to path
 
 Check formatting and run tests:
   script:
@@ -19,7 +22,6 @@ Check formatting and run tests:
 
 pages:
   script:
-    - mamba install make
     - pushd doc/
     - make html
     - popd
