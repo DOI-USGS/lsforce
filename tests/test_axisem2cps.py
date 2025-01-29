@@ -5,7 +5,7 @@ from pathlib import Path
 from lsforce import axisem2cps
 
 # Get location of reference model file
-ak135f_mod_ref = Path(__file__).resolve().parent / 'data' / 'ak135f.mod'
+iasp91_mod_ref = Path(__file__).resolve().parent / 'data' / 'iasp91.mod'
 
 
 def test_axisem2cps_script():
@@ -13,11 +13,11 @@ def test_axisem2cps_script():
     assert not p.stderr
 
 
-def test_axisem2cps_ak135f():
-    axisem2cps('ak135f')
+def test_axisem2cps_iasp91():
+    axisem2cps('iasp91')
     try:
-        assert cmp('ak135f.mod', ak135f_mod_ref, shallow=False)
+        assert cmp('iasp91.mod', iasp91_mod_ref, shallow=False)
     except AssertionError:
-        Path('ak135f.mod').unlink()
+        Path('iasp91.mod').unlink()
         raise
-    Path('ak135f.mod').unlink()
+    Path('iasp91.mod').unlink()
