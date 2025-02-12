@@ -334,7 +334,14 @@ class LSData:
 
 
 def make_lsdata_syn(
-    inv, fake_station_dict, source_lat, source_lon, data_length_seconds
+    inv,
+    fake_station_dict,
+    source_lat,
+    source_lon,
+    data_length_seconds,
+    skip_zne_rotation=True,
+    fake_start_time=None,
+    dummy_sampling_rate=100.0,
 ):
     r"""Wrapper which creates an :class:`~lsforce.lsdata.LSData` object for
     forward modeling applications.
@@ -351,10 +358,16 @@ def make_lsdata_syn(
         source_lon (float): Longitude in decimal degrees of centroid of landslide
             source location
         data_length_seconds (int or float): [s] Length of synthetic data
+        skip_zne_rotation (bool): Should be True if stations are entirely fake,
+            but set to False if using a real station inventory and some stations
+            might have BH1/BH2 channels instead of E and N.
+        fake_start_time (:class:`~obspy.core.utcdatetime.UTCDateTime` or None): Fake start time to use if using
+            real stations and skip_zne_rotation is set to False. This is
+            needed so the right 'real' inventory data is fetched.
+        dummy_sampling_rate (float): Samples per second for dummy data. If
+            not defined, will use 100. Default is set artificially high, this
+            determines the SEED band code of "H"
     """
-
-    # Set artificially high, this determines the SEED band code of "H"
-    dummy_sampling_rate = 100
 
     # Ensure there's something to use
     if inv is None and fake_station_dict is None:
@@ -376,7 +389,9 @@ def make_lsdata_syn(
                         sampling_rate=dummy_sampling_rate,
                     )
                     st += Trace(
-                        data=np.zeros(data_length_seconds * stats['sampling_rate']),
+                        data=np.zeros(
+                            int(data_length_seconds * stats['sampling_rate'])
+                        ),
                         header=stats,
                     )
         for tr in st:
@@ -398,9 +413,12 @@ def make_lsdata_syn(
                     latitude=coords[0],
                 )
                 st += Trace(
-                    data=np.zeros(data_length_seconds * stats['sampling_rate']),
+                    data=np.zeros(int(data_length_seconds * stats['sampling_rate'])),
                     header=stats,
                 )
+    if fake_start_time is not None:
+        for tr in st:
+            tr.stats.starttime = fake_start_time
 
     # Create LSData instance
     instance = LSData(
@@ -408,7 +426,7 @@ def make_lsdata_syn(
         source_lat=source_lat,
         source_lon=source_lon,
         remove_response=False,
-        skip_zne_rotation=True,
+        skip_zne_rotation=skip_zne_rotation,
     )
 
     return instance
