@@ -6,7 +6,7 @@ import random as rnd
 import subprocess
 import tempfile
 import warnings
-from shutil import which
+from shutil import copyfile, which
 from urllib.request import urlretrieve
 
 import numpy as np
@@ -193,32 +193,39 @@ class LSForce:
                 temp_dir = tempfile.TemporaryDirectory()
                 os.chdir(temp_dir.name)
 
+                # Copy the model file over to temporary directory to avoid model paths too long for CPS
+                modelfilename = os.path.basename(
+                    self.cps_model
+                )  # get just model filename without path
+                copyfile(self.cps_model, os.path.join(temp_dir.name, modelfilename))
+
                 # Write the "dist" file
                 gf_length_samples = int(self.gf_duration * self.data_sampling_rate)
                 with open('dist', 'w') as f:
                     for sta in stations_to_calculate:
                         dist = self.data.st_proc.select(station=sta)[0].stats.distance
                         f.write(f'{dist} {gf_dt} {gf_length_samples} {self.T0} 0\n')
+                # # move copy of dist to main folder for debugging
+                # copyfile(os.path.join(temp_dir.name, 'dist'), os.path.join(self.main_folder, 'dist'))
 
                 # Run hprep96 and hspec96
-                subprocess.call(
-                    [
-                        'hprep96',
-                        '-HR',
-                        '0.',
-                        '-HS',
-                        str(self.source_depth / 1000),  # Converting to km for CPS
-                        '-M',
-                        self.cps_model,
-                        '-d',
-                        'dist',
-                        '-R',
-                        '-EXF',
-                    ]
-                )
+                cpscall = [
+                    'hprep96',
+                    '-HR',
+                    '0.',
+                    '-HS',
+                    str(self.source_depth / 1000),  # Converting to km for CPS
+                    '-M',
+                    modelfilename,
+                    '-d',
+                    'dist',
+                    '-R',
+                    '-EXF',
+                ]
+                # print('Running: %s' % subprocess.list2cmdline(cpscall))
+                subprocess.call(cpscall)
                 with open('hspec96.out', 'w') as f:
                     subprocess.call('hspec96', stdout=f)
-
                 # Run hpulse96 (using the multiplier here to get a 1 N impulse), also
                 # keep track of pulse half-width so we can make the GFs acausal later
                 args = ['hpulse96', '-d', 'dist', '-m', f'{1e-10:.10f}', '-OD', '-V']
@@ -934,22 +941,22 @@ class LSForce:
                 vals2 = np.hstack((np.ones(len2 - len3), temp))
             else:
                 raise NotImplementedError
-
+            A2 = None
             for i, val in enumerate(vals2):
                 first1 = np.zeros(3 * gl)
                 second1 = first1.copy()
                 third1 = first1.copy()
-                if i > 0:
+                if val > 0:  # Only add a line to A2 if val is nonzero
                     first1[i] = val
                     second1[i + gl] = val
                     third1[i + 2 * gl] = val
-                if i == 0:
-                    A2 = np.vstack((first1, second1, third1))
-                else:
-                    A2 = np.vstack((A2, first1, second1, third1))
+                    if A2 is None:  # initialize A2 on first iteration
+                        A2 = np.vstack((first1, second1, third1))
+                    else:
+                        A2 = np.vstack((A2, first1, second1, third1))
             A2 *= scaler
             Ghat = np.vstack((Ghat, A2))
-            dhat = np.hstack((dhat, np.zeros(len(vals2) * 3)))
+            dhat = np.hstack((dhat, np.zeros(np.shape(A2)[0])))
         else:
             A2 = None
 
@@ -961,6 +968,7 @@ class LSForce:
             startind = int(
                 (zerotime + self.T0 + self.duration) * self.force_sampling_rate
             )
+            A3 = None
             if self.method == 'triangle':
                 vals3 = np.zeros(gl)
                 vals3[startind:] = 1.0  # No taper
@@ -968,14 +976,14 @@ class LSForce:
                     first1 = np.zeros(3 * gl)
                     second1 = first1.copy()
                     third1 = first1.copy()
-                    if val > 0:
+                    if val > 0:  # only add rows to A3 if will be nonzero
                         first1[i] = val
                         second1[i + gl] = val
                         third1[i + 2 * gl] = val
-                    if i == 0:
-                        A3 = np.vstack((first1, second1, third1))
-                    else:
-                        A3 = np.vstack((A3, first1, second1, third1))
+                        if A3 is None:  # initialize A3
+                            A3 = np.vstack((first1, second1, third1))
+                        else:
+                            A3 = np.vstack((A3, first1, second1, third1))
             if self.method == 'full':
                 len2 = int(gl - startind)
                 len3 = int(
@@ -990,18 +998,18 @@ class LSForce:
                     first1 = np.zeros(3 * gl)
                     second1 = first1.copy()
                     third1 = first1.copy()
-                    if val > 0:
+                    if val > 0:  # only add rows to A3 if will be nonzero
                         first1[place] = val
                         second1[place + gl] = val
                         third1[place + 2 * gl] = val
-                    if i == 0:
-                        A3 = np.vstack((first1, second1, third1))
-                    else:
-                        A3 = np.vstack((A3, first1, second1, third1))
+                        if A3 is None:  # initialize A3
+                            A3 = np.vstack((first1, second1, third1))
+                        else:
+                            A3 = np.vstack((A3, first1, second1, third1))
             A3 *= scaler
 
             Ghat = np.vstack((Ghat, A3))
-            dhat = np.hstack((dhat, np.zeros(len(vals3) * 3)))
+            dhat = np.hstack((dhat, np.zeros(np.shape(A3)[0])))
         else:
             A3 = None
 
