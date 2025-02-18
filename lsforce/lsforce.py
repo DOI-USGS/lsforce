@@ -40,6 +40,16 @@ E_COLOR = 'green'
 # Transparency level for jackknife lines and patches
 JK_ALPHA = 0.2
 
+# Constants controlling behavior of `plot_fits()`
+AX_WIDTH = 2  # [in] Waveform subplot panel width
+AX_HEIGHT = 0.5  # [in] Waveform subplot panel height
+PAD = 0.1  # [in] Internal padding around waveform subplot panels
+MARGINS = (0.75, PAD, 0.2, PAD)  # [in] Outer [left, right, top, bottom] overall margins
+COMPONENT_ORDER = ('Z', 'R', 'T')  # Order from left to right of component columns
+TEXT_PAD = PAD  # [in]  Padding for station info/metrics labels on left of waveforms
+FONT_SIZE = 8  # Main plot font size
+PRECISION = 0  # Number of decimal places for station metrics
+
 
 class LSForce:
     r"""Class for performing force inversions.
@@ -1319,7 +1329,257 @@ class LSForce:
 
         return st_syn
 
-    def plot_fits(self, equal_scale=True, xlim=None):
+    def plot_fits(
+        self,
+        equal_scale=True,
+        xlim=None,
+        add_time_axis=True,
+        axis_frames=False,
+        add_title=True,
+        add_legend=True,
+        legacy=False,
+    ):
+        r"""Create a plot showing the model-produced waveform fit to the data.
+
+        Args:
+            equal_scale (bool): If `True`, all plots will share the same y-axis scale
+            xlim (list or tuple): [s] Array (length two) of x-axis limits (time relative
+                to zero time)
+            add_time_axis (bool): If `True`, will add a time axis to the bottom of the
+                plot
+            axis_frames (bool): If `True`, will add frames around each waveform subplot
+                panel
+            add_title (bool): If `True`, will add a title to the plot with VR and
+                normalization information
+            add_legend (bool): If `True`, will add a legend to the plot
+            legacy (bool): If `True`, will plot using the legacy fit plotting function
+                (all waveforms in a single column in R, T, Z order, no azimuth info)
+
+        Returns:
+            :class:`~matplotlib.figure.Figure`: Output figure handle
+        """
+
+        # Plot using the legacy plotting function if the user has requested it
+        if legacy:
+            return self._plot_fits_legacy(equal_scale=equal_scale, xlim=xlim)
+
+        # Set xlim if not provided
+        if xlim is None:
+            xlim = self.dtvec[0], self.dtvec[-1]
+
+        # Form Stream objects for data and model waveforms
+        st_data = Stream()
+        st_model = Stream()
+        keys_to_populate = ('network', 'station', 'component', 'distance', 'azimuth')
+        for i, tr in enumerate(self.data.st_proc):
+            header = {k: tr.stats[k] for k in keys_to_populate}
+            header['sampling_rate'] = self.data_sampling_rate
+            st_data += Trace(data=self.dtorig[i], header=header)
+            st_model += Trace(data=self.dtnew[i], header=header)
+
+        # Determine the unique stations, and sort by distance from source (can use
+        # st_data here since it has same meta as st_model)
+        unique_net_sta_pairs_unsorted = tuple(
+            set([(tr.stats.network, tr.stats.station) for tr in st_data])
+        )
+        distances = []
+        for net, sta in unique_net_sta_pairs_unsorted:
+            distances.append(st_data.select(network=net, station=sta)[0].stats.distance)
+        unique_net_sta_pairs = tuple(
+            [unique_net_sta_pairs_unsorted[i] for i in np.argsort(distances)]
+        )
+
+        # Determine which components we have — this controls how many columns of
+        # waveforms we plot (e.g., if we only have verticals, we only plot one column)
+        unique_components = set([tr.stats.component for tr in st_data])
+        component_order = [c for c in COMPONENT_ORDER if c in unique_components]
+
+        # Make figure
+        margins = list(MARGINS)
+        if add_time_axis:
+            margins[3] += 0.3 if axis_frames else 0.38  # Make room for time axis
+        if add_title:
+            margins[2] += 0.15  # Make room for title
+        n_stations = len(unique_net_sta_pairs)
+        n_components = len(component_order)
+        fig_width = (
+            n_components * AX_WIDTH + (n_components - 1) * PAD + sum(margins[:2])
+        )
+        fig_height = n_stations * AX_HEIGHT + (n_stations - 1) * PAD + sum(margins[2:])
+        fig, axs = plt.subplots(
+            nrows=n_stations,
+            ncols=n_components,
+            figsize=(fig_width, fig_height),
+            sharex=True,
+            sharey=True,
+            squeeze=False,
+        )
+
+        # Reposition subplots
+        for i in range(n_stations):
+            for j in range(n_components):
+                x0 = margins[0] + PAD * j + AX_WIDTH * j
+                y0 = fig_height - margins[2] - PAD * i - AX_HEIGHT * (i + 1)
+                width = AX_WIDTH
+                height = AX_HEIGHT
+                axs[i, j].set_position(
+                    [
+                        x0 / fig_width,
+                        y0 / fig_height,
+                        width / fig_width,
+                        height / fig_height,
+                    ]
+                )
+
+        # Now do the plotting
+        for i in range(n_stations):
+            for j in range(n_components):
+                ax = axs[i, j]
+                net, sta = unique_net_sta_pairs[i]
+                selection_kw = dict(
+                    network=net, station=sta, component=component_order[j]
+                )
+                _st_data = st_data.select(**selection_kw)
+                _st_model = st_model.select(**selection_kw)
+                if _st_data.count() == 0:
+                    pass  # This component is missing; we just don't plot anything
+                elif _st_data.count() > 1:
+                    raise ValueError(
+                        'More than one trace found for this net, sta, component!'
+                    )
+                else:  # _st_data.count() == 1
+                    tr_data = _st_data[0]
+                    tr_model = _st_model[0]
+                    t = self.dtvec
+                    mask = (t > xlim[0]) & (t < xlim[1])
+                    d_data = tr_data.data[mask]
+                    d_model = tr_model.data[mask]
+                    if not equal_scale:
+                        # Scale to whichever waveform has the largest absolute value
+                        abs_max = max(max(np.abs(d_data)), max(np.abs(d_model)))
+                        d_data /= abs_max
+                        d_model /= abs_max
+                    plot_kw = dict(lw=0.8, solid_capstyle='round')
+                    ax.plot(t[mask], d_data, color='black', label='data', **plot_kw)
+                    ax.plot(t[mask], d_model, color='tab:red', label='model', **plot_kw)
+                    ax.autoscale(enable=True, axis='y', tight=True)
+
+        # Label the stations, just at left
+        for i in range(n_stations):
+            ax = axs[i, 0]
+            net, sta = unique_net_sta_pairs[i]
+            tr = st_data.select(network=net, station=sta)[0]
+            text_kw = dict(
+                x=0 - TEXT_PAD / AX_WIDTH,
+                ha='right',
+                transform=ax.transAxes,
+                size=FONT_SIZE,
+            )
+            # network.station code
+            ax.text(
+                y=0.65,
+                s=f'{tr.stats.network}.{tr.stats.station}',
+                va='bottom',
+                weight='bold',
+                family='monospace',
+                **text_kw,
+            )
+            # Distance to source
+            ax.text(
+                y=0.5, s=f'{tr.stats.distance:.{PRECISION}f} km', va='center', **text_kw
+            )
+            # Azimuth to source
+            ax.text(y=0.35, s=f'{tr.stats.azimuth:.{PRECISION}f}°', va='top', **text_kw)
+
+        # Label the component columns, just at the top
+        for j in range(n_components):
+            ax = axs[0, j]
+            ax.text(
+                0,
+                1,
+                component_order[j],
+                weight='bold',
+                ha='left',
+                va='bottom',
+                transform=ax.transAxes,
+                size=FONT_SIZE,
+            )
+
+        # Axis formatting
+        abs_max_ylim = np.max([np.abs(ax.get_ylim()) for ax in axs.flatten()])
+        pad = 1.05  # So that peaks/troughs don't get clipped
+        for ax in axs.flatten():
+            ax.set_xlim(xlim)
+            if not equal_scale:
+                ax.set_ylim(-1 * pad, 1 * pad)
+            else:
+                ax.set_ylim(-abs_max_ylim * pad, abs_max_ylim * pad)
+            ax.tick_params(
+                which='both',
+                left=False,
+                labelleft=False,
+                bottom=False,
+                labelbottom=False,
+            )
+            if not axis_frames:
+                for spine in ax.spines.values():
+                    spine.set_visible(False)
+        if add_time_axis or add_title:
+            # Need to make an axis that spans [potentially] multiple columns
+            pos_top_left = axs[0, 0].get_position()
+            pos_bottom_left = axs[-1, 0].get_position()
+            pos_bottom_right = axs[-1, -1].get_position()
+            x0 = pos_bottom_left.x0
+            y0 = pos_bottom_left.y0
+            width = pos_bottom_right.x1 - x0
+            height = pos_top_left.y1 - y0
+            ax_label = fig.add_axes([x0, y0, width, height], frameon=False)
+            ax_label.tick_params(
+                labelcolor='none', bottom=False, left=False, labelsize=FONT_SIZE
+            )
+            # Add time axis to `ax_label`
+            if add_time_axis:
+                for ax in axs[-1, :]:
+                    ax.spines['bottom'].set_visible(True)
+                    if not axis_frames:
+                        ax.spines['bottom'].set_position(('outward', 5))
+                    ax.tick_params(
+                        which='both', bottom=True, labelbottom=True, labelsize=FONT_SIZE
+                    )
+                if not axis_frames:
+                    position = axs[-1, 0].spines['bottom'].get_position()
+                    ax_label.spines['bottom'].set_position(position)
+                ax_label.set_xlabel(
+                    'Time (s) from inversion zero time', fontsize=FONT_SIZE
+                )
+            # Add title to `ax_label`
+            if add_title:
+                amp_string = 'equal scale' if equal_scale else 'normalized'
+                ax_label.set_title(
+                    f'Variance reduction {self.VR:.0f}% ({amp_string})',
+                    y=1,
+                    pad=15,
+                    size=FONT_SIZE,
+                )
+
+        # Make legend
+        if add_legend:
+            axs[0, 0].legend(
+                fontsize=FONT_SIZE - 3,
+                fancybox=False,
+                facecolor='0.85',
+                edgecolor='none',
+                bbox_to_anchor=(-TEXT_PAD / AX_WIDTH, 0.95),
+                loc='lower right',
+                borderaxespad=0,
+                borderpad=0.3,
+                labelspacing=0.05,
+                handlelength=1.5,
+            )
+
+        return fig
+
+    def _plot_fits_legacy(self, equal_scale=True, xlim=None):
         r"""Create a plot showing the model-produced waveform fit to the data.
 
         Args:

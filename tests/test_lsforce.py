@@ -182,9 +182,19 @@ def test_forward():
     )
 
 
-@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
+pytest_mpl_kwargs = copy.deepcopy(PYTEST_MPL_KWARGS)
+pytest_mpl_kwargs['savefig_kwargs']['bbox_inches'] = None  # Plot already sized nicely
+pytest_mpl_kwargs['savefig_kwargs']['dpi'] = 200  # Since this plot is small
+
+
+@pytest.mark.mpl_image_compare(**pytest_mpl_kwargs)
 def test_lsforce_plot_fits():
     return lsforce.plot_fits(xlim=(-50, 250))
+
+
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
+def test_lsforce_plot_fits_legacy():
+    return lsforce.plot_fits(xlim=(-50, 250), legacy=True)
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
