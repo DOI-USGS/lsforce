@@ -1,17 +1,20 @@
+variables:
+  PIP_ROOT_USER_ACTION: 'ignore'  # On GitLab CI/CD w/ Docker image the user is root
+
 default:
-  image: ${CI_REGISTRY}/devops/images/usgs/python:3.9
+  image: frolvlad/alpine-glibc:latest  # https://github.com/conda-forge/miniforge/issues/219#issuecomment-2260834108
   before_script:
-    - bash install.sh 1
-    - source ~/miniforge3/etc/profile.d/conda.sh
-    - conda activate lsforce
-    - mamba install --channel conda-forge --yes gcc gfortran make binutils  # TODO: CI-specific, or?
-    - bash install-cps.sh
-    - export PATH=~/PROGRAMS.330/bin/:$PATH  # Add CPS to path
+    - apk add --no-cache alpine-sdk bash curl gfortran  # Tools needed to install Miniforge and CPS
+    - bash install.sh 1  # Run the lsforce install script with developer flag enabled
+    - source ~/miniforge3/etc/profile.d/conda.sh  # Set up `conda` command
+    - conda activate lsforce  # Activate the lsforce environment
 
 Check formatting and run tests:
   script:
     - black --check .  # Black formatting check
     - isort --check-only .  # isort formatting check
+    - bash install-cps.sh  # Install CPS since we need it for the tests
+    - export PATH=~/PROGRAMS.330/bin/:$PATH  # Add CPS to path
     - pytest --cov-report xml:coverage.xml  # Run tests
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
@@ -22,10 +25,9 @@ Check formatting and run tests:
 
 pages:
   script:
-    - pushd doc/
-    - make html
-    - popd
-    - mv doc/_build/html/ public/
+    - cd doc/
+    - make html  # Run the Sphinx build
+    - mv _build/html/ ../public/
   artifacts:
     paths:
-      - public  # The folder that contains the files to be exposed at the Page URL
+      - public  # The folder that contains files to be exposed at the page URL
