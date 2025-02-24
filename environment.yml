@@ -5,5 +5,4 @@ dependencies:
   - cartopy
   - notebook
   - obspy
-  - pyqt
   - rioxarray

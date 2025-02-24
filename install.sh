@@ -112,18 +112,6 @@ then
     fi
 fi
 
-# If we're on the GitLab runner, then we need to install git because it's needed for
-# setuptools_scm to get the version number from the git repository during pip install
-if [ "$GITLAB_CI" == true ]
-then
-    echo 'GitLab CI/CD instance detected, installing git...'
-    if ! $CONDA_CMD install --yes --channel conda-forge git
-    then
-        echo 'Failed to install git. Exiting.'
-        exit 1
-    fi
-fi
-
 # Try to install this package
 echo
 echo "Installing $PACKAGE_NAME using pip."
@@ -131,14 +119,4 @@ if ! pip install --editable .
 then
     echo "Failed to pip install $PACKAGE_NAME. Exiting."
     exit 1
-fi
-
-# If this is a developer install, then give nbdime setup instructions, see:
-# https://nbdime.readthedocs.io/en/latest/#git-integration-quickstart
-if [ "$1" == 1 ]
-then
-    echo '------------------------------------------'
-    echo 'To set up git integration for nbdime, run:'
-    echo 'nbdime config-git --enable --global'
-    echo '------------------------------------------'
 fi
