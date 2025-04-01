@@ -32,7 +32,7 @@ then
         echo 'No conda detected, either — installing Miniforge...'
 
         # Try to download shell script using curl
-        if ! curl -L $miniforge_url -o Miniforge3.sh
+        if ! curl -s -L $miniforge_url -o Miniforge3.sh
         then
             echo 'Failed to download Miniforge installer shell script. Exiting.'
             exit 1
