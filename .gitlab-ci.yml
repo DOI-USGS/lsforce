@@ -2,7 +2,7 @@ variables:
   PIP_ROOT_USER_ACTION: 'ignore'  # On GitLab CI/CD w/ Docker image the user is root
 
 default:
-  image: frolvlad/alpine-glibc:latest  # https://github.com/conda-forge/miniforge/issues/219#issuecomment-2260834108
+  image: frolvlad/alpine-glibc:alpine-3.19  # https://github.com/conda-forge/miniforge/issues/219#issuecomment-2260834108
   before_script:
     - apk add --no-cache alpine-sdk bash curl gfortran  # Tools needed to install Miniforge and CPS
     - bash install.sh 1  # Run the lsforce install script with developer flag enabled
