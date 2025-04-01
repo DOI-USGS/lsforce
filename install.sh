@@ -40,7 +40,7 @@ then
 
         # Try to install Miniforge
         echo 'Install directory: ~/miniforge3'
-        if ! bash Miniforge3.sh -f -b -p ~/miniforge3
+        if ! bash --login Miniforge3.sh -f -b -p ~/miniforge3
         then
             echo 'Failed to run Miniforge installer shell script. Exiting.'
             exit 1
