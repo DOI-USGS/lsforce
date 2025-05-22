@@ -1046,7 +1046,7 @@ class LSForce:
             L2 = 0.0
             L2part = 0.0
 
-        if not alpha:
+        if alpha is None:
             alpha, fit1, size1, alphas = find_alpha(
                 Ghat, dhat, I, L1, L2, tikhonov_ratios=tikhonov_ratios
             )
@@ -1153,10 +1153,10 @@ class LSForce:
                     dhat1 = np.hstack((dhat1, np.zeros(3)))
                 if A2 is not None:
                     Ghat1 = np.vstack((Ghat1, A2))
-                    dhat1 = np.hstack((dhat1, np.zeros(len(vals2) * 3)))
+                    dhat1 = np.hstack((dhat1, np.zeros(len(vals2[vals2 > 0]) * 3)))
                 if A3 is not None:
                     Ghat1 = np.vstack((Ghat1, A3))
-                    dhat1 = np.hstack((dhat1, np.zeros(len(vals3) * 3)))
+                    dhat1 = np.hstack((dhat1, np.zeros(len(vals3[vals3 > 0]) * 3)))
 
                 dhat1 = dhat1.T
                 Apart = Ghat1.conj().T @ Ghat1
