@@ -10,6 +10,7 @@ from shutil import copyfile, which
 from urllib.request import urlretrieve
 
 import numpy as np
+import pandas as pd
 import scipy as sp
 from matplotlib import lines as mlines
 from matplotlib import pyplot as plt
@@ -71,7 +72,8 @@ class LSForce:
         Wvec (1D array): Weight vector
         jackknife (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary with
             keys ``'Z'``, ``'N'``, ``'E'``, ``'VR_all'``, ``'alphas'``, ``'num_iter'``,
-            and ``'frac_delete'`` containing jackknife parameters and results
+            ``'frac_delete'``, ``'tr_id_lists_all'``, and ``'type'`` containing
+            jackknife parameters and results
         angle_magnitude (:class:`~obspy.core.util.attribdict.AttribDict`): Dictionary
             with keys ``'magnitude'``, ``'magnitude_upper'``, ``'magnitude_lower'``,
             ``'vertical_angle'``, and ``'horizontal_angle'`` containing inversion angle
@@ -108,6 +110,10 @@ class LSForce:
                 `'triangle'` — inversion parameterized using overlapping triangles,
                 variation on method of Ekström & Stark (2013)
         """
+        # Check that the data are sorted as expected
+        _st_proc = data.st_proc.copy()
+        _st_proc.sort(keys=['distance', 'station', 'channel'])
+        assert [tr.id for tr in _st_proc] == [tr.id for tr in data.st_proc]
 
         self.data = data
         self.data_sampling_rate = data_sampling_rate
@@ -836,11 +842,16 @@ class LSForce:
                 `zero_time` if defined, otherwise starting from the beginning of the
                 seismic data. Forces after this will tend towards zero. This helps tamp
                 down artifacts due to edge effects, etc.
-            jackknife (bool): If `True`, perform `num_iter` additional iterations of the
-                model while randomly discarding `frac_delete` of the data
+            jackknife (bool or str): Perform `num_iter` additional iterations of the
+                model while randomly discarding `frac_delete` of the data. If
+                ``'channel'``, will discard a fraction of the channels; if
+                ``'station'``, will discard a fraction of the stations (meaning, up to
+                3 channels of data). If `False`, jackknife analysis is not performed
             num_iter (int): Number of jackknife iterations to perform
             frac_delete (int or float): Fraction (out of 1) of data to discard for each
-                iteration, if frac_delete=1, will do leave a one out error analysis
+                iteration, if frac_delete=1, will do leave a one out error analysis. The
+                `jackknife` argument provides options on how to partition the input
+                waveforms
             alpha (int or float): Set regularization parameter. If `None`, will search
                 for best alpha using the L-curve method
             zero_scaler (int or float): Relative strength of zero constraint for
@@ -892,17 +903,33 @@ class LSForce:
         self.angle_magnitude = None
 
         if jackknife:
+            # Backwards compatibility
+            jackknife = 'channel' if jackknife is True else jackknife
+            # Select jackknife params based on user option selected
+            match jackknife:
+                case 'channel':
+                    num_iter_loo = self.data.st_proc.count()  # Number of channels
+                case 'station':
+                    num_iter_loo = len(  # Number of unique stations
+                        set(tr.stats.station for tr in self.data.st_proc)
+                    )
+                case _:
+                    raise ValueError(
+                        'jackknife must be either \'channel\', \'station\', or False.'
+                    )
             if frac_delete == 1.0:
                 # If frac_delete is one, do leave one out analysis instead
-                num_iter = self.data.st_proc.count()
+                num_iter = num_iter_loo
             # Initialize
             self.jackknife = AttribDict(
                 Z=AttribDict(lower=[], upper=[], all=[]),
                 N=AttribDict(lower=[], upper=[], all=[]),
                 E=AttribDict(lower=[], upper=[], all=[]),
                 VR_all=[],
+                tr_id_lists_all=[],  # Holds lists of trace IDs used in each iteration
                 num_iter=num_iter,
                 frac_delete=frac_delete,
+                type=jackknife,  # Either 'channel' or 'station'
             )
         else:
             self.jackknife = None
@@ -1113,24 +1140,47 @@ class LSForce:
             self.dtvec -= self.zero_time
         # Use constant alpha parameter (found above, if not previously set) for
         # jackknife iterations
-        stasets = []
         alphajs = []
         if self.jackknife is not None:
             if self.jackknife.frac_delete == 1.0:
-                print('Starting leave-one-out analysis')
+                print(f'Starting {self.jackknife.type}-based leave-one-out analysis')
             else:
-                print('Starting jackknife iterations')
+                print(f'Starting {self.jackknife.type}-based jackknife iterations')
+            unique_station_list = pd.unique(  # Preserve order of stations
+                np.array([tr.stats.station for tr in self.data.st_proc])
+            ).tolist()
             for ii in range(self.jackknife.num_iter):
-                if self.jackknife.frac_delete == 1:
-                    indxcut = [ii]
-                    numkeep = self.jackknife.num_iter - 1
-                else:
-                    numcut = int(
-                        round(self.jackknife.frac_delete * self.data.st_proc.count())
-                    )
-                    numkeep = self.data.st_proc.count() - numcut
-                    indxcut = rnd.sample(list(range(self.data.st_proc.count())), numcut)
-                stasets.append(indxcut)
+                if self.jackknife.frac_delete == 1:  # Leave-one-out analysis
+                    if self.jackknife.type == 'channel':
+                        indxcut = [ii]
+                    else:  # self.jackknife.type == 'station'
+                        sta_to_cut = unique_station_list[ii]
+                        indxcut = []
+                        for kk, tr in enumerate(self.data.st_proc):
+                            if tr.stats.station == sta_to_cut:
+                                indxcut.append(kk)
+                else:  # Jacknife analysis
+                    if self.jackknife.type == 'channel':
+                        _numcut = int(  # Number of channels to cut
+                            round(
+                                self.jackknife.frac_delete * self.data.st_proc.count()
+                            )
+                        )
+                        indxcut = rnd.sample(
+                            list(range(self.data.st_proc.count())), _numcut
+                        )
+                    else:  # self.jackknife.type == 'station'
+                        _numcut = int(  # Number of stations to cut
+                            round(self.jackknife.frac_delete * len(unique_station_list))
+                        )
+                        stas_to_cut = rnd.sample(unique_station_list, _numcut)
+                        indxcut = []
+                        for kk, tr in enumerate(self.data.st_proc):
+                            if tr.stats.station in stas_to_cut:
+                                indxcut.append(kk)
+
+                # Calculate the number of traces to keep (needed for re-shaping later)
+                numkeep = self.data.st_proc.count() - len(indxcut)
 
                 obj = [
                     sum(ind)
@@ -1204,6 +1254,13 @@ class LSForce:
                 self.jackknife.N.all.append(Nf.copy())
                 self.jackknife.E.all.append(Ef.copy())
                 self.jackknife.VR_all.append(VR.copy())
+
+                # Make list of trace IDs used in this iteration, for troubleshooting
+                tr_id_list = []
+                for kk, tr in enumerate(self.data.st_proc):
+                    if kk not in indxcut:
+                        tr_id_list.append(tr.id)
+                self.jackknife.tr_id_lists_all.append(tr_id_list)
 
             # Calculate bounds of jackknife runs (these bounds do not necessarily
             # represent a single run and in fact are more likely to be composites of
