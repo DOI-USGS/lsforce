@@ -4,8 +4,8 @@ import pickle
 import tempfile
 
 import numpy as np
+import pandas as pd
 import pytest
-from obspy import read
 
 from lsforce import LSForce, readrun
 from lsforce.lsforce import GF_STARTTIME
@@ -116,6 +116,91 @@ def test_lsforce_triangle():
     np.testing.assert_allclose(
         force.model, np.load(os.path.join(data_dir, 'model_triangle.npy')), rtol=RTOL
     )
+
+
+def test_lsforce_jackknifing():
+    print('Testing jackknifing...')
+
+    # Add fake additional channels to LSData object to test jackknifing
+    data = copy.deepcopy(lsforce.data)
+    for station in set(tr.stats.station for tr in data.st_proc):
+        st_sta = data.st_proc.select(station=station)
+        for component in 'ZRT':
+            if not st_sta.select(component=component):
+                _tr = st_sta[0].copy()  # Template trace
+                _tr.stats.component = component
+                data.st_proc += _tr
+    data.st_proc.sort(keys=['distance', 'station', 'channel'])
+
+    # A temporary directory to run tests in
+    temp_dir = tempfile.TemporaryDirectory()
+
+    # Create LSForce object
+    force = LSForce(
+        data=data,
+        data_sampling_rate=1,
+        main_folder=temp_dir.name,
+        method='full',
+    )
+
+    # Needed for some tests below
+    unique_station_list = pd.unique(  # Preserve order of stations
+        np.array([tr.stats.station for tr in force.data.st_proc])
+    ).tolist()
+
+    # Set up for inversion
+    print('Setting up...')
+    force.setup(**SETUP_KWARGS)
+    print('Done')
+
+    # (A) Channel-based leave-one-out analysis
+    force.invert(jackknife='channel', frac_delete=1, **INVERT_KWARGS)
+    assert force.jackknife.num_iter == force.data.st_proc.count()
+    all_tr_ids = [tr.id for tr in force.data.st_proc]
+    missing_tr_ids = []
+    for tr_id_list in force.jackknife.tr_id_lists_all:
+        for tr_id in all_tr_ids:
+            if tr_id not in tr_id_list:
+                missing_tr_ids.append(tr_id)
+    assert missing_tr_ids == all_tr_ids  # Should match, including order!
+
+    # (B) Station-based leave-one-out analysis
+    force.invert(jackknife='station', frac_delete=1, **INVERT_KWARGS)
+    assert force.jackknife.num_iter == len(unique_station_list)
+    missing_stations = []
+    for tr_id_list in force.jackknife.tr_id_lists_all:
+        stations = []
+        for tr_id in tr_id_list:
+            stations.append(tr_id.split('.')[1])  # Get station from trace ID
+        for station in unique_station_list:
+            if station not in set(stations):
+                missing_stations.append(station)
+    assert missing_stations == unique_station_list  # Should match, including order!
+
+    # (C) Channel-based jackknife iterations
+    force.invert(jackknife='channel', num_iter=10, frac_delete=0.5, **INVERT_KWARGS)
+    expected_n_chans = force.data.st_proc.count() - int(
+        round(force.jackknife.frac_delete * force.data.st_proc.count())
+    )
+    n_chans = set([len(tr_id_list) for tr_id_list in force.jackknife.tr_id_lists_all])
+    assert (len(n_chans) == 1) and (list(n_chans)[0] == expected_n_chans)
+
+    # (D) Station-based jackknife iterations
+    force.invert(jackknife='station', num_iter=10, frac_delete=0.5, **INVERT_KWARGS)
+    expected_n_stations = len(unique_station_list) - int(
+        round(force.jackknife.frac_delete * len(unique_station_list))
+    )
+    n_stations = []
+    for tr_id_list in force.jackknife.tr_id_lists_all:
+        stations = []
+        for tr_id in tr_id_list:
+            stations.append(tr_id.split('.')[1])  # Get station from trace ID
+        n_stations.append(len(set(stations)))
+    n_stations = set(n_stations)
+    assert (len(n_stations) == 1) and (list(n_stations)[0] == expected_n_stations)
+
+    # Clean up temporary dir
+    temp_dir.cleanup()
 
 
 def test_lsforce_gfs():
