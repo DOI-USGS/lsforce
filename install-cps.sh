@@ -17,7 +17,7 @@
 # https://rbherrmann.github.io/ComputerProgramsSeismology/
 
 # URL pointing to current CPS release
-CPS_URL='https://rbherrmann.github.io/ComputerProgramsSeismology/NP330.Oct-21-2025.tgz'
+CPS_URL='https://rbherrmann.github.io/ComputerProgramsSeismology/NP330.Feb-11-2026.tgz'
 
 # Target directory to contain CPS directory, `PROGRAMS.330/`
 CPS_LOCATION=~
