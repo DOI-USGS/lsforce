@@ -5,4 +5,5 @@ dependencies:
   - cartopy
   - notebook
   - obspy
+  - pip
   - rioxarray

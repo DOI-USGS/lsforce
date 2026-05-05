@@ -22,6 +22,15 @@ PACKAGE_NAME=lsforce
 # Name of new environment
 ENV_NAME=$PACKAGE_NAME
 
+# Source user's shell config files, if they exist, to give us the best chance of finding
+# conda/mamba
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+if [ -f ~/.bash_profile ]; then
+    . ~/.bash_profile
+fi
+
 # Is mamba installed?
 if ! mamba --version
 then
@@ -94,12 +103,6 @@ then
         echo "Failed to activate the $ENV_NAME environment. Exiting."
         exit 1
     fi
-fi
-
-# Try to upgrade pip, mostly so pip doesn't complain about not being new...
-if ! pip install --upgrade pip
-then
-    echo 'Failed to upgrade pip. Trying to continue...'
 fi
 
 # If user supplied the developer flag, install developer packages
