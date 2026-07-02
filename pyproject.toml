@@ -4,6 +4,7 @@ dynamic = ["version"]
 
 dependencies = [
   "cartopy",
+  "matplotlib==3.10.*",
   "notebook",
   "obspy",
   "pip",
