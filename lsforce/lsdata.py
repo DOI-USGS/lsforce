@@ -460,7 +460,7 @@ def _rotate_to_rtz(st, skip_zne_rotation):
     # If we're doing the full ->ZNE rotation step prior to NE->RT
     if not skip_zne_rotation:
         # Grab inventory for orientation info
-        client = RoutingClient('iris-federator')
+        client = RoutingClient('earthscope-federator')
         inv = client.get_stations(
             network=','.join(networks),
             station=','.join(stations),

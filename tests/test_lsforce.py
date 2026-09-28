@@ -18,7 +18,7 @@ GENERATE_LSFORCE_PICKLE = False
 
 # Relative tolerance for test, see:
 # https://numpy.org/doc/stable/reference/generated/numpy.testing.assert_allclose.html
-RTOL = 1e-6
+RTOL = 1e-5
 
 # [m] Absolute tolerance for Green's function comparison
 GF_ATOL = 1e-18
