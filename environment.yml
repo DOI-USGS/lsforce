@@ -2,9 +2,9 @@ name: lsforce
 channels:
   - conda-forge
 dependencies:
-  - cartopy
+  - cartopy=0.26
   - matplotlib=3.10
   - notebook
-  - obspy
+  - obspy=1.5
   - pip
   - rioxarray
