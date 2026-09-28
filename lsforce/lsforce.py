@@ -19,7 +19,7 @@ from obspy.core import AttribDict
 from scipy.signal.windows import triang
 
 # Base URL for Syngine queries
-SYNGINE_BASE_URL = 'https://service.iris.edu/irisws/syngine/1/query?'
+SYNGINE_BASE_URL = 'https://service.earthscope.org/irisws/syngine/1/query?'
 
 # [s] Sampling interval for Green's functions downloaded from Syngine
 SYNGINE_DT = 0.25

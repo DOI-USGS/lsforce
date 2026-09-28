@@ -45,9 +45,6 @@ def test_lsdata_plot_data():
     return lsdata.plot_data(period_range=(15, 80))
 
 
-@pytest.mark.skip(
-    reason='Awaiting next release of Cartopy (https://github.com/SciTools/cartopy/pull/2664)'
-)
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_lsdata_plot_stations():
     return lsdata.plot_stations(label_stations=True)
