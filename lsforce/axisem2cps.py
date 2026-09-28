@@ -15,7 +15,7 @@ MAX_CHARACTERS = 80
 # Four-space tab for help message and output model file
 TAB = '    '
 
-# From https://ds.iris.edu/ds/products/emc-syngine-retired/
+# URLs for supported AxiSEM models in .txt format
 MODELS = dict(
     ak135f='https://ds.iris.edu/media/product/emc-syngine/files/1dmodel_ak135f.txt',
     iasp91='https://ds.iris.edu/media/product/emc-syngine/files/1dmodel_iasp91.txt',
@@ -25,14 +25,14 @@ MODELS = dict(
 )
 
 help_message = (
-    'Convert model files used for IRIS Syngine AxiSEM runs to\nComputer Programs in '
-    f'Seismology (CPS) format.\n\nUsage:\n{TAB}axisem2cps <model>\n\n'
+    'Convert model files used for EarthScope Syngine AxiSEM runs to\nComputer Programs '
+    f'in Seismology (CPS) format.\n\nUsage:\n{TAB}axisem2cps <model>\n\n'
     f'Where <model> is one of:\n{TAB}' + f'\n{TAB}'.join(MODELS.keys())
 )
 
 
 def axisem2cps(model_nickname):
-    """Convert model files used for IRIS Syngine AxiSEM runs to CPS format.
+    """Convert model files used for EarthScope Syngine AxiSEM runs to CPS format.
 
     CPS = Computer Programs in Seismology. The currently supported AxiSEM models are:
 
