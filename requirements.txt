@@ -1,6 +1,6 @@
 # To install these developer packages, activate your existing conda environment and run:
 # pip install --requirement requirements.txt
-black[jupyter]==25.12.0
+black[jupyter]==26.10.1
 ipython
 isort==5.12.0
 nbdime
