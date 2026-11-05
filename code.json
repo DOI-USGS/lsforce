@@ -22,7 +22,7 @@
     "repositoryURL": "https://code.usgs.gov/ghsc/lhp/lsforce.git",
     "vcs": "git",
 
-    "laborHours": 0,
+    "laborHours": 1000,
 
     "tags": [
       "landslide",
@@ -41,7 +41,7 @@
     },
 
     "date": {
-      "metadataLastUpdated": "2023-11-14"
+      "metadataLastUpdated": "2026-11-05"
     }
   }
 ]
